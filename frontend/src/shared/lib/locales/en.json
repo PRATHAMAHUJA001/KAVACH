@@ -227,5 +227,81 @@
     "home": "Go to Today",
     "demoSignIn": "Demo: sign in as",
     "tagline": "Compliance copilot"
+  },
+  "today": {
+    "greeting": {
+      "morning": "Good morning.",
+      "afternoon": "Good afternoon.",
+      "evening": "Good evening."
+    },
+    "picture": "Here's today's compliance picture.",
+    "readiness": {
+      "title": "Readiness",
+      "sub": "How ready we are for an audit today",
+      "pulling": "What's pulling it down",
+      "factor": {
+        "overdue_one": "{{count}} overdue report",
+        "overdue_other": "{{count}} overdue reports",
+        "due_soon_one": "{{count}} report due within 48 hours",
+        "due_soon_other": "{{count}} reports due within 48 hours",
+        "rules_pending_one": "{{count}} rule waiting for approval",
+        "rules_pending_other": "{{count}} rules waiting for approval",
+        "conflicts_one": "{{count}} pair of clashing rules",
+        "conflicts_other": "{{count}} pairs of clashing rules",
+        "points": "−{{points}} points"
+      }
+    },
+    "kpi": {
+      "newAlerts": "New alerts",
+      "newAlertsSentence": "{{count}} of them look serious enough to act on today.",
+      "newAlertsNone": "None look serious enough to act on today.",
+      "moneyAtRisk": "Money at risk",
+      "moneyAtRiskSentence": "Held in alerts that aren't resolved yet.",
+      "due": "Reports due in 48 hours",
+      "dueSentence_one": "{{count}} report is due within 48 hours.",
+      "dueSentence_other": "{{count}} reports are due within 48 hours.",
+      "dueOverdue": "Plus {{count}} already overdue — start with those.",
+      "dueNone": "Nothing is due in the next two days.",
+      "rings": "Active mule rings",
+      "ringsSentence": "{{amount}} moved through them in the last 30 days."
+    },
+    "attention": {
+      "title": "Needs your attention",
+      "subtitle_one": "The one thing most worth doing first.",
+      "subtitle_other": "The {{count}} things most worth doing first.",
+      "empty": "Nothing needs you right now. Every report is on time.",
+      "report_overdue": "{{whose}} report is overdue. {{amount}} · {{pattern}}.",
+      "report_due": "{{whose}} report is due in {{span}}. {{amount}} · {{pattern}}.",
+      "ring_new": "{{name}}: {{count}} accounts moved {{amount}} together.",
+      "rule_pending_one": "{{count}} new rule is waiting for your approval.",
+      "rule_pending_other": "{{count}} new rules are waiting for your approval.",
+      "conflict_open_one": "{{count}} pair of rules overlap or disagree.",
+      "conflict_open_other": "{{count}} pairs of rules overlap or disagree.",
+      "pill": {
+        "ring_new": "New ring",
+        "rule_pending": "Waiting",
+        "conflict_open": "Check"
+      },
+      "action": {
+        "open_case": "Open case",
+        "see_ring": "See the ring",
+        "review_rules": "Review rules",
+        "see_conflicts": "See conflicts"
+      }
+    },
+    "trend": {
+      "title": "Alerts vs confirmed fraud",
+      "subtitle": "Last 30 days",
+      "alerts": "Alerts",
+      "fraud": "Confirmed fraud",
+      "insightUp": "Alerts are up {{pct}}% on last week; {{fraud}} confirmed as fraud so far.",
+      "insightDown": "Alerts are down {{pct}}% on last week; {{fraud}} confirmed as fraud so far.",
+      "insightFlat": "Alerts are level with last week; {{fraud}} confirmed as fraud so far.",
+      "caption": "Daily alerts and confirmed fraud cases over the last 30 days"
+    },
+    "brief": {
+      "title": "This week in one paragraph",
+      "source": "Written from this week's numbers · {{when}}"
+    }
   }
 }

@@ -14,7 +14,7 @@ const page = (key: AppRoute["key"]) => lazy(() => import("@/pages/PlaceholderPag
 
 /** Sidebar order follows DESIGN_SPEC §3. Pages are swapped in as each build step lands. */
 export const ROUTES: AppRoute[] = [
-  { path: "/today", key: "today", icon: CalendarClock, hotkey: "t", element: page("today") },
+  { path: "/today", key: "today", icon: CalendarClock, hotkey: "t", element: lazy(() => import("@/pages/TodayPage")) },
   { path: "/alerts", key: "alerts", icon: Bell, hotkey: "a", element: page("alerts") },
   { path: "/ask", key: "ask", icon: MessagesSquare, hotkey: "k", element: page("ask") },
   { path: "/rings", key: "rings", icon: Network, hotkey: "r", element: page("rings") },

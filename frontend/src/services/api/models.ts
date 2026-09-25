@@ -162,7 +162,7 @@ export interface AttentionItem {
 }
 
 export interface Home {
-  readiness: { score: number; reason: Text };
+  readiness: { score: number; reason: Text; factors: Array<{ key: "overdue" | "due_soon" | "rules_pending" | "conflicts"; count: number; points: number }> };
   kpis: {
     newAlerts: number;
     newAlertsPrev: number;

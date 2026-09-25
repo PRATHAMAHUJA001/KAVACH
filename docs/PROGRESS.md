@@ -909,3 +909,56 @@ Screens: `docs/screens/shell-{base,search,shortcuts,collapsed,reviewer}-{1280,19
 - README: fixed the unclosed mermaid block, replaced the stale "backend/frontend not
   implemented" status, added a Frontend section.
 - FINAL_REPORT: dated status update.
+
+## Step 3 — Today ✅
+
+**UI** (`features/today`, `pages/TodayPage.tsx`, DESIGN_SPEC §3.1):
+- Greeting with the data's date.
+- Readiness gauge, with a "What's pulling it down" breakdown so the number is
+  explained in words (e.g. "4 overdue reports −16 points").
+- 4 count-up KPI tiles, each a link, with trend chips coloured by meaning.
+- "Needs your attention": 5 rows, each with a pill, one sentence and one button. It
+  prefetches the case file on hover.
+- Alerts vs confirmed fraud over 30 days, with a one-line insight.
+- The weekly brief.
+- Layout: from 1536 px it's the spec grid (gauge spanning two rows). Below that, the
+  KPIs sit 2×2 beside the gauge and the attention list goes full width.
+
+**Backend** (connecting the UI to FastAPI):
+- `/api/home` rebuilt in the N-layered style:
+  - `domain/policies.py`: working-day report deadlines, deadline bands, readiness
+    with factors, ₹ formatting;
+  - `domain/dashboard.py`: entities;
+  - `DashboardRepository` protocol;
+  - `SnowflakeDashboardRepository`: bound parameters only, SQL out of the router;
+  - `HomeService`.
+- The response adds `kpis`, `attention`, `trend[].confirmed_fraud`,
+  `readiness_score.reason_hi/factors`, `weekly_brief` and `as_of`. Existing fields
+  are unchanged.
+- `/api/me` returns `CURRENT_ROLE()` and `as_of`.
+
+**Tests:**
+- `backend/tests`: 23 pass. That's 8 new (policies, `HomeService` with a fake
+  repository, the HTTP contract through `TestClient`) plus the 15 existing.
+- The contract test saves `/api/home`'s real output to `backend/tests/samples/`.
+  `npm run contract` feeds it through the frontend adapter, and it passes.
+- Not yet run against live Snowflake (the account is offline).
+
+**Visual QA fixes:**
+- **Blank space under the page:** 704 px of it at 1280. The chart's screen-reader
+  table ignored `sr-only` because tables don't honour height or overflow; it's now
+  wrapped in an `sr-only` div.
+- **Cramped KPI tiles at 1280:** 4 tiles at 3/12 width wrapped "Money at / risk" and
+  "vs last / week". Switched to a 2×2 grid beside the gauge below 1536 px, with tiles
+  stretching to the gauge's height.
+- **Empty Readiness card** (tall, mostly blank): added the factor breakdown.
+- **Sidebar background** stopped at the viewport in full-page views. The rail now
+  spans the page, with a sticky inner column.
+- **Grammar:**
+  - "1 of them have been" → "has been" (mock and backend);
+  - "Joshi Logistics's" → "Joshi Logistics'";
+  - Hindi "1 घंटा में" → "1 घंटे में".
+- **Rounding:** the backend used banker's rounding (68.5 → 68) while the UI rounds
+  half up (69). The backend now rounds half up.
+
+Screens: `docs/screens/today-{1280,1920}-{light,dark}.png`, `today-hindi-1280-*`.

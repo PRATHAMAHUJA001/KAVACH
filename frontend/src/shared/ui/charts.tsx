@@ -140,7 +140,8 @@ export function TrendChart<K extends string>({
         </ResponsiveContainer>
       </div>
       <figcaption className="sr-only">{caption}</figcaption>
-      <table className="sr-only">
+      <div className="sr-only">
+      <table>
         <caption>{caption}</caption>
         <thead>
           <tr>
@@ -163,6 +164,7 @@ export function TrendChart<K extends string>({
           ))}
         </tbody>
       </table>
+      </div>
     </figure>
   );
 }

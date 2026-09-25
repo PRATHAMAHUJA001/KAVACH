@@ -97,7 +97,7 @@ export interface DeadlineInfo {
 
 const SPANS: Record<Lang, { d: [string, string]; h: [string, string]; m: [string, string] }> = {
   en: { d: ["day", "days"], h: ["hour", "hours"], m: ["min", "min"] },
-  hi: { d: ["दिन", "दिन"], h: ["घंटा", "घंटे"], m: ["मिनट", "मिनट"] },
+  hi: { d: ["दिन", "दिन"], h: ["घंटे", "घंटे"], m: ["मिनट", "मिनट"] },
 };
 
 export function formatSpan(ms: number, lang: Lang = "en"): string {

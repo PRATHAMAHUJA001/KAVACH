@@ -101,7 +101,17 @@ export const coreHandlers = [
     const biggest = [...activeRings].sort((a, b) => b.ring.total_volume_inr - a.ring.total_volume_inr)[0];
 
     const body: HomeDTO = {
-      readiness_score: { score, reason, reason_hi },
+      readiness_score: {
+        score,
+        reason,
+        reason_hi,
+        factors: [
+          { key: "overdue" as const, count: overdue.length, points: 4 * overdue.length },
+          { key: "due_soon" as const, count: dueSoon.length, points: 2 * dueSoon.length },
+          { key: "rules_pending" as const, count: pendingRules.length, points: 0.5 * pendingRules.length },
+          { key: "conflicts" as const, count: openConflicts.length, points: 0.5 * openConflicts.length },
+        ].filter((x) => x.count > 0),
+      },
       top_alerts: [...open].sort((a, b) => b.score - a.score).slice(0, 5).map((a) => ({ alert_id: a.alert_id, account_id: a.account_id, typology: a.typology, severity: a.severity, score: a.score, created_at: a.created_at })),
       trend,
       kpis: {
@@ -118,7 +128,7 @@ export const coreHandlers = [
       },
       attention: attention.slice(0, 5),
       weekly_brief: {
-        text: `This week KAVACH raised ${week.length} alerts involving ${money(weekAmount)}. ${weekFraud} of them have been confirmed as fraud so far, most often ${TYP_EN[topTyp]}. ${biggest ? `The ${biggest.ring.ring_name} is the largest active group, moving ${money(biggest.ring.total_volume_inr)} through ${biggest.ring.member_count} accounts. ` : ""}${overdue.length ? `${overdue.length} reports are overdue — clear those first.` : "All reports are on time."}`,
+        text: `This week KAVACH raised ${week.length} alerts involving ${money(weekAmount)}. ${weekFraud} of them ${weekFraud === 1 ? "has" : "have"} been confirmed as fraud so far, most often ${TYP_EN[topTyp]}. ${biggest ? `The ${biggest.ring.ring_name} is the largest active group, moving ${money(biggest.ring.total_volume_inr)} through ${biggest.ring.member_count} accounts. ` : ""}${overdue.length ? `${overdue.length} reports are overdue — clear those first.` : "All reports are on time."}`,
         text_hi: `इस हफ़्ते KAVACH ने ${week.length} अलर्ट बनाए, जिनमें ${moneyHi(weekAmount)} शामिल हैं। अब तक ${weekFraud} को धोखाधड़ी माना गया है, सबसे ज़्यादा "${TYP_HI[topTyp]}" वाले। ${biggest ? `${biggest.ring.ring_name_hi} सबसे बड़ा सक्रिय समूह है, जिसने ${biggest.ring.member_count} खातों से ${moneyHi(biggest.ring.total_volume_inr)} घुमाए। ` : ""}${overdue.length ? `${overdue.length} रिपोर्ट की समय सीमा निकल चुकी है — पहले उन्हें निपटाएँ।` : "सभी रिपोर्ट समय पर हैं।"}`,
         generated_at: new Date(now - 2 * HOUR).toISOString(),
       },

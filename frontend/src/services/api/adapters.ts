@@ -178,7 +178,7 @@ export function toWhyNot(d: D.WhyNotDTO): M.WhyNot {
 export function toHome(d: D.HomeDTO): M.Home {
   const k = d.kpis;
   return {
-    readiness: { score: d.readiness_score.score, reason: text(d.readiness_score.reason, d.readiness_score.reason_hi) },
+    readiness: { score: d.readiness_score.score, reason: text(d.readiness_score.reason, d.readiness_score.reason_hi), factors: d.readiness_score.factors ?? [] },
     kpis: k
       ? {
           newAlerts: k.new_alerts,

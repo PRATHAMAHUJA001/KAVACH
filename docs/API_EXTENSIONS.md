@@ -14,7 +14,10 @@ frontend is built against **additive** extensions of that contract:
   missing is hidden. It is never filled with invented numbers. Each item says what
   the real backend currently shows.
 
-Status legend: ⬜ not built in the backend yet · ✅ available.
+Status legend:
+- ⬜ not built in the backend yet
+- 🟡 built in the backend and tested with fake repositories plus a frontend contract check (`npm run contract`), but not yet run against live Snowflake
+- ✅ verified live
 
 ---
 
@@ -22,19 +25,24 @@ Status legend: ⬜ not built in the backend yet · ✅ available.
 
 | | |
 |---|---|
-| **`GET /api/me`** + `as_of: string` (ISO) ⬜ | The dataset's "today" (`SETTINGS.AS_OF_DATE`). Deadlines are measured against it. |
+| **`GET /api/me`** + `as_of: string` (ISO) 🟡 | The dataset's "today" (`SETTINGS.AS_OF_DATE`). Deadlines are measured against it. |
 
 **Why:** the synthetic data is frozen at 24 Sep 2026. Measured against the wall
 clock, every report looks overdue within a week.
 **Without it:** the UI uses the wall clock.
 
-**Also:** `/api/me` still returns a hard-coded `KAVACH_ANALYST` profile
-(PROGRESS.md, checkpoint 4 follow-ups). The read-only banner for
-`KAVACH_REVIEWER` depends on this returning the caller's real role.
+**Also 🟡:** `/api/me` now returns the session's `CURRENT_ROLE()` (it used to be a
+hard-coded analyst). The read-only banner for `KAVACH_REVIEWER` depends on it.
+`as_of` is the later of `APP.SETTINGS.AS_OF_DATE` (18:00) and the newest alert's
+`CREATED_AT`. In the live database the alerts carry the time the rule executor
+ran, not a synthetic date.
 
 ## 2. Today — `GET /api/home`
 
-All of these are new optional fields ⬜:
+All of these are new optional fields 🟡. They're built as
+`HomeService` → `DashboardRepository` → `SnowflakeDashboardRepository`, and the SQL
+moved out of the router. Report deadlines are 7 working days from identification
+(domain policy).
 
 | Field | Shape | Used for |
 |---|---|---|
@@ -42,6 +50,7 @@ All of these are new optional fields ⬜:
 | `attention[]` | `{ id, kind: report_overdue\|report_due\|rule_pending\|ring_new\|conflict_open, status: overdue\|act\|attention, entity_id, params: { name, name_hi, amount_inr, due_at, count, typology } }` | "Needs your attention" cards. The UI writes the sentence in EN or HI from these params. |
 | `trend[].confirmed_fraud` | `int` | The rose "Confirmed fraud" line in the 30-day chart |
 | `readiness_score.reason_hi` | `string` | Hindi reason under the gauge |
+| `readiness_score.factors[]` | `{ key: overdue\|due_soon\|rules_pending\|conflicts, count, points }` | "What's pulling it down" under the gauge |
 | `weekly_brief` | `{ text, text_hi, generated_at }` | "This week in one paragraph" card (AI-generated badge) |
 | `as_of` | ISO string | As in §1 |
 

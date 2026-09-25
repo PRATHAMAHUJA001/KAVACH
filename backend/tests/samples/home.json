@@ -1,0 +1,297 @@
+{
+  "readiness_score": {
+    "score": 69.0,
+    "reason": "4 reports are overdue and 3 more are due within 48 hours.",
+    "reason_hi": "4 रिपोर्ट की समय सीमा निकल चुकी है और 3 और 48 घंटों में देय हैं।",
+    "factors": [
+      {
+        "key": "overdue",
+        "count": 4,
+        "points": 16.0
+      },
+      {
+        "key": "due_soon",
+        "count": 3,
+        "points": 6.0
+      },
+      {
+        "key": "rules_pending",
+        "count": 10,
+        "points": 5.0
+      },
+      {
+        "key": "conflicts",
+        "count": 9,
+        "points": 4.5
+      }
+    ]
+  },
+  "top_alerts": [
+    {
+      "alert_id": "ALT-1",
+      "account_id": "ACC0000001",
+      "typology": "RAPID_PASSTHROUGH",
+      "severity": "HIGH",
+      "score": 0.8,
+      "created_at": "2026-09-04T18:00:00"
+    },
+    {
+      "alert_id": "ALT-2",
+      "account_id": "ACC0000002",
+      "typology": "MULE_RING",
+      "severity": "HIGH",
+      "score": 0.8,
+      "created_at": "2026-09-12T18:00:00"
+    },
+    {
+      "alert_id": "ALT-3",
+      "account_id": "ACC0000003",
+      "typology": "ACCOUNT_TAKEOVER",
+      "severity": "HIGH",
+      "score": 0.8,
+      "created_at": "2026-09-16T18:00:00"
+    }
+  ],
+  "trend": [
+    {
+      "date": "2026-08-26",
+      "alert_count": 0,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-08-27",
+      "alert_count": 1,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-08-28",
+      "alert_count": 2,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-08-29",
+      "alert_count": 3,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-08-30",
+      "alert_count": 4,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-08-31",
+      "alert_count": 5,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-01",
+      "alert_count": 6,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-02",
+      "alert_count": 7,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-03",
+      "alert_count": 8,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-04",
+      "alert_count": 0,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-05",
+      "alert_count": 1,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-06",
+      "alert_count": 2,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-07",
+      "alert_count": 3,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-08",
+      "alert_count": 4,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-09",
+      "alert_count": 5,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-10",
+      "alert_count": 6,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-11",
+      "alert_count": 7,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-12",
+      "alert_count": 8,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-13",
+      "alert_count": 0,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-14",
+      "alert_count": 1,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-15",
+      "alert_count": 2,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-16",
+      "alert_count": 3,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-17",
+      "alert_count": 4,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-18",
+      "alert_count": 5,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-19",
+      "alert_count": 6,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-20",
+      "alert_count": 7,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-21",
+      "alert_count": 8,
+      "confirmed_fraud": 2
+    },
+    {
+      "date": "2026-09-22",
+      "alert_count": 0,
+      "confirmed_fraud": 0
+    },
+    {
+      "date": "2026-09-23",
+      "alert_count": 1,
+      "confirmed_fraud": 1
+    },
+    {
+      "date": "2026-09-24",
+      "alert_count": 2,
+      "confirmed_fraud": 2
+    }
+  ],
+  "kpis": {
+    "new_alerts": 14,
+    "new_alerts_prev": 7,
+    "serious_new_alerts": 9,
+    "money_at_risk_inr": 290000000.0,
+    "money_at_risk_prev_inr": 260000000.0,
+    "reports_due_48h": 3,
+    "reports_overdue": 4,
+    "active_rings": 2,
+    "active_rings_prev": 1,
+    "ring_volume_30d_inr": 34960000.0
+  },
+  "attention": [
+    {
+      "id": "att-ALT-1",
+      "kind": "report_overdue",
+      "status": "overdue",
+      "entity_id": "ALT-1",
+      "params": {
+        "name": "Customer 1",
+        "name_hi": null,
+        "amount_inr": 1250000.0,
+        "due_at": "2026-09-15T18:00:00",
+        "count": null,
+        "typology": "RAPID_PASSTHROUGH"
+      }
+    },
+    {
+      "id": "att-ALT-2",
+      "kind": "report_overdue",
+      "status": "overdue",
+      "entity_id": "ALT-2",
+      "params": {
+        "name": "Customer 2",
+        "name_hi": null,
+        "amount_inr": 1250000.0,
+        "due_at": "2026-09-22T18:00:00",
+        "count": null,
+        "typology": "MULE_RING"
+      }
+    },
+    {
+      "id": "att-ALT-3",
+      "kind": "report_due",
+      "status": "act",
+      "entity_id": "ALT-3",
+      "params": {
+        "name": "Customer 3",
+        "name_hi": null,
+        "amount_inr": 1250000.0,
+        "due_at": "2026-09-25T18:00:00",
+        "count": null,
+        "typology": "ACCOUNT_TAKEOVER"
+      }
+    },
+    {
+      "id": "att-RING-A",
+      "kind": "ring_new",
+      "status": "attention",
+      "entity_id": "RING-A",
+      "params": {
+        "name": "Ring RING-A",
+        "name_hi": null,
+        "amount_inr": 8960000.0,
+        "due_at": null,
+        "count": 5,
+        "typology": null
+      }
+    },
+    {
+      "id": "att-rules",
+      "kind": "rule_pending",
+      "status": "attention",
+      "entity_id": "RL-1",
+      "params": {
+        "name": null,
+        "name_hi": null,
+        "amount_inr": null,
+        "due_at": null,
+        "count": 10,
+        "typology": null
+      }
+    }
+  ],
+  "weekly_brief": {
+    "text": "This week KAVACH raised 62 alerts involving ₹26.5 Cr. 1 of them has been confirmed as fraud so far, most often money moved in and out within a day. Ring RING-B is the largest active group, moving ₹2.6 Cr through 7 accounts. 4 reports are overdue — clear those first.",
+    "text_hi": "इस हफ़्ते KAVACH ने 62 अलर्ट बनाए, जिनमें ₹26.5 करोड़ शामिल हैं। अब तक 1 को धोखाधड़ी माना गया है, सबसे ज़्यादा \"एक दिन में पैसा आया और गया\" वाले। Ring RING-B सबसे बड़ा सक्रिय समूह है, जिसने 7 खातों से ₹2.6 करोड़ घुमाए। 4 रिपोर्ट की समय सीमा निकल चुकी है — पहले उन्हें निपटाएँ।",
+    "generated_at": "2026-09-24T18:00:00"
+  },
+  "as_of": "2026-09-24T18:00:00"
+}

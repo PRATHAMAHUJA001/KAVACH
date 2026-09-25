@@ -13,12 +13,8 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const actNow = home.data?.kpis ? home.data.kpis.reportsOverdue + home.data.kpis.reportsDue48h : 0;
 
   return (
-    <aside
-      className={cn(
-        "sticky top-0 z-40 flex h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out",
-        collapsed ? "w-[72px]" : "w-[248px]",
-      )}
-    >
+    <div className={cn("relative z-40 shrink-0 border-r border-border bg-surface transition-[width] duration-200 ease-out", collapsed ? "w-[72px]" : "w-[248px]")}>
+    <aside className="sticky top-0 flex h-screen flex-col">
       <div className={cn("flex h-16 items-center border-b border-border", collapsed ? "justify-center px-0" : "px-5")}>
         <Logo collapsed={collapsed} />
       </div>
@@ -96,5 +92,6 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         </Tooltip>
       </div>
     </aside>
+    </div>
   );
 }

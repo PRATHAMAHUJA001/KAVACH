@@ -210,7 +210,11 @@ export interface HomeKpisDTO {
 export type TrendPointDTO = S["TrendData"] & { confirmed_fraud?: number };
 
 export type HomeDTO = Omit<S["HomeResponse"], "trend" | "readiness_score"> & {
-  readiness_score: S["ReadinessScore"] & { reason_hi?: string };
+  readiness_score: S["ReadinessScore"] & {
+    reason_hi?: string;
+    /** EXT: what pulls the score down, so the number is explained in words. */
+    factors?: Array<{ key: "overdue" | "due_soon" | "rules_pending" | "conflicts"; count: number; points: number }>;
+  };
   trend: TrendPointDTO[];
   kpis?: HomeKpisDTO;
   attention?: AttentionItemDTO[];

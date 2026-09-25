@@ -10,6 +10,24 @@ for (const vp of VIEWPORTS) {
     test.describe(`${vp.name} ${theme}`, () => {
       test.use({ viewport: { width: vp.width, height: vp.height } });
 
+      test("today", async ({ page }) => {
+        test.skip(!!only && only !== "today");
+        await setTheme(page, theme);
+        await page.goto("/today?role=analyst");
+        await page.getByRole("heading", { name: "Needs your attention" }).waitFor();
+        await settle(page);
+        await page.waitForTimeout(700);
+        await page.screenshot({ path: path.join(SCREENS_DIR, `today-${vp.name}-${theme}.png`), fullPage: true });
+        if (vp.name === "1280") {
+          await setTheme(page, theme, "hi");
+          await page.goto("/today");
+          await page.getByRole("heading", { name: "आपका ध्यान चाहिए" }).waitFor();
+          await settle(page);
+          await page.waitForTimeout(700);
+          await page.screenshot({ path: path.join(SCREENS_DIR, `today-hindi-${vp.name}-${theme}.png`), fullPage: true });
+        }
+      });
+
       test("shell", async ({ page }) => {
         test.skip(!!only && only !== "shell");
         const shot = (name: string, full = false) =>

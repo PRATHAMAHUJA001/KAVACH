@@ -3,7 +3,9 @@ Repository protocols (interfaces) for the domain layer
 Following dependency inversion principle
 """
 from typing import Protocol, Optional, List
+from datetime import datetime
 from app.domain.entities import Alert, AlertDetail, Rule, Ring, Evidence
+from app.domain.dashboard import DashboardFacts
 
 
 class AlertRepository(Protocol):
@@ -78,4 +80,18 @@ class EvidenceRepository(Protocol):
     
     def create_evidence(self, alert_id: str, evidence_json: dict) -> Evidence:
         """Create evidence pack"""
+        ...
+
+
+class DashboardRepository(Protocol):
+    """Protocol for the Today dashboard's read model."""
+
+    def as_of(self) -> "datetime":
+        """The data's "now": SETTINGS.AS_OF_DATE, or the newest alert if that is later."""
+        ...
+
+    def facts(self, now: "datetime", overdue_before: "datetime", due_48h_before: "datetime") -> "DashboardFacts":
+        """Everything the dashboard needs. An open report is overdue when its alert was
+        created before `overdue_before`, and due within 48 h when created before
+        `due_48h_before` (both computed by domain policy)."""
         ...

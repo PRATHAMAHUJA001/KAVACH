@@ -227,5 +227,81 @@
     "home": "आज पर जाएँ",
     "demoSignIn": "डेमो: इस रूप में साइन इन करें",
     "tagline": "अनुपालन सहायक"
+  },
+  "today": {
+    "greeting": {
+      "morning": "सुप्रभात।",
+      "afternoon": "नमस्कार।",
+      "evening": "शुभ संध्या।"
+    },
+    "picture": "यह है आज की अनुपालन स्थिति।",
+    "readiness": {
+      "title": "तैयारी",
+      "sub": "आज हम ऑडिट के लिए कितने तैयार हैं",
+      "pulling": "स्कोर किस वजह से कम है",
+      "factor": {
+        "overdue_one": "{{count}} रिपोर्ट की समय सीमा निकली",
+        "overdue_other": "{{count}} रिपोर्ट की समय सीमा निकली",
+        "due_soon_one": "{{count}} रिपोर्ट 48 घंटों में देय",
+        "due_soon_other": "{{count}} रिपोर्ट 48 घंटों में देय",
+        "rules_pending_one": "{{count}} नियम मंज़ूरी के इंतज़ार में",
+        "rules_pending_other": "{{count}} नियम मंज़ूरी के इंतज़ार में",
+        "conflicts_one": "नियमों की {{count}} टकराती जोड़ी",
+        "conflicts_other": "नियमों की {{count}} टकराती जोड़ियाँ",
+        "points": "−{{points}} अंक"
+      }
+    },
+    "kpi": {
+      "newAlerts": "नए अलर्ट",
+      "newAlertsSentence": "इनमें से {{count}} पर आज ही कार्रवाई ज़रूरी लगती है।",
+      "newAlertsNone": "किसी पर आज कार्रवाई ज़रूरी नहीं लगती।",
+      "moneyAtRisk": "जोखिम में पैसा",
+      "moneyAtRiskSentence": "उन अलर्ट में जो अभी सुलझे नहीं हैं।",
+      "due": "48 घंटों में देय रिपोर्ट",
+      "dueSentence_one": "{{count}} रिपोर्ट 48 घंटों में देय है।",
+      "dueSentence_other": "{{count}} रिपोर्ट 48 घंटों में देय हैं।",
+      "dueOverdue": "और {{count}} की समय सीमा निकल चुकी है — पहले उन्हें देखें।",
+      "dueNone": "अगले दो दिनों में कुछ देय नहीं है।",
+      "rings": "सक्रिय म्यूल समूह",
+      "ringsSentence": "पिछले 30 दिनों में इनसे {{amount}} घुमाए गए।"
+    },
+    "attention": {
+      "title": "आपका ध्यान चाहिए",
+      "subtitle_one": "सबसे पहले करने लायक एक काम।",
+      "subtitle_other": "सबसे पहले करने लायक {{count}} काम।",
+      "empty": "अभी आपकी ज़रूरत नहीं है। सभी रिपोर्ट समय पर हैं।",
+      "report_overdue": "{{whose}} की रिपोर्ट की समय सीमा निकल गई। {{amount}} · {{pattern}}।",
+      "report_due": "{{whose}} की रिपोर्ट {{span}} में देय है। {{amount}} · {{pattern}}।",
+      "ring_new": "{{name}}: {{count}} खातों ने मिलकर {{amount}} घुमाए।",
+      "rule_pending_one": "{{count}} नया नियम आपकी मंज़ूरी का इंतज़ार कर रहा है।",
+      "rule_pending_other": "{{count}} नए नियम आपकी मंज़ूरी का इंतज़ार कर रहे हैं।",
+      "conflict_open_one": "नियमों की {{count}} जोड़ी आपस में टकराती है।",
+      "conflict_open_other": "नियमों की {{count}} जोड़ियाँ आपस में टकराती हैं।",
+      "pill": {
+        "ring_new": "नया समूह",
+        "rule_pending": "इंतज़ार में",
+        "conflict_open": "जाँचें"
+      },
+      "action": {
+        "open_case": "केस खोलें",
+        "see_ring": "समूह देखें",
+        "review_rules": "नियम देखें",
+        "see_conflicts": "टकराव देखें"
+      }
+    },
+    "trend": {
+      "title": "अलर्ट बनाम पुष्ट धोखाधड़ी",
+      "subtitle": "पिछले 30 दिन",
+      "alerts": "अलर्ट",
+      "fraud": "पुष्ट धोखाधड़ी",
+      "insightUp": "पिछले हफ़्ते से अलर्ट {{pct}}% बढ़े; अब तक {{fraud}} धोखाधड़ी पुष्ट।",
+      "insightDown": "पिछले हफ़्ते से अलर्ट {{pct}}% घटे; अब तक {{fraud}} धोखाधड़ी पुष्ट।",
+      "insightFlat": "अलर्ट पिछले हफ़्ते जितने ही हैं; अब तक {{fraud}} धोखाधड़ी पुष्ट।",
+      "caption": "पिछले 30 दिनों के रोज़ के अलर्ट और पुष्ट धोखाधड़ी"
+    },
+    "brief": {
+      "title": "यह हफ़्ता एक पैराग्राफ़ में",
+      "source": "इस हफ़्ते के आँकड़ों से लिखा गया · {{when}}"
+    }
   }
 }
