@@ -39,16 +39,15 @@ BEGIN
             a.account_id,
             a.customer_id,
             a.typology,
-            a.blended_score,
-            r.rule_name,
-            r.circular_no,
-            r.para_no,
+            a.score,
+            a.rule_name,
+            a.citation,
+            a.severity,
             -- Get transaction summary
             t.txn_count,
             t.total_amount_inr,
             t.date_range
         FROM CORE.ALERTS a
-        JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
         LEFT JOIN (
             SELECT 
                 account_id,
@@ -59,8 +58,8 @@ BEGIN
             WHERE txn_ts >= DATEADD('day', -30, CURRENT_DATE())
             GROUP BY account_id
         ) t ON a.account_id = t.account_id
-        WHERE a.priority = 'HIGH'
-        ORDER BY a.blended_score DESC
+        WHERE a.severity IN ('HIGH', 'CRITICAL')
+        ORDER BY a.score DESC
         LIMIT 200
     )
     SELECT 
@@ -69,12 +68,12 @@ BEGIN
         'You are a compliance analyst. Rephrase this alert into a clear 3-5 sentence story in simple English. ' ||
         'Use EXACTLY the numbers provided; do not invent any data. ' ||
         'Alert ID: ' || alert_id || '. ' ||
-        'Account ' || account_id || ' (Customer ' || customer_id || ') was flagged for ' || typology || '. ' ||
+        'Account ' || account_id || COALESCE(' (Customer ' || customer_id || ')', '') || ' was flagged for ' || typology || '. ' ||
         'The account had ' || COALESCE(txn_count, 0) || ' transactions totaling ₹' || 
         COALESCE(ROUND(total_amount_inr/100000, 2), 0) || ' lakh ' ||
         'from ' || COALESCE(date_range, 'unknown period') || '. ' ||
-        'This triggered rule "' || rule_name || '" (source: ' || circular_no || ' para ' || para_no || '). ' ||
-        'Risk score: ' || ROUND(blended_score, 2) || '.' AS prompt_en
+        'This triggered rule "' || rule_name || '" (source: ' || citation || '). ' ||
+        'Risk score: ' || ROUND(score, 2) || '.' AS prompt_en
     FROM top_alerts;
     
     -- Step 2: Batch call AI_COMPLETE (one call for all 200, not 200 calls)
@@ -82,10 +81,10 @@ BEGIN
     SELECT 
         alert_id,
         SNOWFLAKE.CORTEX.AI_COMPLETE(
-            'mistral-large2',  -- cheaper than sonnet for simple rephrasing
+            'llama3.1-8b',  -- efficient open-source model for rephrasing
             prompt_en
         ) AS story_en,
-        'mistral-large2'
+        'llama3.1-8b'
     FROM story_prompts;
     
     -- Step 3: Translate to Hindi (batched)
@@ -115,17 +114,16 @@ $$
         CASE 
             WHEN p_lang = 'HI' THEN COALESCE(
                 s.story_hi,
-                'यह अलर्ट ' || a.typology || ' के लिए फ्लैग किया गया था (नियम: ' || r.rule_name || ')'
+                'यह अलर्ट ' || a.typology || ' के लिए फ्लैग किया गया था (नियम: ' || a.rule_name || ')'
             )
             ELSE COALESCE(
                 s.story_en,
-                'Alert flagged for ' || a.typology || ' under rule "' || r.rule_name || '" ' ||
-                '(source: ' || r.circular_no || ' para ' || r.para_no || '). ' ||
-                'Risk score: ' || ROUND(a.blended_score, 2) || '.'
+                'Alert flagged for ' || a.typology || ' under rule "' || a.rule_name || '" ' ||
+                '(source: ' || a.citation || '). ' ||
+                'Risk score: ' || ROUND(a.score, 2) || '.'
             )
         END
     FROM CORE.ALERTS a
-    JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
     LEFT JOIN AI.ALERT_STORIES s ON a.alert_id = s.alert_id
     WHERE a.alert_id = p_alert_id
 $$;
@@ -158,8 +156,8 @@ BEGIN
             'account_id', a.account_id,
             'customer_id', a.customer_id,
             'typology', a.typology,
-            'priority', a.priority,
-            'blended_score', a.blended_score,
+            'severity', a.severity,
+            'score', a.score,
             'status', a.status,
             'created_at', a.created_at
         ),
@@ -167,9 +165,7 @@ BEGIN
             'rule_id', r.rule_id,
             'rule_name', r.rule_name,
             'version', r.version,
-            'circular_no', r.circular_no,
-            'para_no', r.para_no,
-            'clause_text', r.clause_text,
+            'source_citation', r.source_citation,
             'status', r.status
         ),
         'timeline', (
@@ -208,7 +204,7 @@ BEGIN
         'generated_at', CURRENT_TIMESTAMP()
     ) INTO evidence
     FROM CORE.ALERTS a
-    JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
+    LEFT JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
     WHERE a.alert_id = p_alert_id;
     
     -- Store in registry
@@ -231,10 +227,10 @@ $$
         '=== DRAFT SUSPICIOUS TRANSACTION REPORT ===\n' ||
         'WATERMARK: DRAFT — REQUIRES MLRO REVIEW — SYNTHETIC DATA\n\n' ||
         '1. GROUNDS OF SUSPICION\n' ||
-        'Account ' || a.account_id || ' (Customer: ' || a.customer_id || ') flagged for ' || a.typology || '.\n' ||
-        'Regulatory basis: ' || r.circular_no || ' paragraph ' || r.para_no || '.\n' ||
-        'Rule: ' || r.rule_name || ' (version ' || r.version || ').\n' ||
-        'Risk score: ' || ROUND(a.blended_score, 3) || '\n\n' ||
+        'Account ' || a.account_id || COALESCE(' (Customer: ' || a.customer_id || ')', '') || ' flagged for ' || a.typology || '.\n' ||
+        'Regulatory basis: ' || COALESCE(r.source_citation, a.citation) || '.\n' ||
+        'Rule: ' || a.rule_name || ' (version ' || a.rule_version || ').\n' ||
+        'Risk score: ' || ROUND(a.score, 3) || '\n\n' ||
         '2. TRANSACTION SUMMARY\n' ||
         'Period: Last 30 days\n' ||
         'Transaction count: ' || tx.txn_count || '\n' ||
@@ -248,8 +244,8 @@ $$
         'Further investigation required. Evidence pack reference: ' || a.alert_id || '\n' ||
         'Generated on: ' || CURRENT_TIMESTAMP() || ' by KAVACH system.\n'
     FROM CORE.ALERTS a
-    JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
-    JOIN CORE.CUSTOMERS c ON a.customer_id = c.customer_id
+    LEFT JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
+    LEFT JOIN CORE.CUSTOMERS c ON a.customer_id = c.customer_id
     LEFT JOIN (
         SELECT 
             account_id,
@@ -272,20 +268,19 @@ WITH deadlines AS (
         a.alert_id,
         a.account_id,
         a.typology,
-        a.priority,
+        a.severity,
         a.created_at,
-        COALESCE(r.filing_deadline_days, 30) AS deadline_days,
-        DATEADD('day', COALESCE(r.filing_deadline_days, 30), a.created_at) AS due_date,
-        DATEDIFF('hour', CURRENT_TIMESTAMP(), DATEADD('day', COALESCE(r.filing_deadline_days, 30), a.created_at)) AS hours_remaining
+        30 AS deadline_days,  -- Default 30-day deadline for all alerts
+        DATEADD('day', 30, a.created_at) AS due_date,
+        DATEDIFF('hour', CURRENT_TIMESTAMP(), DATEADD('day', 30, a.created_at)) AS hours_remaining
     FROM CORE.ALERTS a
-    JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
-    WHERE a.status NOT IN ('CLOSED_FRAUD', 'CLOSED_NON_FRAUD')
+    WHERE a.status NOT IN ('CLOSED', 'RESOLVED')
 )
 SELECT 
     alert_id,
     account_id,
     typology,
-    priority,
+    severity,
     created_at,
     due_date,
     hours_remaining,
@@ -305,25 +300,22 @@ WITH rule_stats AS (
     SELECT 
         r.rule_id,
         r.rule_name,
-        r.circular_no,
-        r.para_no,
+        r.source_citation,
         COUNT(DISTINCT a.alert_id) AS total_alerts,
-        COUNT(DISTINCT CASE WHEN f.is_fraud = TRUE THEN a.alert_id END) AS true_positives,
-        COUNT(DISTINCT CASE WHEN f.is_fraud = FALSE THEN a.alert_id END) AS false_positives,
+        COUNT(DISTINCT CASE WHEN a.resolution = 'TRUE_POSITIVE' THEN a.alert_id END) AS true_positives,
+        COUNT(DISTINCT CASE WHEN a.resolution = 'FALSE_POSITIVE' THEN a.alert_id END) AS false_positives,
         DIV0NULL(
-            COUNT(DISTINCT CASE WHEN f.is_fraud = TRUE THEN a.alert_id END),
-            COUNT(DISTINCT a.alert_id)
+            COUNT(DISTINCT CASE WHEN a.resolution = 'TRUE_POSITIVE' THEN a.alert_id END),
+            NULLIF(COUNT(DISTINCT CASE WHEN a.resolution IN ('TRUE_POSITIVE', 'FALSE_POSITIVE') THEN a.alert_id END), 0)
         ) AS precision
     FROM RULES.RULE_LIBRARY r
     LEFT JOIN CORE.ALERTS a ON r.rule_id = a.rule_id
-    LEFT JOIN CORE.ANALYST_FEEDBACK f ON a.account_id = f.account_id AND a.typology = f.typology
-    GROUP BY r.rule_id, r.rule_name, r.circular_no, r.para_no
+    GROUP BY r.rule_id, r.rule_name, r.source_citation
 )
 SELECT 
     rule_id,
     rule_name,
-    circular_no,
-    para_no,
+    source_citation,
     total_alerts,
     true_positives,
     false_positives,
@@ -394,20 +386,84 @@ BEGIN
     -- Mark specific demo rows as tour data
     UPDATE RULES.RULE_LIBRARY 
     SET status = 'PENDING_APPROVAL' 
-    WHERE rule_id = (SELECT rule_id FROM RULES.RULE_LIBRARY ORDER BY created_at DESC LIMIT 1);
+    WHERE rule_id = (SELECT rule_id FROM RULES.RULE_LIBRARY WHERE status = 'APPROVED' ORDER BY created_at DESC LIMIT 1);
     
     UPDATE CORE.ALERTS 
-    SET status = 'OPEN' 
-    WHERE alert_id = (SELECT alert_id FROM CORE.ALERTS WHERE typology = 'MULE_RING' ORDER BY created_at DESC LIMIT 1);
-    
-    DELETE FROM CORE.ANALYST_FEEDBACK 
-    WHERE account_id = (SELECT account_id FROM CORE.ALERTS WHERE typology = 'MULE_RING' ORDER BY created_at DESC LIMIT 1);
+    SET status = 'NEW' 
+    WHERE alert_id = (SELECT alert_id FROM CORE.ALERTS WHERE typology = 'STRUCTURING' AND status = 'CLOSED' ORDER BY created_at DESC LIMIT 1);
     
     DELETE FROM AUDIT.EVIDENCE_REGISTRY 
-    WHERE alert_id = (SELECT alert_id FROM CORE.ALERTS WHERE typology = 'MULE_RING' ORDER BY created_at DESC LIMIT 1);
+    WHERE alert_id = (SELECT alert_id FROM CORE.ALERTS WHERE typology = 'STRUCTURING' ORDER BY created_at DESC LIMIT 1);
     
-    RETURN 'Tour data reset: 1 pending rule, 1 open mule ring alert';
+    RETURN 'Tour data reset: 1 pending rule, 1 reopened alert';
 END;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- 9. VERIFY_EVIDENCE: Check evidence pack integrity and access
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION AI.VERIFY_EVIDENCE(p_alert_id VARCHAR)
+RETURNS VARIANT
+LANGUAGE SQL
+AS
+$$
+    SELECT OBJECT_CONSTRUCT(
+        'alert_id', e.alert_id,
+        'has_evidence', IFF(e.evidence_json IS NOT NULL, TRUE, FALSE),
+        'has_file', IFF(e.file_path IS NOT NULL, TRUE, FALSE),
+        'sha256_hash', e.sha256_hash,
+        'created_by', e.created_by,
+        'created_at', e.created_at,
+        'evidence_keys', ARRAY_AGG(DISTINCT key) WITHIN GROUP (ORDER BY key)
+    )
+    FROM AUDIT.EVIDENCE_REGISTRY e,
+    LATERAL FLATTEN(INPUT => e.evidence_json) f(key)
+    WHERE e.alert_id = p_alert_id
+    GROUP BY e.alert_id, e.evidence_json, e.file_path, e.sha256_hash, e.created_by, e.created_at
+$$;
+
+-- ----------------------------------------------------------------------------
+-- 10. TUNING_PROPOSALS: Suggest rule threshold tuning based on false positives
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION AI.TUNING_PROPOSALS()
+RETURNS TABLE (
+    rule_id VARCHAR,
+    rule_name VARCHAR,
+    current_threshold FLOAT,
+    suggested_threshold FLOAT,
+    reason VARCHAR
+)
+LANGUAGE SQL
+AS
+$$
+    WITH noisy_rules AS (
+        SELECT 
+            r.rule_id,
+            r.rule_name,
+            COALESCE(TRY_TO_DOUBLE(r.params:threshold::VARCHAR), 1.0) AS current_threshold,
+            COUNT(DISTINCT a.alert_id) AS total_alerts,
+            COUNT(DISTINCT CASE WHEN a.resolution = 'FALSE_POSITIVE' THEN a.alert_id END) AS false_positives,
+            DIV0NULL(
+                COUNT(DISTINCT CASE WHEN a.resolution = 'FALSE_POSITIVE' THEN a.alert_id END),
+                NULLIF(COUNT(DISTINCT CASE WHEN a.resolution IN ('TRUE_POSITIVE', 'FALSE_POSITIVE') THEN a.alert_id END), 0)
+            ) AS false_positive_rate
+        FROM RULES.RULE_LIBRARY r
+        LEFT JOIN CORE.ALERTS a ON r.rule_id = a.rule_id
+        WHERE r.status = 'APPROVED'
+        GROUP BY r.rule_id, r.rule_name, r.params
+        HAVING false_positive_rate > 0.50  -- Only noisy rules with >50% FP rate
+    )
+    SELECT 
+        rule_id,
+        rule_name,
+        current_threshold,
+        -- Suggest increasing threshold by 20% to reduce false positives
+        ROUND(current_threshold * 1.2, 2) AS suggested_threshold,
+        'High false positive rate (' || ROUND(false_positive_rate * 100, 0) || '%). ' ||
+        'Consider increasing threshold from ' || current_threshold || ' to ' || ROUND(current_threshold * 1.2, 2) ||
+        ' to reduce noise.' AS reason
+    FROM noisy_rules
+    ORDER BY false_positive_rate DESC
 $$;
 
 -- ============================================================================
@@ -419,16 +475,16 @@ $$;
 -- CALL AI.GENERATE_ALERT_STORIES();
 
 -- Test 2: Get English explanation
--- SELECT AI.EXPLAIN_ALERT((SELECT alert_id FROM CORE.ALERTS WHERE priority = 'HIGH' LIMIT 1), 'EN');
+-- SELECT AI.EXPLAIN_ALERT((SELECT alert_id FROM CORE.ALERTS WHERE severity IN ('HIGH', 'CRITICAL') LIMIT 1), 'EN');
 
 -- Test 3: Get Hindi explanation
--- SELECT AI.EXPLAIN_ALERT((SELECT alert_id FROM CORE.ALERTS WHERE priority = 'HIGH' LIMIT 1), 'HI');
+-- SELECT AI.EXPLAIN_ALERT((SELECT alert_id FROM CORE.ALERTS WHERE severity IN ('HIGH', 'CRITICAL') LIMIT 1), 'HI');
 
 -- Test 4: Build evidence pack
--- CALL AI.BUILD_EVIDENCE_PACK((SELECT alert_id FROM CORE.ALERTS WHERE priority = 'HIGH' LIMIT 1));
+-- CALL AI.BUILD_EVIDENCE_PACK((SELECT alert_id FROM CORE.ALERTS WHERE severity IN ('HIGH', 'CRITICAL') LIMIT 1));
 
 -- Test 5: Generate STR draft
--- SELECT AI.DRAFT_STR((SELECT alert_id FROM CORE.ALERTS WHERE priority = 'HIGH' LIMIT 1));
+-- SELECT AI.DRAFT_STR((SELECT alert_id FROM CORE.ALERTS WHERE severity IN ('HIGH', 'CRITICAL') LIMIT 1));
 
 -- Test 6: Check deadlines
 -- SELECT * FROM AI.DEADLINE_CLOCK WHERE status_color = 'RED' LIMIT 10;

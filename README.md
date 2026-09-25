@@ -23,7 +23,7 @@
 ### Phases 1-5: Fully Functional (100%)
 1. **Foundation** — KAVACH_DB with 7 schemas, 4 roles, masking policies
 2. **Synthetic Data** — 1.5M transactions, 28K accounts, 9 fraud typologies injected
-3. **Regulation Compiler** — AI parsed 8 RBI circulars → 20 executable rules
+3. **Regulation Compiler** — AI parsed 8 SYNTHETIC circulars → 20 executable rules
 4. **Detection Engine**:
    - XGBoost model (PR-AUC 0.7968)
    - Rule engine (100% recall on 8/9 typologies)
@@ -71,7 +71,7 @@
 
 ```mermaid
 graph TB
-    PDFs[RBI Circulars PDFs] -->|AI_PARSE + AI_EXTRACT| Rules[RULES.RULE_LIBRARY<br/>20 rules]
+    PDFs[SYNTHETIC Regulatory Circulars] -->|AI_PARSE + AI_EXTRACT| Rules[RULES.RULE_LIBRARY<br/>20 rules]
     Txns[RAW.TRANSACTIONS<br/>1.5M rows] --> Features[ML.ACCOUNT_FEATURES<br/>24 behavioural features]
     Features --> ML[XGBoost Model<br/>PR-AUC 0.80]
     Txns --> RuleEngine[Rule Engine<br/>9 typologies]

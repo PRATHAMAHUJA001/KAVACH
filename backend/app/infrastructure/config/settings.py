@@ -1,0 +1,26 @@
+"""Application settings and configuration"""
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment"""
+    
+    # Snowflake connection
+    snowflake_account: str
+    snowflake_user: str
+    snowflake_password: str
+    snowflake_database: str = "KAVACH_DB"
+    snowflake_warehouse: str = "KAVACH_WH"
+    snowflake_schema: str = "CORE"
+    snowflake_role: str = "ACCOUNTADMIN"
+    
+    # API config
+    api_prefix: str = "/api"
+    debug: bool = False
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+
+settings = Settings()
