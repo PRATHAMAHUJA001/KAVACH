@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     snowflake_warehouse: str = "KAVACH_WH"
     snowflake_schema: str = "CORE"
     snowflake_role: str = "ACCOUNTADMIN"
+    snowflake_token: str = ""  # Optional: JWT token for Cortex Analyst REST API
     
     # API config
     api_prefix: str = "/api"

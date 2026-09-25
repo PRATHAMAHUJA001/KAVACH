@@ -1,0 +1,32 @@
+Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+Traceback (most recent call last):
+  File "<string>", line 11, in <module>
+  File "/Users/pratham/Documents/SnowFlake-Project/backend/app/main.py", line 8, in <module>
+    from app.presentation.api.v1 import health, home, me, alerts, evidence, ask, whynot, timemachine, rings, rules
+  File "/Users/pratham/Documents/SnowFlake-Project/backend/app/presentation/api/v1/rules.py", line 246, in <module>
+    @router.post("/rules/upload", response_model=UploadResponse)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/routing.py", line 992, in decorator
+    self.add_api_route(
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/routing.py", line 931, in add_api_route
+    route = route_class(
+            ^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/routing.py", line 552, in __init__
+    self.dependant = get_dependant(path=self.path_format, call=self.endpoint)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 277, in get_dependant
+    param_details = analyze_param(
+                    ^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 472, in analyze_param
+    ensure_multipart_is_installed()
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 107, in ensure_multipart_is_installed
+    raise RuntimeError(multipart_not_installed_error) from None
+RuntimeError: Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
