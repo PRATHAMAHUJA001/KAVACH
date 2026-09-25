@@ -11,6 +11,8 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     ...devices["Desktop Chrome"],
     reducedMotion: "reduce",
+    timezoneId: "Asia/Kolkata",
+    locale: "en-IN",
   },
   webServer: {
     command: `VITE_USE_MOCKS=true npx vite --port ${PORT} --strictPort`,

@@ -812,3 +812,100 @@ TOTAL: 23  PASS: 23  FAIL: 0
 - Case drawer primary action said "Evidence pack" (noun) → "Download evidence".
 - Main bundle 948 kB → 344 kB by importing providers directly instead of via the
   `shared/ui` barrel (charts now load only with the pages that use them).
+
+## Step 2 — API layer, mock backend, app shell ✅
+
+### Incident: a second writer in `frontend/` (25 Sep, 22:07–22:32)
+Another process built its own shell, Today page and API wrappers in `frontend/` at the
+same time as this session, then deleted this session's `src/mocks/` and
+`public/mockServiceWorker.js` and rewrote `services/api/client.ts` without mock support.
+On the user's instruction its files were removed (backed up in the session scratchpad,
+not deleted) and this session's files were restored from source. It also deleted
+`frontend_old_readme/README.md`, which the user chose to keep deleted.
+
+### Typed API layer (`frontend/src/services/api/`)
+- `generated/schema.ts` from `docs/openapi.json` (`npm run gen:api`); `openapi-fetch`
+  type-checks paths, params and bodies for the 23 existing endpoints.
+- `dto.ts` = wire contract + proposed extensions (marked EXT, all optional).
+  `adapters.ts` → camelCase view models (`models.ts`) with bilingual `{en, hi}` text;
+  missing EXT data becomes `null`/`[]` so the UI hides a section instead of showing a raw
+  ID or `null`. Also strips the LLM preamble from real stories.
+- `client.ts`: typed errors (`network/notFound/forbidden/validation/unavailable`), SSE
+  parser for `/api/ask?stream=true` (backend's normalized events), evidence download
+  via blob with a fallback, circular paragraphs with a bundled `AI.REG_CHUNKS` fallback.
+- `queries.ts`: TanStack Query hooks, keep-previous-data, hover prefetch, mutations.
+- Full contract for the backend: `docs/API_EXTENSIONS.md`.
+
+### Mock backend (`frontend/src/mocks/`, `VITE_USE_MOCKS=true`)
+- `scripts/build-fixtures.ts` builds deterministic fixtures from `data/exports/tables`:
+  - **200 alerts** from `ALERT_STORIES`. Account, amount, count, dates and rule are
+    parsed from each story, so the screen matches the text.
+  - **Stories:** 165 cleaned (preamble, "risk score 1" and rule-code sentences removed;
+    IDs replaced by customer names; wrong "(6,290,000 rupees)" asides removed; Hindi
+    grammar fixed after name substitution). 35 use a bilingual template: the 7 refusals
+    plus stories that couldn't be parsed. Story dates are shifted to match each
+    alert's age.
+  - **Workload:** 14 new alerts in the last 24 h, 4 reports overdue, 3 due within 48 h.
+  - **12 mule rings** with collector → mule → exit roles, shared-device/phone/IP links
+    and money flows.
+  - **Rules:** 21 (20 from `RULE_LIBRARY` plus a seeded tour rule from KAVACH/2024/04 ¶3).
+    Each has a plain EN/HI version that describes what its SQL does. The smoke-test
+    approvals and rejections were replaced with realistic reviewers and reasons.
+  - Also: 9 typed conflicts with clause texts, rule health, and eval coverage.
+- Handlers for all 23 endpoints plus every extension, with 150–400 ms latency.
+  - **Reviewers** see masked names and PANs (same format as the Snowflake masking
+    policies) and get 403 on write actions.
+  - **Evidence packs** are real HTML with a real SHA-256. Verify re-hashes the file,
+    and a mock-only tamper endpoint shows the red "Changed" seal.
+  - **`/api/ask`** streams 6 scripted answers plus a fallback, computed from the same data.
+  - **Time Machine replay:** structuring ₹9 L → ₹8 L = +15 alerts, +4 fraud caught,
+    +11 review hours (the spec's example).
+  - `?role=` and `?cold=1` switches.
+- `e2e/smoke-api.spec.ts` checks every endpoint's shape and a clean console:
+  - home: readiness 69, 30 trend days, 5 attention items;
+  - evidence: 64-character hash, verified;
+  - rings: 12, with edges;
+  - Ask stream ends with `done`, and the verified query is flagged.
+
+### App shell (`frontend/src/app/`)
+- Collapsible sidebar (248 px, or a 72 px icon rail; remembered). The Alerts badge
+  counts reports that need action now.
+- Top bar:
+  - page title and one-line subtitle from DESIGN_SPEC §3;
+  - search button (`/`);
+  - EN | हिन्दी switch;
+  - presentation mode (`P`: 115% type, `.tech-only` hidden, cursor spotlight);
+  - theme toggle;
+  - "Demo data" chip (mock mode only);
+  - role chip, with a mock-only role switcher.
+- Command-palette search across alerts, customers, accounts, transactions, rings and
+  rules, plus page jumps.
+- Shortcuts: `G T/A/K/R/B/M`, `/`, `?` (shortcuts sheet), `P`. They are ignored while
+  typing.
+- Read-only banner for reviewers and auditors (role from `/api/me`).
+- "Synthetic data" footer with the data's as-of date.
+- 8 px fade-up route transitions (off under reduced motion); per-screen error boundary;
+  skip link.
+- Cold-start gate: silent if `/healthz` answers within 1.2 s. Otherwise it shows
+  "Waking up the secure server… (~20 s)" with progress, and an error with Retry after
+  60 s.
+- Pages are placeholders until their build step.
+
+### Visual QA fixes (step 2)
+- The page subtitle was cut off at 1280 px ("…what do I do fir…"). The search button
+  is now compact below 1536 px.
+- The cold-start pulse was an empty circle; it now shows the shield icon with a ripple.
+- The shortcuts sheet opened with a heavy focus ring on its close button; focus now
+  goes to the dialog itself.
+- "Compliance copilot" under the logo stayed English in Hindi mode; it's translated now.
+- Test flake: `?` pressed while the search palette was still closing was typed into
+  its field. The test now waits for the palette to close.
+
+Screens: `docs/screens/shell-{base,search,shortcuts,collapsed,reviewer}-{1280,1920}-{light,dark}.png`,
+`shell-hindi-1280-*`, `shell-coldstart-1280-*`.
+
+### Docs
+- New `docs/API_EXTENSIONS.md`.
+- README: fixed the unclosed mermaid block, replaced the stale "backend/frontend not
+  implemented" status, added a Frontend section.
+- FINAL_REPORT: dated status update.

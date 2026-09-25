@@ -39,7 +39,11 @@
   "readiness": {
     "title": "Readiness",
     "outOf": "out of 100",
-    "band": { "danger": "At risk", "warn": "Needs work", "ok": "Healthy" },
+    "band": {
+      "danger": "At risk",
+      "warn": "Needs work",
+      "ok": "Healthy"
+    },
     "explain": "A score from 0 to 100 showing how ready the bank is for an audit today: reports filed on time, rules approved and alerts reviewed."
   },
   "badge": {
@@ -60,7 +64,11 @@
   },
   "reason": {
     "title": "Why it was flagged",
-    "strength": { "strong": "Strong signal", "medium": "Medium signal", "weak": "Weak signal" }
+    "strength": {
+      "strong": "Strong signal",
+      "medium": "Medium signal",
+      "weak": "Weak signal"
+    }
   },
   "timeline": {
     "title": "What happened",
@@ -114,5 +122,110 @@
     "CASH_REPORTING": "Large cash transaction reporting",
     "KYC_CDD": "Customer checks out of date",
     "WIRE_TRANSFER": "Wire transfer details missing"
+  },
+  "nav": {
+    "label": "Main navigation",
+    "today": "Today",
+    "alerts": "Alerts",
+    "ask": "Ask Kavach",
+    "rings": "Mule rings",
+    "rulebook": "Rulebook",
+    "timeMachine": "Time Machine",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "actNow": "{{count}} need action now"
+  },
+  "page": {
+    "today": {
+      "title": "Today",
+      "subtitle": "Is the bank safe today, and what do I do first?"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "subtitle": "Why is this suspicious, and can I prove it?"
+    },
+    "ask": {
+      "title": "Ask Kavach",
+      "subtitle": "Ask anything in plain English."
+    },
+    "rings": {
+      "title": "Mule rings",
+      "subtitle": "Who is working together?"
+    },
+    "rulebook": {
+      "title": "Rulebook",
+      "subtitle": "From regulation to working checks in minutes."
+    },
+    "timeMachine": {
+      "title": "Time Machine",
+      "subtitle": "What if we changed the rule?"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "subtitle": "This address doesn't match any screen.",
+      "action": "Go to Today"
+    },
+    "building": "This screen is next on the build list."
+  },
+  "shell": {
+    "search": "Search alerts, customers, accounts or transactions",
+    "searchShort": "Search",
+    "searchHint": "Type a name, alert, account or transaction ID",
+    "searchEmpty": "Nothing matches “{{q}}”.",
+    "searchMin": "Type at least 2 characters.",
+    "goTo": "Go to",
+    "results": "Results",
+    "kind": {
+      "alert": "Alert",
+      "account": "Account",
+      "txn": "Transaction",
+      "ring": "Mule ring",
+      "rule": "Rule"
+    },
+    "language": "Language",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "presentation": "Presentation mode",
+    "presentationOn": "Presentation mode is on",
+    "presentationHint": "Bigger text, technical details hidden. Press P to switch.",
+    "role": {
+      "KAVACH_ANALYST": "Analyst",
+      "KAVACH_ADMIN": "Admin",
+      "KAVACH_AUDITOR": "Auditor · read-only",
+      "KAVACH_REVIEWER": "Reviewer · read-only"
+    },
+    "readOnly": "Read-only access. You can look at everything, but you can't change alerts, rules or reports.",
+    "readOnlyShort": "Your role has read-only access.",
+    "footer": "Synthetic data — no real customers or regulations.",
+    "asOf": "Data as of {{date}}",
+    "shortcuts": "Keyboard shortcuts",
+    "shortcutsHint": "Move around KAVACH without the mouse.",
+    "keys": {
+      "today": "Go to Today",
+      "alerts": "Go to Alerts",
+      "ask": "Go to Ask Kavach",
+      "rings": "Go to Mule rings",
+      "timeMachine": "Go to Time Machine",
+      "rulebook": "Go to Rulebook",
+      "search": "Search",
+      "help": "Show this list",
+      "presentation": "Presentation mode",
+      "next": "Next tour step",
+      "close": "Close a panel"
+    },
+    "then": "then",
+    "skip": "Skip to content",
+    "waking": "Waking up the secure server…",
+    "wakingBody": "The server sleeps when nobody is using it, to save cost. It usually wakes in about 20 seconds.",
+    "wakingElapsed": "{{seconds}} s so far",
+    "wakeFailed": "The server didn't wake up",
+    "wakeFailedBody": "It has been a minute with no answer. Check the connection, then try again.",
+    "crash": "Something went wrong on this screen",
+    "crashBody": "The rest of KAVACH still works. Reload the page, or go back to Today.",
+    "reload": "Reload page",
+    "home": "Go to Today",
+    "demoSignIn": "Demo: sign in as",
+    "tagline": "Compliance copilot"
   }
 }

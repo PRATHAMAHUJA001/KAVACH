@@ -149,6 +149,10 @@
   html.presenting {
     font-size: 115%;
   }
+  /* Technical detail (SQL, IDs, "For engineers") disappears while presenting. */
+  html.presenting .tech-only {
+    display: none !important;
+  }
   body {
     @apply bg-app text-fg font-sans text-body;
     font-feature-settings: "tnum" 1, "cv11" 1;

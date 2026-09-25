@@ -54,6 +54,8 @@ export function useFormat() {
       time: f.formatTime,
       deadline: (d: string | number | Date, now?: Date) => f.deadlineInfo(d, now, lang),
       span: (ms: number) => f.formatSpan(ms, lang),
+      /** The active-language half of a bilingual { en, hi } value. */
+      text: (v: { en: string; hi: string } | null | undefined) => (v ? (lang === "hi" ? v.hi || v.en : v.en) : ""),
     }),
     [lang],
   );
