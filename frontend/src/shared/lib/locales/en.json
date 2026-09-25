@@ -1,0 +1,118 @@
+{
+  "common": {
+    "retry": "Try again",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "learnMore": "What does this mean?",
+    "exactAmount": "Exact amount",
+    "syntheticData": "Synthetic data — no real customers",
+    "demoData": "Demo data",
+    "demoDataHint": "You're looking at built-in demo data, not the live bank server.",
+    "loading": "Loading…",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "vsLastWeek": "vs last week"
+  },
+  "status": {
+    "ok": "On track",
+    "attention": "Needs attention",
+    "act": "Act now",
+    "overdue": "Overdue"
+  },
+  "deadline": {
+    "dueIn": "Due in {{span}}",
+    "overdueBy": "Overdue by {{span}}",
+    "reportDueIn": "Report due in {{span}}",
+    "reportOverdue": "Report overdue by {{span}}"
+  },
+  "risk": {
+    "label": "Risk",
+    "1": "Low",
+    "2": "Moderate",
+    "3": "Elevated",
+    "4": "High",
+    "5": "Critical",
+    "explain": "How worried we should be, combining the rules that fired and the risk model."
+  },
+  "readiness": {
+    "title": "Readiness",
+    "outOf": "out of 100",
+    "band": { "danger": "At risk", "warn": "Needs work", "ok": "Healthy" },
+    "explain": "A score from 0 to 100 showing how ready the bank is for an audit today: reports filed on time, rules approved and alerts reviewed."
+  },
+  "badge": {
+    "verified": "Verified",
+    "verifiedHint": "This answer used a query that the compliance team has checked and approved. The numbers come straight from the data.",
+    "ai": "AI-generated",
+    "aiHint": "Written by the AI from the data and circulars. Please review before you rely on it."
+  },
+  "citation": {
+    "circular": "Circular",
+    "para": "¶{{para}}",
+    "drawerTitle": "Circular {{circular}}, paragraph {{para}}",
+    "synthetic": "Synthetic circular",
+    "syntheticHint": "Written for this demo. It follows the style of real regulator circulars but is not a real regulation.",
+    "matched": "The sentence this relies on is highlighted.",
+    "issued": "Issued {{date}}",
+    "open": "Open circular {{circular}}, paragraph {{para}}"
+  },
+  "reason": {
+    "title": "Why it was flagged",
+    "strength": { "strong": "Strong signal", "medium": "Medium signal", "weak": "Weak signal" }
+  },
+  "timeline": {
+    "title": "What happened",
+    "suspicious": "Suspicious",
+    "type": {
+      "login": "Login",
+      "device_change": "New device",
+      "new_beneficiary": "New payee added",
+      "cash_deposit": "Cash deposit",
+      "transfer_in": "Money received",
+      "transfer_out": "Money sent",
+      "alert": "Alert raised",
+      "kyc": "KYC update"
+    }
+  },
+  "stepper": {
+    "reading": "Reading the circular",
+    "obligations": "Finding obligations",
+    "checks": "Writing checks",
+    "review": "Ready for review",
+    "stepOf": "Step {{n}} of {{total}}"
+  },
+  "evidence": {
+    "untouched": "Untouched since {{when}}",
+    "untouchedHint": "The file's fingerprint (SHA-256) matches the one recorded when it was created.",
+    "changed": "Changed after it was created",
+    "changedHint": "The file's fingerprint no longer matches. Do not submit this pack — create a new one.",
+    "notChecked": "Not checked yet",
+    "checking": "Checking fingerprint…",
+    "generatedIn": "Generated in {{seconds}} s"
+  },
+  "empty": {
+    "noAlerts": "No alerts match these filters.",
+    "clearFilters": "Clear filters"
+  },
+  "error": {
+    "title": "We couldn't load this",
+    "generic": "The server didn't answer. Your data is safe — try again in a moment.",
+    "offline": "You seem to be offline. Check the connection and try again."
+  },
+  "typology": {
+    "STRUCTURING": "Cash split to stay under the reporting limit",
+    "RAPID_PASSTHROUGH": "Money moved in and out within a day",
+    "MULE_RING": "Accounts working together to move money",
+    "ROUND_TRIPPING": "Money sent out and brought back in a loop",
+    "PEP_UNUSUAL_CASH": "Unusual cash for a politically exposed person",
+    "HIGH_RISK_SWIFT": "Transfer to a high-risk country",
+    "DORMANT_REACTIVATION": "Sleeping account suddenly active",
+    "INCOME_MISMATCH": "Money far above declared income",
+    "ACCOUNT_TAKEOVER": "Account possibly taken over",
+    "CASH_REPORTING": "Large cash transaction reporting",
+    "KYC_CDD": "Customer checks out of date",
+    "WIRE_TRANSFER": "Wire transfer details missing"
+  }
+}

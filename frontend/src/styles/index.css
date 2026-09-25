@@ -1,0 +1,310 @@
+@import "tailwindcss";
+
+/* Dark mode is class-driven (html.dark) so it can also be scoped to a subtree. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────────────────────── Tokens · DESIGN_SPEC §1 ───────────────────────── */
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f1f3f9;
+  --border: #e4e7ef;
+  --border-strong: #cfd4e2;
+  --text: #0e1325;
+  --text-muted: #5b6478;
+  --brand: #4338ca;
+  --brand-hover: #3730a3;
+  --brand-fg: #ffffff;
+  --brand-soft: #eef0ff;
+
+  --ok: #15803d;
+  --ok-soft: #e8f6ee;
+  --warn: #b45309;
+  --warn-soft: #fef4e6;
+  --danger: #b91c1c;
+  --danger-soft: #fdecec;
+  --info: #1d4ed8;
+  --info-soft: #eaf1ff;
+
+  /* Chart series, fixed order everywhere. */
+  --chart-1: #4338ca;
+  --chart-2: #0ea5a4;
+  --chart-3: #f59e0b;
+  --chart-4: #e11d48;
+  --chart-5: #64748b;
+  --chart-grid: #eceef4;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
+  --shadow-card-hover: 0 2px 4px rgba(16, 24, 40, 0.06), 0 10px 24px rgba(16, 24, 40, 0.09);
+  --shadow-overlay: 0 12px 48px rgba(16, 24, 40, 0.18);
+  --scrim: rgba(14, 19, 37, 0.45);
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0a0f1e;
+  --surface: #111830;
+  --surface-2: #172042;
+  --border: #243056;
+  --border-strong: #33427a;
+  --text: #e8ebf5;
+  --text-muted: #9aa3bd;
+  --brand: #818cf8;
+  --brand-hover: #a5b4fc;
+  --brand-fg: #0a0f1e;
+  --brand-soft: #1e2350;
+
+  --ok: #4ade80;
+  --ok-soft: rgba(74, 222, 128, 0.15);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.15);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.15);
+
+  /* Same hues as light, re-stepped for the dark surface (validated: L band, chroma, CVD ΔE ≥ 8, ≥3:1). */
+  --chart-1: #7c83f5;
+  --chart-2: #0fa396;
+  --chart-3: #e0870a;
+  --chart-4: #f43f5e;
+  --chart-5: #7c8aa5;
+  --chart-grid: #1d2749;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
+  --shadow-overlay: 0 12px 48px rgba(0, 0, 0, 0.55);
+  --scrim: rgba(3, 6, 15, 0.65);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-app: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-soft: var(--brand-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-scrim: var(--scrim);
+
+  --font-sans: "Inter Variable", "Noto Sans Devanagari Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Noto Sans Devanagari Variable", "Inter Variable", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale (rem so Presentation mode can scale it). */
+  --text-display: 2.25rem;
+  --text-display--line-height: 2.75rem;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 2rem;
+  --text-h2: 1.125rem;
+  --text-h2--line-height: 1.625rem;
+  --text-story: 1rem;
+  --text-story--line-height: 1.625rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-small: 0.75rem;
+  --text-small--line-height: 1.125rem;
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1rem;
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-overlay: var(--shadow-overlay);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  /* Presentation mode: 115% type scale for the projector. */
+  html.presenting {
+    font-size: 115%;
+  }
+  body {
+    @apply bg-app text-fg font-sans text-body;
+    font-feature-settings: "tnum" 1, "cv11" 1;
+    font-variant-numeric: tabular-nums;
+    min-height: 100vh;
+  }
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--text);
+  }
+  [lang="hi"] body,
+  :lang(hi) {
+    line-height: 1.6;
+  }
+}
+
+@utility label-caps {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Skeleton shimmer. */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@utility skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Typing shimmer for the streaming chat. */
+@keyframes dot-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ───────────────────────── Radix open/close animations ───────────────────────── */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes sheet-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px)) scale(0.98);
+  }
+}
+.anim-pop[data-state="open"],
+.anim-pop[data-state="delayed-open"],
+.anim-pop[data-state="instant-open"] {
+  animation: pop-in 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-pop[data-state="closed"] {
+  animation: pop-out 120ms ease-in;
+}
+.anim-fade[data-state="open"] {
+  animation: fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-fade[data-state="closed"] {
+  animation: fade-out 160ms ease-in;
+}
+.anim-sheet[data-state="open"] {
+  animation: sheet-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-sheet[data-state="closed"] {
+  animation: sheet-out 200ms ease-in;
+}
+.anim-dialog[data-state="open"] {
+  animation: dialog-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-dialog[data-state="closed"] {
+  animation: fade-out 140ms ease-in;
+}

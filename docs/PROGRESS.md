@@ -756,3 +756,59 @@ TOTAL: 23  PASS: 23  FAIL: 0
   touched in this checkpoint.
 
 
+
+---
+
+# SESSION B — Frontend (React 18 + Vite + TS)
+
+## Decisions (approved 2026-09-25)
+- Build against MSW mocks (`VITE_USE_MOCKS=true`); real backend later. Gaps between
+  `docs/openapi.json` and DESIGN_SPEC (Today KPIs, case timeline/reasons, ring edges,
+  Time Machine what-if, circular paragraphs, Ask `result_set`) are mocked and will be
+  specified as additive endpoints/fields in `docs/API_EXTENSIONS.md`.
+- `/api/ask` stream shape taken from `backend/app/presentation/api/v1/ask.py`: events
+  `status`, `text_delta`, `tool_call {name,type,input}`, `tool_result {name,type,status,
+  citations,verified_query,sql}`, `done {question,answer,verified_query,sql,citations,
+  tool_calls,warnings}`, `error {message}`. It does **not** forward SQL result rows →
+  `result_set` proposed as an extension.
+- Alert stories are cleaned for display (193/200 start with an LLM preamble, 7 are
+  refusals, all say "risk score is 1"). Product tour moved to last (its steps span
+  Rulebook and Rings).
+- `docs/Design_SPEC.md` renamed to `docs/DESIGN_SPEC.md` (case-sensitive Linux build).
+- Node 22.23.3 installed at `~/.local/node` (official tarball, SHA-256 verified). A stale
+  Nov-2024 install that broke npm was moved aside to `~/.local/node.stale-backup`.
+
+## Step 1 — Design system + /styleguide ✅
+- Stack: Vite 8, TS 5.9 strict (`noUncheckedIndexedAccess`), Tailwind 4 (CSS-first
+  tokens in `src/styles/index.css`, light + `.dark`), Radix primitives written
+  shadcn-style **with `forwardRef`** (shadcn's current registry targets React 19's
+  ref-as-prop, which silently breaks Radix `asChild` on React 18), framer-motion,
+  Recharts, self-hosted Inter / Plus Jakarta Sans / Noto Sans Devanagari (no Google
+  Fonts call on venue Wi-Fi).
+- `shared/ui`: Button, Card, Tooltip, Popover, Sheet, Dialog, Tabs, Expander, Switch,
+  Slider (with "today" marker), Input/Textarea, Skeleton, Table, Toaster, DropdownMenu,
+  Kbd, Segmented, Chip, TrendChip + every §2 component: KpiTile, StatusPill,
+  ReadinessGauge, RiskMeter, CitationChip + CitationDrawer, ReasonBars, Timeline,
+  CaseDrawer + CaseSection, Stepper, TrustBadge, ExplainPopover, Money, plus
+  DeadlineCountdown, EvidenceSeal, SpeedBadge, FilterChips, DemoDataChip,
+  EmptyState, ErrorState, TrendChart.
+- `shared/lib`: ₹ lakh/crore + Indian grouping, "12 Sep 2026" dates, deadline bands,
+  count-up hook, motion presets (reduced-motion aware), EN/HI i18n.
+- Chart palette validated with the dataviz validator. Light = spec hexes (slate slot is
+  a deliberate neutral "before" series; teal/amber < 3:1 on white → always direct-labelled).
+  Dark mode re-stepped (spec's -400 shades fell outside the dark lightness band):
+  `#7C83F5 #0FA396 #E0870A #F43F5E #7C8AA5`, all ≥ 3:1 on `--surface`.
+- Screens: `docs/screens/styleguide-{1280,1920}-{light,dark}.png` (+ case drawer and
+  citation drawer states).
+
+### Visual QA fixes (step 1)
+- Link-variant button inherited size padding → compound variant `h-auto px-0`.
+- KpiTile without a trend chip had its chevron 5px lower → fixed-height footer row.
+- ReadinessGauge skeleton was a solid dome → arc-shaped ring.
+- Trend chart: lines cut off mid-animation in screenshots and ticks unevenly spaced
+  (…19, 21, 24 Sep) → honour reduced motion, explicit evenly-spaced ticks anchored on
+  "today"; right margin so the last tick isn't clipped.
+- Dark-mode highlighted sentence in the citation drawer read as muddy grey → `warn/25`.
+- Case drawer primary action said "Evidence pack" (noun) → "Download evidence".
+- Main bundle 948 kB → 344 kB by importing providers directly instead of via the
+  `shared/ui` barrel (charts now load only with the pages that use them).
