@@ -40,7 +40,7 @@ export function CardHeader({
         <TitleTag id={id} className="text-h2 font-semibold text-fg">
           {title}
         </TitleTag>
-        {subtitle && <p className="mt-0.5 text-body text-muted">{subtitle}</p>}
+        {subtitle && <div className="mt-0.5 text-body text-muted">{subtitle}</div>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
