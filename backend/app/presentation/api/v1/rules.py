@@ -115,32 +115,6 @@ async def list_rules(
         raise HTTPException(status_code=500, detail=f"Failed to fetch rules: {str(e)}")
 
 
-@router.get("/rules/{rule_id}", response_model=RuleResponse)
-async def get_rule(rule_id: str):
-    """Get a specific rule"""
-    try:
-        service = get_rule_service()
-        rule = service.get_rule(rule_id)
-        
-        if not rule:
-            raise HTTPException(status_code=404, detail="Rule not found")
-        
-        return RuleResponse(
-            rule_id=rule.rule_id,
-            rule_name=rule.rule_name,
-            version=rule.version,
-            typology=rule.typology,
-            sql_text=rule.sql_text,
-            status=rule.status,
-            source_citation=rule.source_citation,
-            created_at=rule.created_at.isoformat()
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch rule: {str(e)}")
-
-
 @router.post("/rules/{rule_id}/approve")
 async def approve_rule(rule_id: str, request: ApproveRejectRequest):
     """Approve a rule"""
@@ -193,7 +167,7 @@ async def get_rule_conflicts():
             JOIN RULES.RULE_LIBRARY r2 
                 ON r1.typology = r2.typology 
                 AND r1.rule_id < r2.rule_id
-            WHERE r1.status = 'ACTIVE' AND r2.status = 'ACTIVE'
+            WHERE r1.status = 'APPROVED' AND r2.status = 'APPROVED'
             LIMIT 50
         """
         
@@ -223,10 +197,10 @@ async def get_rule_health():
         sql = """
             SELECT 
                 COUNT(*) AS total_rules,
-                SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) AS active_rules,
-                SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pending_rules,
+                SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS active_rules,
+                SUM(CASE WHEN status = 'PENDING_APPROVAL' THEN 1 ELSE 0 END) AS pending_rules,
                 SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END) AS rejected_rules,
-                AVG(CASE WHEN precision IS NOT NULL THEN precision ELSE 0 END) AS avg_precision
+                (SELECT COALESCE(AVG(precision_pct), 0) / 100.0 FROM ML.EVAL_RULE_PRECISION) AS avg_precision
             FROM RULES.RULE_LIBRARY
         """
         
@@ -241,6 +215,32 @@ async def get_rule_health():
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch rule health: {str(e)}")
+
+
+@router.get("/rules/{rule_id}", response_model=RuleResponse)
+async def get_rule(rule_id: str):
+    """Get a specific rule"""
+    try:
+        service = get_rule_service()
+        rule = service.get_rule(rule_id)
+        
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule not found")
+        
+        return RuleResponse(
+            rule_id=rule.rule_id,
+            rule_name=rule.rule_name,
+            version=rule.version,
+            typology=rule.typology,
+            sql_text=rule.sql_text,
+            status=rule.status,
+            source_citation=rule.source_citation,
+            created_at=rule.created_at.isoformat()
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch rule: {str(e)}")
 
 
 @router.post("/rules/upload", response_model=UploadResponse)

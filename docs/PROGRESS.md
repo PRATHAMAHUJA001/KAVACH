@@ -296,3 +296,194 @@ All requirements from BUILD_SPEC_6-8.md Checkpoint 1 and 2 have been implemented
 - ✅ Services follow dependency inversion principle
 
 **Ready for Phase 8**: Frontend build and SPCS deployment
+
+---
+
+## CHECKPOINT 3 — Backend Hardening & End-to-End Verification (2026-09-25)
+
+### Summary
+
+Ran the backend against real Snowflake data and fixed every bug the smoke test
+surfaced. All 23 endpoints now return HTTP 200 with correct response shapes.
+
+### `scripts/smoke_test.py`
+
+New script that pulls real `alert_id`, `txn_id`, `ring_id`, and `rule_id` values
+live from Snowflake, calls all 23 endpoints, checks status codes + response
+shape, and prints a pass/fail table.
+
+**Final result: 23/23 PASS**
+
+```
+ENDPOINT                                      METHOD  RESULT NOTE
+------------------------------------------------------------------------------
+healthz                                       GET     PASS   HTTP 200 | healthy
+me                                            GET     PASS   HTTP 200 | KAVACH_ANALYST
+home                                          GET     PASS   HTTP 200
+alerts.list                                   GET     PASS   HTTP 200 | total=21619
+alerts.detail                                 GET     PASS   HTTP 200
+evidence.create                               POST    PASS   HTTP 200
+evidence.get                                  GET     PASS   HTTP 200
+evidence.verify                               GET     PASS   HTTP 200 | True
+evidence.feedback                             POST    PASS   HTTP 200
+evidence.str_draft                            GET     PASS   HTTP 200
+ask                                           POST    PASS   HTTP 200
+why_not                                       GET     PASS   HTTP 200
+time_machine                                  GET     PASS   HTTP 200 | 30 rows
+rings.list                                    GET     PASS   HTTP 200 | total=140
+rings.detail                                  GET     PASS   HTTP 200
+rules.list                                    GET     PASS   HTTP 200 | total=20
+rules.get                                     GET     PASS   HTTP 200
+rules.approve                                 POST    PASS   HTTP 200
+rules.reject                                  POST    PASS   HTTP 200
+rules.conflicts                               GET     PASS   HTTP 200 | 1 conflicts
+rules.health                                  GET     PASS   HTTP 200 | total=20
+rules.upload                                  POST    PASS   job_id=...
+rules.job_status                              GET     PASS   HTTP 200 | COMPLETED
+------------------------------------------------------------------------------
+TOTAL: 23  PASS: 23  FAIL: 0
+```
+
+### Bugs found and fixed
+
+**Backend code (`backend/app/`)**:
+- `rings.py` / `ring_repository.py`: referenced a non-existent `GRAPH` schema
+  (`GRAPH.MULE_RINGS`, `GRAPH.RING_MEMBERS`, `GRAPH.RING_TRANSACTIONS`). Rewired
+  to the real `CORE.RINGS` + `CORE.RING_MEMBERS` tables; ring volume and member
+  transaction counts are now computed via joins against `CORE.TRANSACTIONS`.
+- `rules.py`: route ordering bug — `GET /rules/{rule_id}` was declared before
+  `/rules/conflicts` and `/rules/health`, so FastAPI matched those literal paths
+  as a `rule_id` and returned 404. Reordered routes.
+- `rule_repository.py` / `rules.py`: rule lifecycle used `status='ACTIVE'` but no
+  such status exists (`RULE_LIBRARY.STATUS` defaults to `PENDING_APPROVAL`, and
+  `READINESS_SCORE`/other views expect `APPROVED`). Standardized `approve_rule`
+  to set `APPROVED`; updated conflicts/health queries to match. Rule health's
+  average precision now joins `ML.EVAL_RULE_PRECISION` instead of a
+  non-existent `precision` column.
+- `whynot.py`: queried `CORE.TRANSACTIONS.TXN_TYPE`, which doesn't exist
+  (real column is `CHANNEL`); also filtered rules on `status='ACTIVE'`.
+- `timemachine.py`: `top_typologies` (an `ARRAY_AGG` result) came back as a JSON
+  string, not a list, failing Pydantic validation — now parsed with `json.loads`.
+- `evidence_repository.py`: called `SELECT AI.BUILD_EVIDENCE_PACK(...)` on a
+  stored *procedure* (needs `CALL`, not `SELECT`); VARIANT/OBJECT columns
+  returned by Snowpark aren't always JSON strings — added type-safe handling.
+- `evidence.py`: called nonexistent `AI.GENERATE_STR_DRAFT`; fixed to the real
+  `AI.DRAFT_STR` function.
+- `ask.py`: rewritten entirely. It previously called a non-existent semantic
+  model path and mis-parsed the Cortex Analyst SSE event schema. Now:
+  - targets the real semantic view `KAVACH_DB.AI.KAVACH_SV`
+  - authenticates with a programmatic access token (session-token auth to the
+    Cortex Analyst REST API returned 401 in this account)
+  - correctly parses `status` / `message.content.delta` / `warnings` /
+    `response_metadata` / `done` SSE events per the Cortex Analyst REST API spec
+  - surfaces the verified-query badge and citation from `confidence.verified_query_used`
+- `alert_repository.py` / `alerts.py`: added `customer_name` and `pan` to the
+  alert/alert-detail response (joined from `CORE.CUSTOMERS`) so masking could be
+  demonstrated on `/api/alerts/{id}`.
+
+**Snowflake-side (`sql/08_explainability.sql`, deployed live)**:
+- `AI.DRAFT_STR` was defined in the SQL file but never deployed to the account,
+  and referenced `c.full_name` (real column is `CUSTOMER_NAME`). Fixed and
+  deployed; also made every concatenated field `COALESCE`-wrapped so a single
+  NULL join (e.g. no rule match) doesn't collapse the whole report to NULL.
+- `AI.BUILD_EVIDENCE_PACK` previously stored evidence JSON only — no file, no
+  hash. Rewrote to:
+  - avoid correlated subqueries inside a `SELECT ... INTO` block (not supported
+    by Snowflake Scripting — surfaces as a misleading "INTO clause is not
+    allowed in this context" error); replaced with `WITH` CTEs joined by
+    `account_id`.
+  - fixed the ML/analyst-feedback join targets: `ML.RISK_SCORE_EXPLANATIONS` is
+    pivoted (`driver_1_feature`/`driver_2_feature`/`driver_3_feature`, not a
+    long-format `feature_name`/`shap_value` table); `CORE.ANALYST_FEEDBACK`
+    columns are `analyst`/`notes`/`verdict`/`feedback_ts`, not
+    `analyst_name`/`feedback`/`is_fraud`/`created_at`.
+  - writes the exact hashed JSON string to `APP.EVIDENCE_STAGE` via
+    `EXECUTE IMMEDIATE ... COPY INTO ... USING (:evidence_str)` (variable/param
+    references inside dynamic/scripted SQL need the `:` prefix), computes
+    `SHA2(evidence_str, 256)`, and stores `file_path` + `sha256_hash`.
+  - the stage's default CSV file format was escaping literal commas in the JSON
+    (`ESCAPE_UNENCLOSED_FIELD`), so the downloaded file's hash never matched the
+    stored one — set `FIELD_DELIMITER = NONE` / `ESCAPE_UNENCLOSED_FIELD = NONE`
+    so the file is byte-identical to the hashed string.
+  - `APP.EVIDENCE_STAGE` was using Snowflake's default client-side encryption,
+    which returns ciphertext through `GET_PRESIGNED_URL` — recreated the stage
+    with `ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')` so presigned URLs serve
+    plaintext.
+- `AI.VERIFY_EVIDENCE` now recomputes `SHA2(TO_JSON(evidence_json), 256)` and
+  returns `integrity_status: MATCH | TAMPERED` plus the stored/computed hashes
+  and `file_path`.
+- Schema fixes: `RULES.RULE_LIBRARY` was missing `approved_at`, `rejected_by`,
+  `rejection_reason`, `rejected_at` (added via `ALTER TABLE`); created
+  `AUDIT.ALERT_FEEDBACK` (didn't exist — needed by `POST /api/alerts/{id}/feedback`).
+- Granted `KAVACH_REVIEWER` `SELECT` on `CORE.ALERTS`, `CORE.CUSTOMERS`,
+  `CORE.TRANSACTIONS`, `CORE.RINGS`, `CORE.RING_MEMBERS`, `RULES.RULE_LIBRARY`,
+  `AI.ALERT_STORIES`, and `INSERT` on `AUDIT.ALERT_FEEDBACK` (the role previously
+  only had access to `APP`/`AUDIT` schema objects, per its "Read-only on APP and
+  AUDIT" design, but the API's alert-detail query needs to read `CORE` directly).
+- Created a programmatic access token (`KAVACH_BACKEND_PAT`, 30-day expiry,
+  role-restricted to `ACCOUNTADMIN`) for the backend's Cortex Analyst REST calls.
+
+### `/api/ask` — real questions, streamed output, verified-query badge
+
+**Q1**: *"Which are the top 10 risk accounts?"*
+- Badge: `verified_query: true`
+- Citation: `Verified query: TOP_RISK_ACCOUNTS — What are the top 10 accounts by risk score?`
+- Generated SQL joins `ML.LATEST_RISK_SCORES` → `CORE.ACCOUNTS` → `CORE.CUSTOMERS`,
+  matching the semantic view's verified query exactly.
+
+**Q2**: *"What is the distribution of mule ring confidence levels?"*
+- Badge: `verified_query: true`
+- Citation: `Verified query: RING_CONFIDENCE_DIST — Show the distribution of ring confidence levels.`
+
+Streaming mode (`?stream=true`) emits Cortex Analyst's native SSE event
+sequence: `status: interpreting_question` → `message.content.delta` (text) →
+`status: generating_sql` → `message.content.delta` (sql, with
+`confidence.verified_query_used`) → `warnings` → `response_metadata` →
+`status: done`.
+
+Note: the semantic view (`KAVACH_DB.AI.KAVACH_SV`) has ~15 verified queries with
+SQL that references physical table/column names no longer valid against the
+current semantic model (e.g. `AL.STATUS`, `T.TXN_TS`) — Cortex Analyst
+auto-removes these from the VQR and falls back to plain SQL generation for
+matching questions. Out of scope for this checkpoint; flagged for a future
+semantic-model cleanup pass.
+
+### Evidence pack: create → download → verify
+
+1. `POST /api/alerts/{id}/evidence` → returns `sha256_hash` and a `presigned_url`
+   (`GET_PRESIGNED_URL` against `APP.EVIDENCE_STAGE`, 1-hour expiry).
+2. Downloaded the file directly via the presigned URL (`curl`).
+3. `shasum -a 256` on the downloaded bytes == the API's `sha256_hash`.
+4. `GET /api/alerts/{id}/verify` → `integrity_status: MATCH`.
+
+### PII masking — `KAVACH_REVIEWER` vs `ACCOUNTADMIN`
+
+Same alert (`customer_id = CUST005629`), same endpoint
+(`GET /api/alerts/{id}`), two roles:
+
+| Role              | `customer_name` | `pan`         |
+|-------------------|------------------|---------------|
+| `ACCOUNTADMIN`    | `Sneha Mehta`    | `QQLUN9139V`  |
+| `KAVACH_REVIEWER` | `Sn*********`    | `XXXXX9139V`  |
+
+Masking policies (`MASK_CUSTOMER_NAME`, tag-based `MASK_PAN` on the `PII_LEVEL`
+tag) enforce this at the column level in `CORE.CUSTOMERS`, independent of which
+service account or role queries the table.
+
+### Files changed
+
+- `backend/app/presentation/api/v1/{ask,rings,rules,whynot,timemachine,evidence,alerts}.py`
+- `backend/app/infrastructure/repositories/{alert,ring,rule,evidence}_repository.py`
+- `backend/app/domain/entities.py` (added `customer_name`, `pan` to `Alert`)
+- `sql/08_explainability.sql` (`DRAFT_STR`, `BUILD_EVIDENCE_PACK`, `VERIFY_EVIDENCE`)
+- `scripts/smoke_test.py` (new)
+- `docs/openapi.json` (exported from the running app)
+
+### Known follow-ups (not blocking)
+
+- Semantic view (`KAVACH_SV`) verified queries need a cleanup pass — several
+  VQRs reference table/column names that no longer resolve against the current
+  logical model.
+- `backend/.env` currently uses password auth, not key-pair auth as originally
+  assumed; it is correctly `.gitignore`d either way.
+

@@ -87,12 +87,16 @@ async def get_ring_detail(ring_id: str):
         if not ring:
             raise HTTPException(status_code=404, detail="Ring not found")
         
-        # Get ring members
+        # Get ring members with their transaction counts
         session = get_session()
         members_sql = f"""
-            SELECT account_id, role, join_date, transaction_count
-            FROM GRAPH.RING_MEMBERS
-            WHERE ring_id = '{ring_id}'
+            SELECT 
+                rm.account_id,
+                COUNT(t.txn_id) AS transaction_count
+            FROM CORE.RING_MEMBERS rm
+            LEFT JOIN CORE.TRANSACTIONS t ON t.account_id = rm.account_id
+            WHERE rm.ring_id = '{ring_id}'
+            GROUP BY rm.account_id
             ORDER BY transaction_count DESC
         """
         
@@ -100,19 +104,20 @@ async def get_ring_detail(ring_id: str):
         members = [
             {
                 "account_id": r['ACCOUNT_ID'],
-                "role": r['ROLE'],
-                "join_date": str(r['JOIN_DATE']),
                 "transaction_count": r['TRANSACTION_COUNT']
             }
             for r in members_rows
         ]
         
-        # Get ring transactions
+        # Get transactions among ring member accounts (either side of the transfer)
         txn_sql = f"""
-            SELECT txn_id, from_account, to_account, amount_inr, txn_ts
+            SELECT txn_id, account_id, counterparty, amount_inr, txn_ts
             FROM CORE.TRANSACTIONS
-            WHERE txn_id IN (
-                SELECT txn_id FROM GRAPH.RING_TRANSACTIONS WHERE ring_id = '{ring_id}'
+            WHERE account_id IN (
+                SELECT account_id FROM CORE.RING_MEMBERS WHERE ring_id = '{ring_id}'
+            )
+            OR counterparty IN (
+                SELECT account_id FROM CORE.RING_MEMBERS WHERE ring_id = '{ring_id}'
             )
             ORDER BY txn_ts DESC
             LIMIT 100
@@ -122,8 +127,8 @@ async def get_ring_detail(ring_id: str):
         transactions = [
             {
                 "txn_id": r['TXN_ID'],
-                "from_account": r['FROM_ACCOUNT'],
-                "to_account": r['TO_ACCOUNT'],
+                "from_account": r['ACCOUNT_ID'],
+                "to_account": r['COUNTERPARTY'],
                 "amount_inr": float(r['AMOUNT_INR']),
                 "txn_ts": str(r['TXN_TS'])
             }

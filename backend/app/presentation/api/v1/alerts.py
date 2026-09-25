@@ -24,6 +24,8 @@ class AlertResponse(BaseModel):
     citation: str
     created_at: str
     resolution: Optional[str] = None
+    customer_name: Optional[str] = None
+    pan: Optional[str] = None
 
 
 class AlertListResponse(BaseModel):
@@ -80,7 +82,9 @@ async def list_alerts(
                 rule_name=a.rule_name,
                 citation=a.citation,
                 created_at=a.created_at.isoformat(),
-                resolution=a.resolution
+                resolution=a.resolution,
+                customer_name=a.customer_name,
+                pan=a.pan
             )
             for a in alerts
         ]
@@ -117,7 +121,9 @@ async def get_alert_detail(alert_id: str):
             rule_name=detail.alert.rule_name,
             citation=detail.alert.citation,
             created_at=detail.alert.created_at.isoformat(),
-            resolution=detail.alert.resolution
+            resolution=detail.alert.resolution,
+            customer_name=detail.alert.customer_name,
+            pan=detail.alert.pan
         )
         
         return AlertDetailResponse(

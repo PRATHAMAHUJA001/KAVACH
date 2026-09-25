@@ -4,6 +4,7 @@ Time-machine endpoint - historical alert analysis
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
+import json
 from app.infrastructure.snowflake.connection import get_session
 
 router = APIRouter()
@@ -72,12 +73,15 @@ async def time_machine(
         
         results = []
         for row in rows:
+            top_typologies = row['TOP_TYPOLOGIES'] or []
+            if isinstance(top_typologies, str):
+                top_typologies = json.loads(top_typologies)
             results.append(TimeMachineResponse(
                 date=str(row['ALERT_DATE']),
                 alert_count=row['TOTAL_ALERTS'],
                 high_severity_count=row['HIGH_SEVERITY'],
                 total_risk_score=float(row['TOTAL_SCORE']),
-                top_typologies=row['TOP_TYPOLOGIES'] or []
+                top_typologies=top_typologies
             ))
         
         return results

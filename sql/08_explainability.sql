@@ -148,8 +148,49 @@ AS
 $$
 DECLARE
     evidence VARIANT;
+    evidence_str VARCHAR;
+    hash_val VARCHAR;
+    file_rel_path VARCHAR;
+    ref_date TIMESTAMP_NTZ;
 BEGIN
-    -- Build structured evidence JSON
+    ref_date := (SELECT MAX(created_at) FROM CORE.ALERTS);
+
+    -- Build structured evidence JSON. Note: correlated subqueries inside a
+    -- SELECT ... INTO block are not allowed in Snowflake Scripting, so the
+    -- per-account aggregates are computed as CTEs joined on account_id instead.
+    WITH timeline_agg AS (
+        SELECT account_id,
+            ARRAY_AGG(OBJECT_CONSTRUCT(
+                'txn_ts', txn_ts,
+                'amount_inr', amount_inr,
+                'channel', channel,
+                'direction', direction,
+                'counterparty', counterparty
+            )) WITHIN GROUP (ORDER BY txn_ts DESC) AS timeline
+        FROM CORE.TRANSACTIONS
+        WHERE txn_ts >= DATEADD('day', -30, :ref_date)
+        GROUP BY account_id
+    ),
+    ml_agg AS (
+        SELECT account_id,
+            ARRAY_CONSTRUCT_COMPACT(
+                IFF(driver_1_feature IS NOT NULL, OBJECT_CONSTRUCT('feature', driver_1_feature, 'shap_value', driver_1_shap), NULL),
+                IFF(driver_2_feature IS NOT NULL, OBJECT_CONSTRUCT('feature', driver_2_feature, 'shap_value', driver_2_shap), NULL),
+                IFF(driver_3_feature IS NOT NULL, OBJECT_CONSTRUCT('feature', driver_3_feature, 'shap_value', driver_3_shap), NULL)
+            ) AS ml_drivers
+        FROM ML.RISK_SCORE_EXPLANATIONS
+    ),
+    notes_agg AS (
+        SELECT account_id,
+            ARRAY_AGG(OBJECT_CONSTRUCT(
+                'analyst', analyst,
+                'feedback', notes,
+                'is_fraud', IFF(verdict = 'TRUE_POSITIVE', TRUE, FALSE),
+                'commented_at', feedback_ts
+            )) AS analyst_notes
+        FROM CORE.ANALYST_FEEDBACK
+        GROUP BY account_id
+    )
     SELECT OBJECT_CONSTRUCT(
         'alert_id', a.alert_id,
         'case_summary', OBJECT_CONSTRUCT(
@@ -168,49 +209,33 @@ BEGIN
             'source_citation', r.source_citation,
             'status', r.status
         ),
-        'timeline', (
-            SELECT ARRAY_AGG(OBJECT_CONSTRUCT(
-                'txn_ts', t.txn_ts,
-                'amount_inr', t.amount_inr,
-                'channel', t.channel,
-                'direction', t.direction,
-                'counterparty', t.counterparty
-            )) WITHIN GROUP (ORDER BY t.txn_ts DESC)
-            FROM CORE.TRANSACTIONS t
-            WHERE t.account_id = a.account_id
-            AND t.txn_ts >= DATEADD('day', -30, CURRENT_DATE())
-            LIMIT 50
-        ),
-        'ml_drivers', (
-            SELECT ARRAY_AGG(OBJECT_CONSTRUCT(
-                'feature', e.feature_name,
-                'shap_value', e.shap_value,
-                'feature_value', e.feature_value
-            )) WITHIN GROUP (ORDER BY ABS(e.shap_value) DESC)
-            FROM ML.RISK_SCORE_EXPLANATIONS e
-            WHERE e.account_id = a.account_id
-            LIMIT 3
-        ),
-        'analyst_notes', (
-            SELECT ARRAY_AGG(OBJECT_CONSTRUCT(
-                'analyst', f.analyst_name,
-                'feedback', f.feedback,
-                'is_fraud', f.is_fraud,
-                'commented_at', f.created_at
-            ))
-            FROM CORE.ANALYST_FEEDBACK f
-            WHERE f.account_id = a.account_id
-        ),
+        'timeline', tx.timeline,
+        'ml_drivers', ml.ml_drivers,
+        'analyst_notes', n.analyst_notes,
         'generated_at', CURRENT_TIMESTAMP()
     ) INTO evidence
     FROM CORE.ALERTS a
     LEFT JOIN RULES.RULE_LIBRARY r ON a.rule_id = r.rule_id
+    LEFT JOIN timeline_agg tx ON tx.account_id = a.account_id
+    LEFT JOIN ml_agg ml ON ml.account_id = a.account_id
+    LEFT JOIN notes_agg n ON n.account_id = a.account_id
     WHERE a.alert_id = p_alert_id;
-    
+
+    evidence_str := TO_JSON(evidence);
+    hash_val := SHA2(evidence_str, 256);
+    file_rel_path := 'evidence_' || p_alert_id || '.json';
+
+    -- Persist the exact hashed JSON string to the evidence stage so the
+    -- stored SHA-256 can be independently verified against the downloaded file.
+    EXECUTE IMMEDIATE 'COPY INTO @APP.EVIDENCE_STAGE/' || file_rel_path ||
+        ' FROM (SELECT ?) FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY = NONE COMPRESSION = NONE RECORD_DELIMITER = NONE) SINGLE = TRUE OVERWRITE = TRUE HEADER = FALSE'
+        USING (evidence_str);
+
     -- Store in registry
-    INSERT INTO AUDIT.EVIDENCE_REGISTRY (alert_id, evidence_json, created_by)
-    VALUES (p_alert_id, evidence, CURRENT_USER());
-    
+    DELETE FROM AUDIT.EVIDENCE_REGISTRY WHERE alert_id = p_alert_id;
+    INSERT INTO AUDIT.EVIDENCE_REGISTRY (alert_id, evidence_json, file_path, sha256_hash, created_by)
+    VALUES (p_alert_id, evidence, file_rel_path, hash_val, CURRENT_USER());
+
     RETURN evidence;
 END;
 $$;
@@ -228,18 +253,18 @@ $$
         'WATERMARK: DRAFT — REQUIRES MLRO REVIEW — SYNTHETIC DATA\n\n' ||
         '1. GROUNDS OF SUSPICION\n' ||
         'Account ' || a.account_id || COALESCE(' (Customer: ' || a.customer_id || ')', '') || ' flagged for ' || a.typology || '.\n' ||
-        'Regulatory basis: ' || COALESCE(r.source_citation, a.citation) || '.\n' ||
-        'Rule: ' || a.rule_name || ' (version ' || a.rule_version || ').\n' ||
+        'Regulatory basis: ' || COALESCE(r.source_citation, a.citation, 'N/A') || '.\n' ||
+        'Rule: ' || COALESCE(a.rule_name, 'N/A') || ' (version ' || COALESCE(a.rule_version, 1) || ').\n' ||
         'Risk score: ' || ROUND(a.score, 3) || '\n\n' ||
         '2. TRANSACTION SUMMARY\n' ||
         'Period: Last 30 days\n' ||
-        'Transaction count: ' || tx.txn_count || '\n' ||
-        'Total value: ₹' || ROUND(tx.total_inr/100000, 2) || ' lakh\n' ||
-        'Channels: ' || tx.channels || '\n\n' ||
+        'Transaction count: ' || COALESCE(tx.txn_count, 0) || '\n' ||
+        'Total value: ₹' || ROUND(COALESCE(tx.total_inr, 0)/100000, 2) || ' lakh\n' ||
+        'Channels: ' || COALESCE(tx.channels, 'N/A') || '\n\n' ||
         '3. PARTIES INVOLVED\n' ||
-        'Primary account holder: ' || c.full_name || ' (PAN: ' || c.pan || ')\n' ||
-        'Risk category: ' || c.risk_category || '\n' ||
-        'PEP status: ' || IFF(c.is_pep, 'Yes', 'No') || '\n\n' ||
+        'Primary account holder: ' || COALESCE(c.customer_name, 'Unknown') || ' (PAN: ' || COALESCE(c.pan, 'N/A') || ')\n' ||
+        'Risk category: ' || COALESCE(c.risk_category, 'N/A') || '\n' ||
+        'PEP status: ' || COALESCE(IFF(c.is_pep, 'Yes', 'No'), 'N/A') || '\n\n' ||
         '4. RECOMMENDATION\n' ||
         'Further investigation required. Evidence pack reference: ' || a.alert_id || '\n' ||
         'Generated on: ' || CURRENT_TIMESTAMP() || ' by KAVACH system.\n'
@@ -253,7 +278,7 @@ $$
             SUM(amount_inr) AS total_inr,
             LISTAGG(DISTINCT channel, ', ') AS channels
         FROM CORE.TRANSACTIONS
-        WHERE txn_ts >= DATEADD('day', -30, CURRENT_DATE())
+        WHERE txn_ts >= DATEADD('day', -30, (SELECT MAX(created_at) FROM CORE.ALERTS))
         GROUP BY account_id
     ) tx ON a.account_id = tx.account_id
     WHERE a.alert_id = p_alert_id
@@ -403,7 +428,7 @@ $$;
 -- 9. VERIFY_EVIDENCE: Check evidence pack integrity and access
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION AI.VERIFY_EVIDENCE(p_alert_id VARCHAR)
-RETURNS VARIANT
+RETURNS OBJECT
 LANGUAGE SQL
 AS
 $$
@@ -411,7 +436,10 @@ $$
         'alert_id', e.alert_id,
         'has_evidence', IFF(e.evidence_json IS NOT NULL, TRUE, FALSE),
         'has_file', IFF(e.file_path IS NOT NULL, TRUE, FALSE),
-        'sha256_hash', e.sha256_hash,
+        'file_path', e.file_path,
+        'stored_hash', e.sha256_hash,
+        'computed_hash', SHA2(TO_JSON(e.evidence_json), 256),
+        'integrity_status', IFF(e.sha256_hash = SHA2(TO_JSON(e.evidence_json), 256), 'MATCH', 'TAMPERED'),
         'created_by', e.created_by,
         'created_at', e.created_at,
         'evidence_keys', ARRAY_AGG(DISTINCT key) WITHIN GROUP (ORDER BY key)

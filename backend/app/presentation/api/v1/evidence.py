@@ -19,6 +19,7 @@ class EvidenceResponse(BaseModel):
     sha256_hash: Optional[str]
     created_by: str
     created_at: str
+    presigned_url: Optional[str] = None
 
 
 class VerifyResponse(BaseModel):
@@ -47,6 +48,16 @@ def get_evidence_service() -> EvidenceService:
     return EvidenceService(evidence_repo)
 
 
+def _get_presigned_url(file_path: Optional[str]) -> Optional[str]:
+    """Generate a short-lived presigned URL to download the evidence file"""
+    if not file_path:
+        return None
+    session = get_session()
+    sql = f"SELECT GET_PRESIGNED_URL(@APP.EVIDENCE_STAGE, '{file_path}', 3600)"
+    rows = session.sql(sql).collect()
+    return rows[0][0] if rows else None
+
+
 @router.get("/alerts/{alert_id}/evidence", response_model=EvidenceResponse)
 async def get_evidence(alert_id: str):
     """Get evidence for an alert"""
@@ -63,7 +74,8 @@ async def get_evidence(alert_id: str):
             file_path=evidence.file_path,
             sha256_hash=evidence.sha256_hash,
             created_by=evidence.created_by,
-            created_at=evidence.created_at.isoformat()
+            created_at=evidence.created_at.isoformat(),
+            presigned_url=_get_presigned_url(evidence.file_path)
         )
     except HTTPException:
         raise
@@ -84,7 +96,8 @@ async def create_evidence(alert_id: str):
             file_path=evidence.file_path,
             sha256_hash=evidence.sha256_hash,
             created_by=evidence.created_by,
-            created_at=evidence.created_at.isoformat()
+            created_at=evidence.created_at.isoformat(),
+            presigned_url=_get_presigned_url(evidence.file_path)
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create evidence: {str(e)}")
@@ -97,10 +110,10 @@ async def verify_evidence(alert_id: str):
         service = get_evidence_service()
         result = service.verify_evidence(alert_id)
         
-        has_evidence = result.get('has_evidence', False)
+        verified = result.get('integrity_status') == 'MATCH'
         
         return VerifyResponse(
-            verified=has_evidence,
+            verified=verified,
             details=result
         )
     except Exception as e:
@@ -133,7 +146,7 @@ async def get_str_draft(alert_id: str):
     try:
         session = get_session()
         
-        sql = f"SELECT AI.GENERATE_STR_DRAFT('{alert_id}')"
+        sql = f"SELECT AI.DRAFT_STR('{alert_id}')"
         result = session.sql(sql).collect()
         
         if not result:

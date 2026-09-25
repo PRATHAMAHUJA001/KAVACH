@@ -82,7 +82,7 @@ class SnowflakeRuleRepository(RuleRepository):
         """Approve a rule"""
         sql = f"""
             UPDATE RULES.RULE_LIBRARY
-            SET status = 'ACTIVE', approved_by = '{user}', approved_at = CURRENT_TIMESTAMP()
+            SET status = 'APPROVED', approved_by = '{user}', approved_at = CURRENT_TIMESTAMP()
             WHERE rule_id = '{rule_id}'
         """
         self.session.sql(sql).collect()

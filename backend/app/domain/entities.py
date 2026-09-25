@@ -21,6 +21,8 @@ class Alert:
     citation: str
     created_at: datetime
     resolution: Optional[str] = None
+    customer_name: Optional[str] = None
+    pan: Optional[str] = None
     
     
 @dataclass

@@ -9,24 +9,36 @@ from app.domain.repositories import RingRepository
 
 class SnowflakeRingRepository(RingRepository):
     """Snowflake implementation of RingRepository"""
-    
+
     def __init__(self, session: Session):
         self.session = session
-    
+
     def list_rings(self, limit: int = 20, offset: int = 0) -> tuple[List[Ring], int]:
         """List mule rings"""
         # Get total count
-        count_sql = "SELECT COUNT(*) AS total FROM GRAPH.MULE_RINGS"
+        count_sql = "SELECT COUNT(*) AS total FROM CORE.RINGS"
         total = self.session.sql(count_sql).collect()[0]['TOTAL']
-        
-        # Get rings
+
+        # Get rings, with total transaction volume across member accounts
         rings_sql = f"""
-            SELECT ring_id, ring_name, member_count, total_volume_inr, risk_score, status
-            FROM GRAPH.MULE_RINGS
-            ORDER BY risk_score DESC
+            SELECT 
+                r.ring_id,
+                'Ring ' || r.ring_id AS ring_name,
+                r.ring_size AS member_count,
+                COALESCE(v.total_volume_inr, 0) AS total_volume_inr,
+                r.ring_score AS risk_score,
+                r.confidence_label AS status
+            FROM CORE.RINGS r
+            LEFT JOIN (
+                SELECT rm.ring_id, SUM(t.amount_inr) AS total_volume_inr
+                FROM CORE.RING_MEMBERS rm
+                JOIN CORE.TRANSACTIONS t ON t.account_id = rm.account_id
+                GROUP BY rm.ring_id
+            ) v ON r.ring_id = v.ring_id
+            ORDER BY r.ring_score DESC
             LIMIT {limit} OFFSET {offset}
         """
-        
+
         rows = self.session.sql(rings_sql).collect()
         rings = [
             Ring(
@@ -39,21 +51,34 @@ class SnowflakeRingRepository(RingRepository):
             )
             for row in rows
         ]
-        
+
         return rings, total
-    
+
     def get_ring(self, ring_id: str) -> Optional[Ring]:
         """Get a single ring by ID"""
         sql = f"""
-            SELECT ring_id, ring_name, member_count, total_volume_inr, risk_score, status
-            FROM GRAPH.MULE_RINGS
-            WHERE ring_id = '{ring_id}'
+            SELECT 
+                r.ring_id,
+                'Ring ' || r.ring_id AS ring_name,
+                r.ring_size AS member_count,
+                COALESCE(v.total_volume_inr, 0) AS total_volume_inr,
+                r.ring_score AS risk_score,
+                r.confidence_label AS status
+            FROM CORE.RINGS r
+            LEFT JOIN (
+                SELECT rm.ring_id, SUM(t.amount_inr) AS total_volume_inr
+                FROM CORE.RING_MEMBERS rm
+                JOIN CORE.TRANSACTIONS t ON t.account_id = rm.account_id
+                WHERE rm.ring_id = '{ring_id}'
+                GROUP BY rm.ring_id
+            ) v ON r.ring_id = v.ring_id
+            WHERE r.ring_id = '{ring_id}'
         """
-        
+
         rows = self.session.sql(sql).collect()
         if not rows:
             return None
-        
+
         row = rows[0]
         return Ring(
             ring_id=row['RING_ID'],

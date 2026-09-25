@@ -24,7 +24,7 @@ async def why_not(txn_id: str):
         
         # Get transaction details
         txn_sql = f"""
-            SELECT txn_id, account_id, amount_inr, txn_type, txn_ts
+            SELECT txn_id, account_id, amount_inr, channel, txn_ts
             FROM CORE.TRANSACTIONS
             WHERE txn_id = '{txn_id}'
         """
@@ -39,7 +39,7 @@ async def why_not(txn_id: str):
         rules_sql = """
             SELECT rule_id, rule_name, typology, status
             FROM RULES.RULE_LIBRARY
-            WHERE status = 'ACTIVE'
+            WHERE status = 'APPROVED'
             ORDER BY rule_name
             LIMIT 10
         """
@@ -59,7 +59,7 @@ async def why_not(txn_id: str):
         explanation_sql = f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-8b',
-                'Explain why transaction {txn_id} (amount: ₹{txn['AMOUNT_INR']/100000:.2f} lakh, type: {txn['TXN_TYPE']}) did not trigger any fraud alerts. Be concise and specific.'
+                'Explain why transaction {txn_id} (amount: ₹{txn['AMOUNT_INR']/100000:.2f} lakh, channel: {txn['CHANNEL']}) did not trigger any fraud alerts. Be concise and specific.'
             )
         """
         

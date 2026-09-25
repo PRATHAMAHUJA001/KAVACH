@@ -27,9 +27,17 @@ class SnowflakeEvidenceRepository(EvidenceRepository):
             return None
         
         row = rows[0]
+        raw_json = row['EVIDENCE_JSON']
+        if not raw_json:
+            parsed_json = {}
+        elif isinstance(raw_json, dict):
+            parsed_json = raw_json
+        else:
+            parsed_json = json.loads(raw_json)
+
         return Evidence(
             alert_id=row['ALERT_ID'],
-            evidence_json=json.loads(row['EVIDENCE_JSON']) if row['EVIDENCE_JSON'] else {},
+            evidence_json=parsed_json,
             file_path=row['FILE_PATH'],
             sha256_hash=row['SHA256_HASH'],
             created_by=row['CREATED_BY'],
@@ -40,15 +48,15 @@ class SnowflakeEvidenceRepository(EvidenceRepository):
         """Verify evidence integrity"""
         sql = f"SELECT AI.VERIFY_EVIDENCE('{alert_id}')"
         rows = self.session.sql(sql).collect()
-        if not rows:
-            return {"verified": False, "reason": "No evidence found"}
-        
-        return json.loads(rows[0][0])
-    
+        if not rows or rows[0][0] is None:
+            return {"verified": False, "has_evidence": False, "reason": "No evidence found"}
+
+        raw = rows[0][0]
+        return raw if isinstance(raw, dict) else json.loads(raw)
+
     def create_evidence(self, alert_id: str, evidence_json: dict) -> Evidence:
         """Create evidence pack - calls AI.BUILD_EVIDENCE_PACK"""
-        sql = f"SELECT AI.BUILD_EVIDENCE_PACK('{alert_id}')"
-        self.session.sql(sql).collect()
+        self.session.sql(f"CALL AI.BUILD_EVIDENCE_PACK('{alert_id}')").collect()
         
         # Retrieve the created evidence
         evidence = self.get_evidence(alert_id)

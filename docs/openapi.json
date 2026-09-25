@@ -1,32 +1,1999 @@
-Form data requires "python-multipart" to be installed. 
-You can install "python-multipart" with: 
-
-pip install python-multipart
-
-Traceback (most recent call last):
-  File "<string>", line 11, in <module>
-  File "/Users/pratham/Documents/SnowFlake-Project/backend/app/main.py", line 8, in <module>
-    from app.presentation.api.v1 import health, home, me, alerts, evidence, ask, whynot, timemachine, rings, rules
-  File "/Users/pratham/Documents/SnowFlake-Project/backend/app/presentation/api/v1/rules.py", line 246, in <module>
-    @router.post("/rules/upload", response_model=UploadResponse)
-     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/routing.py", line 992, in decorator
-    self.add_api_route(
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/routing.py", line 931, in add_api_route
-    route = route_class(
-            ^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/routing.py", line 552, in __init__
-    self.dependant = get_dependant(path=self.path_format, call=self.endpoint)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 277, in get_dependant
-    param_details = analyze_param(
-                    ^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 472, in analyze_param
-    ensure_multipart_is_installed()
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 107, in ensure_multipart_is_installed
-    raise RuntimeError(multipart_not_installed_error) from None
-RuntimeError: Form data requires "python-multipart" to be installed. 
-You can install "python-multipart" with: 
-
-pip install python-multipart
-
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "KAVACH API",
+        "description": "Risk, Fraud and Regulatory Intelligence Copilot for Indian Banking",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/healthz": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health Check",
+                "description": "Health check endpoint",
+                "operationId": "health_check_healthz_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/home": {
+            "get": {
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Get Home Dashboard",
+                "description": "Get home dashboard data:\n- Readiness score\n- Top 5 alerts\n- 7-day trend",
+                "operationId": "get_home_dashboard_api_home_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HomeResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get Current User",
+                "description": "Get current user profile",
+                "operationId": "get_current_user_api_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfile"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/alerts": {
+            "get": {
+                "tags": [
+                    "Alerts"
+                ],
+                "summary": "List Alerts",
+                "description": "List alerts with optional filters",
+                "operationId": "list_alerts_api_alerts_get",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Status"
+                        }
+                    },
+                    {
+                        "name": "severity",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Severity"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "default": 20,
+                            "title": "Page Size"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AlertListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/alerts/{alert_id}": {
+            "get": {
+                "tags": [
+                    "Alerts"
+                ],
+                "summary": "Get Alert Detail",
+                "description": "Get detailed information for a specific alert",
+                "operationId": "get_alert_detail_api_alerts__alert_id__get",
+                "parameters": [
+                    {
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Alert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AlertDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/alerts/{alert_id}/evidence": {
+            "get": {
+                "tags": [
+                    "Evidence"
+                ],
+                "summary": "Get Evidence",
+                "description": "Get evidence for an alert",
+                "operationId": "get_evidence_api_alerts__alert_id__evidence_get",
+                "parameters": [
+                    {
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Alert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EvidenceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Evidence"
+                ],
+                "summary": "Create Evidence",
+                "description": "Create evidence pack for an alert",
+                "operationId": "create_evidence_api_alerts__alert_id__evidence_post",
+                "parameters": [
+                    {
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Alert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EvidenceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/alerts/{alert_id}/verify": {
+            "get": {
+                "tags": [
+                    "Evidence"
+                ],
+                "summary": "Verify Evidence",
+                "description": "Verify evidence integrity",
+                "operationId": "verify_evidence_api_alerts__alert_id__verify_get",
+                "parameters": [
+                    {
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Alert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerifyResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/alerts/{alert_id}/feedback": {
+            "post": {
+                "tags": [
+                    "Evidence"
+                ],
+                "summary": "Submit Feedback",
+                "description": "Submit feedback for an alert",
+                "operationId": "submit_feedback_api_alerts__alert_id__feedback_post",
+                "parameters": [
+                    {
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Alert Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FeedbackRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/alerts/{alert_id}/str-draft": {
+            "get": {
+                "tags": [
+                    "Evidence"
+                ],
+                "summary": "Get Str Draft",
+                "description": "Generate STR draft for an alert",
+                "operationId": "get_str_draft_api_alerts__alert_id__str_draft_get",
+                "parameters": [
+                    {
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Alert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/STRDraftResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/ask": {
+            "post": {
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Ask Question",
+                "description": "Ask a question to Cortex Analyst over the KAVACH semantic view.\n\nIf stream=true, returns SSE stream of Cortex Analyst's native events\n(status, message.content.delta, warnings, response_metadata, done).\nOtherwise returns the complete parsed response.",
+                "operationId": "ask_question_api_ask_post",
+                "parameters": [
+                    {
+                        "name": "stream",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Stream"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AskRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/why-not/{txn_id}": {
+            "get": {
+                "tags": [
+                    "Analysis"
+                ],
+                "summary": "Why Not",
+                "description": "Explain why a transaction didn't trigger an alert",
+                "operationId": "why_not_api_why_not__txn_id__get",
+                "parameters": [
+                    {
+                        "name": "txn_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Txn Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WhyNotResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/time-machine": {
+            "get": {
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Time Machine",
+                "description": "Get historical alert trends",
+                "operationId": "time_machine_api_time_machine_get",
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Start date (YYYY-MM-DD)",
+                            "title": "Start Date"
+                        },
+                        "description": "Start date (YYYY-MM-DD)"
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "End date (YYYY-MM-DD)",
+                            "title": "End Date"
+                        },
+                        "description": "End date (YYYY-MM-DD)"
+                    },
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 365,
+                            "minimum": 1,
+                            "description": "Number of days to look back",
+                            "default": 30,
+                            "title": "Days"
+                        },
+                        "description": "Number of days to look back"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TimeMachineResponse"
+                                    },
+                                    "title": "Response Time Machine Api Time Machine Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rings": {
+            "get": {
+                "tags": [
+                    "Rings"
+                ],
+                "summary": "List Rings",
+                "description": "List mule rings",
+                "operationId": "list_rings_api_rings_get",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "default": 20,
+                            "title": "Page Size"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RingListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rings/{ring_id}": {
+            "get": {
+                "tags": [
+                    "Rings"
+                ],
+                "summary": "Get Ring Detail",
+                "description": "Get detailed information for a specific ring",
+                "operationId": "get_ring_detail_api_rings__ring_id__get",
+                "parameters": [
+                    {
+                        "name": "ring_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Ring Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RingDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules": {
+            "get": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "List Rules",
+                "description": "List rules with optional filters",
+                "operationId": "list_rules_api_rules_get",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Status"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "default": 20,
+                            "title": "Page Size"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RuleListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/{rule_id}/approve": {
+            "post": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Approve Rule",
+                "description": "Approve a rule",
+                "operationId": "approve_rule_api_rules__rule_id__approve_post",
+                "parameters": [
+                    {
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Rule Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApproveRejectRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/{rule_id}/reject": {
+            "post": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Reject Rule",
+                "description": "Reject a rule",
+                "operationId": "reject_rule_api_rules__rule_id__reject_post",
+                "parameters": [
+                    {
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Rule Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApproveRejectRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/conflicts": {
+            "get": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Get Rule Conflicts",
+                "description": "Get rule conflicts",
+                "operationId": "get_rule_conflicts_api_rules_conflicts_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConflictResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/health": {
+            "get": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Get Rule Health",
+                "description": "Get rule health metrics",
+                "operationId": "get_rule_health_api_rules_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RuleHealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/{rule_id}": {
+            "get": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Get Rule",
+                "description": "Get a specific rule",
+                "operationId": "get_rule_api_rules__rule_id__get",
+                "parameters": [
+                    {
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Rule Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RuleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/upload": {
+            "post": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Upload Rules",
+                "description": "Upload rules from CSV/YAML file",
+                "operationId": "upload_rules_api_rules_upload_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_rules_api_rules_upload_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rules/jobs/{job_id}": {
+            "get": {
+                "tags": [
+                    "Rules"
+                ],
+                "summary": "Get Job Status",
+                "description": "Get status of a rule upload job",
+                "operationId": "get_job_status_api_rules_jobs__job_id__get",
+                "parameters": [
+                    {
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Job Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JobStatusResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AlertDetailResponse": {
+                "properties": {
+                    "alert": {
+                        "$ref": "#/components/schemas/AlertResponse"
+                    },
+                    "story_en": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Story En"
+                    },
+                    "story_hi": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Story Hi"
+                    },
+                    "txn_count": {
+                        "type": "integer",
+                        "title": "Txn Count"
+                    },
+                    "total_amount_inr": {
+                        "type": "number",
+                        "title": "Total Amount Inr"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alert",
+                    "story_en",
+                    "story_hi",
+                    "txn_count",
+                    "total_amount_inr"
+                ],
+                "title": "AlertDetailResponse",
+                "description": "Alert detail response model"
+            },
+            "AlertListResponse": {
+                "properties": {
+                    "alerts": {
+                        "items": {
+                            "$ref": "#/components/schemas/AlertResponse"
+                        },
+                        "type": "array",
+                        "title": "Alerts"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alerts",
+                    "total",
+                    "page",
+                    "page_size",
+                    "total_pages"
+                ],
+                "title": "AlertListResponse",
+                "description": "Alert list response model"
+            },
+            "AlertResponse": {
+                "properties": {
+                    "alert_id": {
+                        "type": "string",
+                        "title": "Alert Id"
+                    },
+                    "account_id": {
+                        "type": "string",
+                        "title": "Account Id"
+                    },
+                    "customer_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Customer Id"
+                    },
+                    "typology": {
+                        "type": "string",
+                        "title": "Typology"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "title": "Severity"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "rule_name": {
+                        "type": "string",
+                        "title": "Rule Name"
+                    },
+                    "citation": {
+                        "type": "string",
+                        "title": "Citation"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "resolution": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Resolution"
+                    },
+                    "customer_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Customer Name"
+                    },
+                    "pan": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pan"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alert_id",
+                    "account_id",
+                    "customer_id",
+                    "typology",
+                    "severity",
+                    "score",
+                    "status",
+                    "rule_name",
+                    "citation",
+                    "created_at"
+                ],
+                "title": "AlertResponse",
+                "description": "Alert response model"
+            },
+            "ApproveRejectRequest": {
+                "properties": {
+                    "user": {
+                        "type": "string",
+                        "title": "User"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reason"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user"
+                ],
+                "title": "ApproveRejectRequest",
+                "description": "Approve/reject request model"
+            },
+            "AskRequest": {
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "title": "Question"
+                    },
+                    "semantic_view": {
+                        "type": "string",
+                        "title": "Semantic View",
+                        "default": "KAVACH_DB.AI.KAVACH_SV"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "question"
+                ],
+                "title": "AskRequest",
+                "description": "Ask request model"
+            },
+            "Body_upload_rules_api_rules_upload_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_upload_rules_api_rules_upload_post"
+            },
+            "ConflictResponse": {
+                "properties": {
+                    "conflicts": {
+                        "items": {
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Conflicts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conflicts"
+                ],
+                "title": "ConflictResponse",
+                "description": "Rule conflict response"
+            },
+            "EvidenceResponse": {
+                "properties": {
+                    "alert_id": {
+                        "type": "string",
+                        "title": "Alert Id"
+                    },
+                    "evidence_json": {
+                        "type": "object",
+                        "title": "Evidence Json"
+                    },
+                    "file_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "File Path"
+                    },
+                    "sha256_hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sha256 Hash"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "title": "Created By"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "presigned_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presigned Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alert_id",
+                    "evidence_json",
+                    "file_path",
+                    "sha256_hash",
+                    "created_by",
+                    "created_at"
+                ],
+                "title": "EvidenceResponse",
+                "description": "Evidence response model"
+            },
+            "FeedbackRequest": {
+                "properties": {
+                    "rating": {
+                        "type": "integer",
+                        "title": "Rating"
+                    },
+                    "comment": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Comment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rating"
+                ],
+                "title": "FeedbackRequest",
+                "description": "Feedback request model"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "HealthResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "service": {
+                        "type": "string",
+                        "title": "Service"
+                    },
+                    "version": {
+                        "type": "string",
+                        "title": "Version"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "service",
+                    "version"
+                ],
+                "title": "HealthResponse"
+            },
+            "HomeResponse": {
+                "properties": {
+                    "readiness_score": {
+                        "$ref": "#/components/schemas/ReadinessScore"
+                    },
+                    "top_alerts": {
+                        "items": {
+                            "$ref": "#/components/schemas/TopAlert"
+                        },
+                        "type": "array",
+                        "title": "Top Alerts"
+                    },
+                    "trend": {
+                        "items": {
+                            "$ref": "#/components/schemas/TrendData"
+                        },
+                        "type": "array",
+                        "title": "Trend"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "readiness_score",
+                    "top_alerts",
+                    "trend"
+                ],
+                "title": "HomeResponse"
+            },
+            "JobStatusResponse": {
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "title": "Job Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "progress": {
+                        "type": "integer",
+                        "title": "Progress"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "job_id",
+                    "status",
+                    "progress",
+                    "message"
+                ],
+                "title": "JobStatusResponse",
+                "description": "Job status response"
+            },
+            "ReadinessScore": {
+                "properties": {
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "score",
+                    "reason"
+                ],
+                "title": "ReadinessScore"
+            },
+            "RingDetailResponse": {
+                "properties": {
+                    "ring": {
+                        "$ref": "#/components/schemas/RingResponse"
+                    },
+                    "members": {
+                        "items": {
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Members"
+                    },
+                    "transactions": {
+                        "items": {
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Transactions"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ring",
+                    "members",
+                    "transactions"
+                ],
+                "title": "RingDetailResponse",
+                "description": "Ring detail response model"
+            },
+            "RingListResponse": {
+                "properties": {
+                    "rings": {
+                        "items": {
+                            "$ref": "#/components/schemas/RingResponse"
+                        },
+                        "type": "array",
+                        "title": "Rings"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rings",
+                    "total",
+                    "page",
+                    "page_size",
+                    "total_pages"
+                ],
+                "title": "RingListResponse",
+                "description": "Ring list response model"
+            },
+            "RingResponse": {
+                "properties": {
+                    "ring_id": {
+                        "type": "string",
+                        "title": "Ring Id"
+                    },
+                    "ring_name": {
+                        "type": "string",
+                        "title": "Ring Name"
+                    },
+                    "member_count": {
+                        "type": "integer",
+                        "title": "Member Count"
+                    },
+                    "total_volume_inr": {
+                        "type": "number",
+                        "title": "Total Volume Inr"
+                    },
+                    "risk_score": {
+                        "type": "number",
+                        "title": "Risk Score"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ring_id",
+                    "ring_name",
+                    "member_count",
+                    "total_volume_inr",
+                    "risk_score",
+                    "status"
+                ],
+                "title": "RingResponse",
+                "description": "Ring response model"
+            },
+            "RuleHealthResponse": {
+                "properties": {
+                    "total_rules": {
+                        "type": "integer",
+                        "title": "Total Rules"
+                    },
+                    "active_rules": {
+                        "type": "integer",
+                        "title": "Active Rules"
+                    },
+                    "pending_rules": {
+                        "type": "integer",
+                        "title": "Pending Rules"
+                    },
+                    "rejected_rules": {
+                        "type": "integer",
+                        "title": "Rejected Rules"
+                    },
+                    "avg_precision": {
+                        "type": "number",
+                        "title": "Avg Precision"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total_rules",
+                    "active_rules",
+                    "pending_rules",
+                    "rejected_rules",
+                    "avg_precision"
+                ],
+                "title": "RuleHealthResponse",
+                "description": "Rule health response"
+            },
+            "RuleListResponse": {
+                "properties": {
+                    "rules": {
+                        "items": {
+                            "$ref": "#/components/schemas/RuleResponse"
+                        },
+                        "type": "array",
+                        "title": "Rules"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rules",
+                    "total",
+                    "page",
+                    "page_size",
+                    "total_pages"
+                ],
+                "title": "RuleListResponse",
+                "description": "Rule list response model"
+            },
+            "RuleResponse": {
+                "properties": {
+                    "rule_id": {
+                        "type": "string",
+                        "title": "Rule Id"
+                    },
+                    "rule_name": {
+                        "type": "string",
+                        "title": "Rule Name"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version"
+                    },
+                    "typology": {
+                        "type": "string",
+                        "title": "Typology"
+                    },
+                    "sql_text": {
+                        "type": "string",
+                        "title": "Sql Text"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "source_citation": {
+                        "type": "string",
+                        "title": "Source Citation"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rule_id",
+                    "rule_name",
+                    "version",
+                    "typology",
+                    "sql_text",
+                    "status",
+                    "source_citation",
+                    "created_at"
+                ],
+                "title": "RuleResponse",
+                "description": "Rule response model"
+            },
+            "STRDraftResponse": {
+                "properties": {
+                    "alert_id": {
+                        "type": "string",
+                        "title": "Alert Id"
+                    },
+                    "str_draft": {
+                        "type": "string",
+                        "title": "Str Draft"
+                    },
+                    "format": {
+                        "type": "string",
+                        "title": "Format"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alert_id",
+                    "str_draft",
+                    "format"
+                ],
+                "title": "STRDraftResponse",
+                "description": "STR draft response"
+            },
+            "TimeMachineResponse": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date"
+                    },
+                    "alert_count": {
+                        "type": "integer",
+                        "title": "Alert Count"
+                    },
+                    "high_severity_count": {
+                        "type": "integer",
+                        "title": "High Severity Count"
+                    },
+                    "total_risk_score": {
+                        "type": "number",
+                        "title": "Total Risk Score"
+                    },
+                    "top_typologies": {
+                        "items": {
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Top Typologies"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "alert_count",
+                    "high_severity_count",
+                    "total_risk_score",
+                    "top_typologies"
+                ],
+                "title": "TimeMachineResponse",
+                "description": "Time-machine response model"
+            },
+            "TopAlert": {
+                "properties": {
+                    "alert_id": {
+                        "type": "string",
+                        "title": "Alert Id"
+                    },
+                    "account_id": {
+                        "type": "string",
+                        "title": "Account Id"
+                    },
+                    "typology": {
+                        "type": "string",
+                        "title": "Typology"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "title": "Severity"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alert_id",
+                    "account_id",
+                    "typology",
+                    "severity",
+                    "score",
+                    "created_at"
+                ],
+                "title": "TopAlert"
+            },
+            "TrendData": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date"
+                    },
+                    "alert_count": {
+                        "type": "integer",
+                        "title": "Alert Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "alert_count"
+                ],
+                "title": "TrendData"
+            },
+            "UploadResponse": {
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "title": "Job Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "job_id",
+                    "status",
+                    "message"
+                ],
+                "title": "UploadResponse",
+                "description": "Upload response"
+            },
+            "UserProfile": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "name",
+                    "role",
+                    "email"
+                ],
+                "title": "UserProfile"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "VerifyResponse": {
+                "properties": {
+                    "verified": {
+                        "type": "boolean",
+                        "title": "Verified"
+                    },
+                    "details": {
+                        "type": "object",
+                        "title": "Details"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "verified",
+                    "details"
+                ],
+                "title": "VerifyResponse",
+                "description": "Evidence verification response"
+            },
+            "WhyNotResponse": {
+                "properties": {
+                    "txn_id": {
+                        "type": "string",
+                        "title": "Txn Id"
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "title": "Explanation"
+                    },
+                    "rules_checked": {
+                        "items": {
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Rules Checked"
+                    },
+                    "recommendation": {
+                        "type": "string",
+                        "title": "Recommendation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "txn_id",
+                    "explanation",
+                    "rules_checked",
+                    "recommendation"
+                ],
+                "title": "WhyNotResponse",
+                "description": "Why-not response model"
+            }
+        }
+    }
+}
