@@ -1,0 +1,170 @@
+{
+  "name": "KAVACH_AGENT",
+  "database_name": "KAVACH_DB",
+  "schema_name": "AI",
+  "owner": "ACCOUNTADMIN",
+  "comment": null,
+  "profile": null,
+  "agent_spec": {
+    "models": {
+      "orchestration": "claude-sonnet-4-6"
+    },
+    "instructions": {
+      "response": "You are KAVACH, an AI compliance copilot for an Indian bank.\nAnswer in plain language first (3 sentences max), then provide supporting details.\nALWAYS cite the circular and paragraph when discussing regulatory obligations\n(e.g. per KAVACH/2026/01 para 2). Note: all circulars are regulator-style\nsynthetic circulars created for illustration; they are not actual RBI circulars.\nSay \"I do not have enough information to answer that\" rather than guess.\nFormat amounts in INR with lakh/crore notation where appropriate.\nNever reveal PAN, Aadhaar, or date of birth. These fields are masked by policy.\n",
+      "orchestration": "Use kavach_analyst for quantitative questions about alerts, transactions,\nrisk scores, rules, and compliance metrics.\nUse kavach_reg_search for questions about regulatory circular text or\ncompliance obligations. Note these are synthetic regulator-style circulars.\nUse explain_alert when asked to explain or describe a specific alert by ID.\nUse why_not_flagged when asked why a specific transaction was not flagged.\nUse build_evidence_pack when asked to prepare evidence or audit documentation.\nUse time_machine for what-if analysis on rule parameter changes.\n"
+    },
+    "tools": [
+      {
+        "tool_spec": {
+          "type": "cortex_analyst_text_to_sql",
+          "name": "kavach_analyst",
+          "description": "Answers quantitative questions about KAVACH compliance data including alerts, transactions, risk scores, customer profiles, mule rings, and the AI-compiled rule library. Covers an Indian bank's synthetic dataset.\n"
+        }
+      },
+      {
+        "tool_spec": {
+          "type": "cortex_search",
+          "name": "kavach_reg_search",
+          "description": "Searches regulator-style synthetic circular text (created for illustration, not actual RBI circulars). Returns circular number, paragraph number, and regulation text.\n"
+        }
+      },
+      {
+        "tool_spec": {
+          "type": "generic",
+          "name": "explain_alert",
+          "description": "Explains a specific compliance alert: the rule that fired, regulatory citation, triggering transactions, customer profile, and recommended action.\n",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "alert_id_param": {
+                "type": "string",
+                "description": "The ALERT_ID to explain"
+              }
+            },
+            "required": [
+              "alert_id_param"
+            ]
+          }
+        }
+      },
+      {
+        "tool_spec": {
+          "type": "generic",
+          "name": "why_not_flagged",
+          "description": "Analyzes why a specific transaction was not flagged by any rule. Shows which rules were checked and the closest threshold miss.\n",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "txn_id_param": {
+                "type": "string",
+                "description": "The TXN_ID to analyze"
+              }
+            },
+            "required": [
+              "txn_id_param"
+            ]
+          }
+        }
+      },
+      {
+        "tool_spec": {
+          "type": "generic",
+          "name": "build_evidence_pack",
+          "description": "Builds an audit-ready evidence pack for a specific alert. Returns JSON with customer profile, triggering transactions, risk score with SHAP explanations, and regulation citation.\n",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "alert_id_param": {
+                "type": "string",
+                "description": "The ALERT_ID to build the evidence pack for"
+              }
+            },
+            "required": [
+              "alert_id_param"
+            ]
+          }
+        }
+      },
+      {
+        "tool_spec": {
+          "type": "generic",
+          "name": "time_machine",
+          "description": "What-if analysis for rule parameter changes. Re-runs a rule with modified parameters and shows projected alert count, confirmed fraud impact, and estimated extra analyst hours (20 min per alert). Parameters are whitelisted per rule. Returns current vs projected alerts and resource impact.\n",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "rule_id_param": {
+                "type": "string",
+                "description": "The RULE_ID of the rule to modify"
+              },
+              "new_params": {
+                "type": "object",
+                "description": "JSON with whitelisted parameter names and new values"
+              }
+            },
+            "required": [
+              "rule_id_param",
+              "new_params"
+            ]
+          }
+        }
+      }
+    ],
+    "tool_resources": {
+      "kavach_analyst": {
+        "semantic_view": "KAVACH_DB.AI.KAVACH_SV",
+        "execution_environment": {
+          "type": "warehouse",
+          "warehouse": "KAVACH_WH"
+        }
+      },
+      "kavach_reg_search": {
+        "type": "cortex_search",
+        "name": "KAVACH_DB.AI.KAVACH_REG_SEARCH",
+        "max_results": 5
+      },
+      "explain_alert": {
+        "identifier": "KAVACH_DB.AI.EXPLAIN_ALERT",
+        "type": "procedure",
+        "execution_environment": {
+          "type": "warehouse",
+          "warehouse": "KAVACH_WH"
+        }
+      },
+      "why_not_flagged": {
+        "identifier": "KAVACH_DB.AI.WHY_NOT_FLAGGED",
+        "type": "procedure",
+        "execution_environment": {
+          "type": "warehouse",
+          "warehouse": "KAVACH_WH"
+        }
+      },
+      "build_evidence_pack": {
+        "identifier": "KAVACH_DB.AI.BUILD_EVIDENCE_PACK",
+        "type": "procedure",
+        "execution_environment": {
+          "type": "warehouse",
+          "warehouse": "KAVACH_WH"
+        }
+      },
+      "time_machine": {
+        "identifier": "KAVACH_DB.AI.TIME_MACHINE",
+        "type": "procedure",
+        "execution_environment": {
+          "type": "warehouse",
+          "warehouse": "KAVACH_WH"
+        }
+      }
+    }
+  },
+  "created_on": "2026-09-25 05:00:51.239000-07:00",
+  "default_version_name": "LAST",
+  "versions": [
+    "VERSION$1"
+  ],
+  "aliases": {
+    "DEFAULT": "VERSION$1",
+    "FIRST": "VERSION$1",
+    "LAST": "VERSION$1"
+  }
+}

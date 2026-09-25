@@ -1,0 +1,6 @@
+created_on,name,is_default,is_current,is_inherited,assigned_to_users,granted_to_roles,granted_roles,owner,comment,is_from_organization_user_group
+2026-09-24 22:15:39.033000-07:00,KAVACH_ADMIN,N,N,Y,1,1,4,ACCOUNTADMIN,"Full DDL/DML on KAVACH_DB, owns pipelines and deployment",N
+2026-09-24 22:15:39.251000-07:00,KAVACH_ANALYST,N,N,Y,1,1,0,ACCOUNTADMIN,"Read CORE/RULES/ML/AI, write RAW, run app procs",N
+2026-09-24 22:17:54.374000-07:00,KAVACH_ANALYST_NORTH,N,N,Y,1,1,0,ACCOUNTADMIN,Region-scoped analyst — can only see NORTH transactions,N
+2026-09-24 22:15:39.484000-07:00,KAVACH_AUDITOR,N,N,Y,1,1,0,ACCOUNTADMIN,"Read-only across all schemas, sees unmasked PII for investigations",N
+2026-09-24 22:15:39.728000-07:00,KAVACH_REVIEWER,N,N,Y,1,1,0,ACCOUNTADMIN,"Read-only on APP and AUDIT, partially masked PII",N

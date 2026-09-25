@@ -1,0 +1,2 @@
+name,credit_quota,used_credits,remaining_credits,level,frequency,start_time,end_time,notify_at,suspend_at,suspend_immediately_at,created_on,owner,comment,notify_users
+KAVACH_MONITOR,300.00,4.60,295.40,WAREHOUSE,MONTHLY,2026-09-24 22:14:43.369000-07:00,,70%,90%,,2026-09-24 22:14:43.362000-07:00,ACCOUNTADMIN,,

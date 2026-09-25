@@ -1,0 +1,220 @@
+EVAL_ID,QUESTION_CATEGORY,INPUT_QUERY,GROUND_TRUTH
+EVAL_01,VERIFIED_ALIGNED,Which branches had the most high-risk alerts?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Which branches had the most high-risk alerts?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should list the top branches with the highest count of high-severity alerts, ordered by alert count descending.""
+}"
+EVAL_02,VERIFIED_ALIGNED,Which STRs are due?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Which STRs are due?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should display open alerts that require an STR action along with their alert ID, account ID, and citation.""
+}"
+EVAL_03,VERIFIED_ALIGNED,What are the top 10 accounts by risk score?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""What are the top 10 accounts by risk score?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should list the top 10 accounts with the highest calibrated ML risk scores.""
+}"
+EVAL_04,VERIFIED_ALIGNED,Show alert volume by typology.,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Show alert volume by typology."",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should aggregate alert count and open alert count by fraud typology.""
+}"
+EVAL_05,VERIFIED_ALIGNED,Show the alert trend by month.,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Show the alert trend by month."",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should show monthly aggregated counts of alerts across different typologies.""
+}"
+EVAL_06,VERIFIED_ALIGNED,What is the open vs resolved alert ratio?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""What is the open vs resolved alert ratio?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should provide the counts and percentage breakdown of alerts by status.""
+}"
+EVAL_07,VERIFIED_ALIGNED,Which accounts have both structuring and mule ring alerts?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Which accounts have both structuring and mule ring alerts?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should identify accounts that have been flagged for both STRUCTURING and MULE_RING typologies.""
+}"
+EVAL_08,VERIFIED_ALIGNED,How much money moved through mule rings in the last 30 days?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""How much money moved through mule rings in the last 30 days?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should report the transaction volume moving through accounts belonging to HIGH and MEDIUM confidence mule rings in the recent 30-day window.""
+}"
+EVAL_09,VERIFIED_ALIGNED,Show customers whose turnover exceeds 10x declared income.,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Show customers whose turnover exceeds 10x declared income."",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should list customer profiles whose total 6-month transaction turnover is greater than 10 times their declared annual income.""
+}"
+EVAL_10,VERIFIED_ALIGNED,Show cash transactions above 9 lakh that could indicate structuring.,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Show cash transactions above 9 lakh that could indicate structuring."",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should list cash transactions with amount between INR 9,00,000 and 9,99,999.""
+}"
+EVAL_11,VERIFIED_ALIGNED,Which rule produces the most false positives?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Which rule produces the most false positives?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should rank detection rules by the number and percentage of false positive resolutions on closed alerts.""
+}"
+EVAL_12,VERIFIED_ALIGNED,Show the distribution of ring confidence levels.,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Show the distribution of ring confidence levels."",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should summarize detected account rings by confidence label along with ring counts, total members, and average score.""
+}"
+EVAL_13,UNSEEN,What are the cash reporting thresholds specified in circular KAVACH/2024/01?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""cash reporting threshold KAVACH/2024/01"",
+      ""tool_name"": ""kavach_reg_search""
+    }
+  ],
+  ""ground_truth_output"": ""The response should cite circular KAVACH/2024/01 paragraph 1 and explain the mandatory CTR threshold of Rs. 10,00,000 for cash transactions, noting it is a synthetic regulator-style circular.""
+}"
+EVAL_14,UNSEEN,What does regulation state regarding dormant account reactivation monitoring?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""dormant account reactivation regulation"",
+      ""tool_name"": ""kavach_reg_search""
+    }
+  ],
+  ""ground_truth_output"": ""The response should cite the relevant circular on dormant account reactivation and describe the rule requiring monitoring when dormant accounts experience sudden high-volume inflows.""
+}"
+EVAL_15,UNSEEN,How many total distinct customers are flagged with high risk category?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""How many customers have high risk category?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should give the total number of customers having risk_category = 'HIGH'.""
+}"
+EVAL_16,UNSEEN,What are the top 5 destination countries for international SWIFT transfers by volume?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Top destination countries for SWIFT by volume"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should aggregate SWIFT transactions by foreign country and list the top 5 countries by total INR volume.""
+}"
+EVAL_17,UNSEEN,Explain alert ALT-dc6367d8-b9a2-4da5-8851-803016ee8dd3,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""ALT-dc6367d8-b9a2-4da5-8851-803016ee8dd3"",
+      ""tool_name"": ""explain_alert""
+    }
+  ],
+  ""ground_truth_output"": ""The response should invoke explain_alert and summarize the triggering rule, customer profile, recent transactions, and recommended regulatory action.""
+}"
+EVAL_18,UNSEEN,Why was transaction TXN00000001 not flagged as fraud?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""TXN00000001"",
+      ""tool_name"": ""why_not_flagged""
+    }
+  ],
+  ""ground_truth_output"": ""The response should invoke why_not_flagged for TXN00000001 and explain which typologies were evaluated and how the transaction missed the relevant detection thresholds.""
+}"
+EVAL_19,UNSEEN,Build an evidence pack for alert ALT-dc6367d8-b9a2-4da5-8851-803016ee8dd3,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""ALT-dc6367d8-b9a2-4da5-8851-803016ee8dd3"",
+      ""tool_name"": ""build_evidence_pack""
+    }
+  ],
+  ""ground_truth_output"": ""The response should invoke build_evidence_pack and present structured audit evidence including customer profile, risk scores with SHAP drivers, and transaction timeline.""
+}"
+EVAL_20,UNSEEN,What would be the impact if we change structuring count threshold to 2?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_name"": ""time_machine""
+    }
+  ],
+  ""ground_truth_output"": ""The response should use time_machine to simulate changing structuring rule count_threshold from 3 to 2, reporting projected alert deltas, confirmed fraud impact, and analyst workload hours.""
+}"
+EVAL_21,UNSEEN,What is our total UPI transaction volume and count across the bank?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Total UPI transaction volume and count"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should calculate the total amount in INR and transaction count where channel = 'UPI'.""
+}"
+EVAL_22,UNSEEN,How many politically exposed persons (PEPs) currently have active accounts?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""How many PEPs have active accounts?"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should count distinct customer IDs where is_pep is TRUE and account status is active.""
+}"
+EVAL_23,UNSEEN,What is the average transaction value across salary vs business accounts?,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""Average transaction amount by account type"",
+      ""tool_name"": ""kavach_analyst""
+    }
+  ],
+  ""ground_truth_output"": ""The response should calculate average transaction amount in INR grouped by account_type.""
+}"
+EVAL_24,UNSEEN,What is the employee salary of John Doe?,"{
+  ""ground_truth_invocations"": [],
+  ""ground_truth_output"": ""The response should refuse the question politely, noting that employee HR and compensation details are out of scope for the KAVACH compliance copilot.""
+}"
+EVAL_25,UNSEEN,Tell me about circular KAVACH/2024/06 regarding round tripping transactions.,"{
+  ""ground_truth_invocations"": [
+    {
+      ""tool_input"": ""round tripping circular KAVACH/2024/06"",
+      ""tool_name"": ""kavach_reg_search""
+    }
+  ],
+  ""ground_truth_output"": ""The response should search circular text for KAVACH/2024/06 and explain the detection criteria and obligations for circular money routing and round tripping, citing relevant paragraphs.""
+}"

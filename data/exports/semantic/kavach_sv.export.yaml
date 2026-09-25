@@ -1,0 +1,668 @@
+name: KAVACH_SV
+description: KAVACH compliance copilot semantic view for an Indian bank (synthetic data).
+tables:
+  - name: ACCOUNTS
+    base_table:
+      database: KAVACH_DB
+      schema: CORE
+      table: ACCOUNTS
+    primary_key:
+      columns:
+        - ACCOUNT_ID
+    dimensions:
+      - name: ACCOUNT_ID
+        expr: ACCOUNT_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: ACCOUNT_STATUS
+        synonyms:
+          - active
+          - dormant
+        expr: STATUS
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: ACCOUNT_TYPE
+        synonyms:
+          - type of account
+        expr: ACCOUNT_TYPE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: BRANCH_CODE
+        synonyms:
+          - branch
+        expr: BRANCH_CODE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: CUSTOMER_ID
+        expr: CUSTOMER_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    facts:
+      - name: AVG_MONTHLY_BALANCE
+        expr: AVG_MONTHLY_BALANCE
+        data_type: "NUMBER(38,0)"
+        access_modifier: public_access
+    metrics:
+      - name: ACCOUNT_COUNT
+        expr: COUNT(DISTINCT ACCOUNT_ID)
+        access_modifier: public_access
+    time_dimensions:
+      - name: OPEN_DATE
+        expr: OPEN_DATE
+        data_type: DATE
+        access_modifier: public_access
+  - name: ALERTS
+    base_table:
+      database: KAVACH_DB
+      schema: CORE
+      table: ALERTS
+    primary_key:
+      columns:
+        - ALERT_ID
+    dimensions:
+      - name: ACCOUNT_ID
+        expr: ACCOUNT_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: ACTION_REQUIRED
+        synonyms:
+          - STR
+          - suspicious transaction report
+          - EDD
+        expr: ACTION_REQUIRED
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: ALERT_ID
+        expr: ALERT_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: ALERT_STATUS
+        synonyms:
+          - open
+          - closed
+          - resolved
+        expr: STATUS
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: CITATION
+        synonyms:
+          - circular reference
+        expr: CITATION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: RESOLUTION
+        synonyms:
+          - outcome
+          - verdict
+        expr: RESOLUTION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: RULE_ID
+        expr: RULE_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: RULE_NAME
+        expr: RULE_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: SEVERITY
+        synonyms:
+          - priority
+        expr: SEVERITY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: TYPOLOGY
+        synonyms:
+          - fraud type
+          - structuring
+          - mule ring
+          - dormant reactivation
+          - income mismatch
+          - round tripping
+          - high risk SWIFT
+          - account takeover
+          - PEP unusual cash
+        expr: TYPOLOGY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+    facts:
+      - name: ALERT_SCORE
+        expr: SCORE
+        data_type: FLOAT
+        access_modifier: public_access
+    metrics:
+      - name: ALERT_COUNT
+        synonyms:
+          - number of alerts
+          - flagged count
+        expr: COUNT(DISTINCT ALERT_ID)
+        access_modifier: public_access
+      - name: FALSE_POSITIVE_COUNT
+        expr: COUNT(CASE WHEN RESOLUTION = 'FALSE_POSITIVE' THEN 1 END)
+        access_modifier: public_access
+      - name: OPEN_ALERT_COUNT
+        expr: COUNT(CASE WHEN STATUS = 'OPEN' THEN 1 END)
+        access_modifier: public_access
+      - name: STR_DUE_COUNT
+        synonyms:
+          - STRs due
+          - pending STRs
+        expr: COUNT(CASE WHEN ACTION_REQUIRED = 'STR' AND STATUS = 'OPEN' THEN 1 END)
+        access_modifier: public_access
+      - name: TRUE_POSITIVE_COUNT
+        expr: COUNT(CASE WHEN RESOLUTION = 'TRUE_POSITIVE' THEN 1 END)
+        access_modifier: public_access
+    time_dimensions:
+      - name: ALERT_DATE
+        synonyms:
+          - created date
+          - flagged date
+        expr: CREATED_AT
+        data_type: TIMESTAMP_NTZ(9)
+        access_modifier: public_access
+      - name: RESOLVED_DATE
+        expr: RESOLVED_AT
+        data_type: TIMESTAMP_NTZ(9)
+        access_modifier: public_access
+  - name: CUSTOMERS
+    base_table:
+      database: KAVACH_DB
+      schema: CORE
+      table: CUSTOMERS
+    primary_key:
+      columns:
+        - CUSTOMER_ID
+    dimensions:
+      - name: CITY
+        expr: CITY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: CUSTOMER_ID
+        expr: CUSTOMER_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: CUSTOMER_NAME
+        synonyms:
+          - client name
+          - account holder
+        expr: CUSTOMER_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: IS_PEP
+        synonyms:
+          - politically exposed person
+          - PEP
+        expr: IS_PEP
+        data_type: BOOLEAN
+        access_modifier: public_access
+      - name: KYC_STATUS
+        synonyms:
+          - KYC
+        expr: KYC_STATUS
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: OCCUPATION
+        expr: OCCUPATION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: REGION
+        synonyms:
+          - zone
+        expr: REGION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: RISK_CATEGORY
+        synonyms:
+          - customer risk
+        expr: RISK_CATEGORY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: SEGMENT
+        synonyms:
+          - customer segment
+        expr: SEGMENT
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: STATE
+        expr: STATE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    facts:
+      - name: DECLARED_ANNUAL_INCOME
+        synonyms:
+          - income
+          - declared income
+        expr: DECLARED_ANNUAL_INCOME
+        data_type: "NUMBER(38,0)"
+        access_modifier: public_access
+    metrics:
+      - name: CUSTOMER_COUNT
+        expr: COUNT(DISTINCT CUSTOMER_ID)
+        access_modifier: public_access
+  - name: RINGS
+    base_table:
+      database: KAVACH_DB
+      schema: CORE
+      table: RINGS
+    primary_key:
+      columns:
+        - RING_ID
+    dimensions:
+      - name: CONFIDENCE_LABEL
+        synonyms:
+          - ring confidence
+        expr: CONFIDENCE_LABEL
+        data_type: VARCHAR(6)
+        access_modifier: public_access
+        is_enum: true
+      - name: RING_ID
+        expr: RING_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    facts:
+      - name: RING_SCORE
+        expr: RING_SCORE
+        data_type: FLOAT
+        access_modifier: public_access
+      - name: RING_SIZE
+        synonyms:
+          - accounts in ring
+        expr: RING_SIZE
+        data_type: "NUMBER(18,0)"
+        access_modifier: public_access
+      - name: SHARED_DEVICES
+        expr: SHARED_DEVICES
+        data_type: "NUMBER(18,0)"
+        access_modifier: public_access
+    metrics:
+      - name: RING_COUNT
+        expr: COUNT(DISTINCT RING_ID)
+        access_modifier: public_access
+      - name: TOTAL_RING_ACCOUNTS
+        expr: SUM(RING_SIZE)
+        access_modifier: public_access
+  - name: RING_MEMBERS
+    base_table:
+      database: KAVACH_DB
+      schema: CORE
+      table: RING_MEMBERS
+    dimensions:
+      - name: ACCOUNT_ID
+        expr: ACCOUNT_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: RING_ID
+        expr: RING_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+  - name: RISK_SCORES
+    base_table:
+      database: KAVACH_DB
+      schema: ML
+      table: LATEST_RISK_SCORES
+    primary_key:
+      columns:
+        - ACCOUNT_ID
+    dimensions:
+      - name: ACCOUNT_ID
+        expr: ACCOUNT_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    facts:
+      - name: RISK_SCORE_CALIBRATED
+        synonyms:
+          - risk score
+          - ML score
+        expr: RISK_SCORE_CALIBRATED
+        data_type: FLOAT
+        access_modifier: public_access
+      - name: RISK_SCORE_RAW
+        synonyms:
+          - raw score
+        expr: RISK_SCORE
+        data_type: FLOAT
+        access_modifier: public_access
+    metrics:
+      - name: AVG_RISK_SCORE
+        synonyms:
+          - average risk
+        expr: AVG(RISK_SCORE_CALIBRATED)
+        access_modifier: public_access
+      - name: HIGH_RISK_ACCOUNT_COUNT
+        expr: COUNT(CASE WHEN RISK_SCORE_CALIBRATED > 0.5 THEN 1 END)
+        access_modifier: public_access
+  - name: RULES
+    base_table:
+      database: KAVACH_DB
+      schema: RULES
+      table: RULE_LIBRARY
+    primary_key:
+      columns:
+        - RULE_ID
+    dimensions:
+      - name: COMPILED_BY
+        expr: COMPILED_BY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: RULE_ID
+        expr: RULE_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: RULE_NAME
+        expr: RULE_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: RULE_STATUS
+        synonyms:
+          - approved
+          - pending
+        expr: STATUS
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: RULE_TYPOLOGY
+        synonyms:
+          - rule type
+          - detection type
+        expr: TYPOLOGY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: SOURCE_CITATION
+        synonyms:
+          - circular reference
+        expr: SOURCE_CITATION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    time_dimensions:
+      - name: EFFECTIVE_FROM
+        expr: EFFECTIVE_FROM
+        data_type: DATE
+        access_modifier: public_access
+  - name: TRANSACTIONS
+    base_table:
+      database: KAVACH_DB
+      schema: CORE
+      table: TRANSACTIONS
+    primary_key:
+      columns:
+        - TXN_ID
+    dimensions:
+      - name: ACCOUNT_ID
+        expr: ACCOUNT_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: CHANNEL
+        synonyms:
+          - UPI
+          - NEFT
+          - RTGS
+          - IMPS
+          - CASH
+          - SWIFT
+          - payment mode
+        expr: CHANNEL
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: COUNTERPARTY
+        expr: COUNTERPARTY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: COUNTERPARTY_BANK
+        expr: COUNTERPARTY_BANK
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: COUNTRY
+        synonyms:
+          - transaction country
+        expr: COUNTRY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: DIRECTION
+        synonyms:
+          - credit
+          - debit
+          - inflow
+          - outflow
+        expr: DIRECTION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        is_enum: true
+      - name: MERCHANT_CATEGORY
+        synonyms:
+          - MCC
+          - merchant
+        expr: MERCHANT_CATEGORY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: TXN_ID
+        expr: TXN_ID
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    facts:
+      - name: AMOUNT_INR
+        synonyms:
+          - amount
+          - transaction amount
+          - value
+        expr: AMOUNT_INR
+        data_type: "NUMBER(18,2)"
+        access_modifier: public_access
+    metrics:
+      - name: AVG_TRANSACTION_AMOUNT
+        expr: AVG(AMOUNT_INR)
+        access_modifier: public_access
+      - name: TRANSACTION_COUNT
+        synonyms:
+          - txn count
+        expr: COUNT(TXN_ID)
+        access_modifier: public_access
+      - name: TRANSACTION_VOLUME
+        synonyms:
+          - total amount
+          - total value
+          - volume
+        expr: SUM(AMOUNT_INR)
+        access_modifier: public_access
+    time_dimensions:
+      - name: TXN_DATE
+        synonyms:
+          - transaction date
+          - date
+        expr: TXN_TS
+        data_type: TIMESTAMP_NTZ(9)
+        access_modifier: public_access
+relationships:
+  - name: ACCOUNTS_TO_CUSTOMERS
+    left_table: ACCOUNTS
+    right_table: CUSTOMERS
+    relationship_columns:
+      - left_column: CUSTOMER_ID
+        right_column: CUSTOMER_ID
+  - name: ALERTS_TO_ACCOUNTS
+    left_table: ALERTS
+    right_table: ACCOUNTS
+    relationship_columns:
+      - left_column: ACCOUNT_ID
+        right_column: ACCOUNT_ID
+  - name: ALERTS_TO_RULES
+    left_table: ALERTS
+    right_table: RULES
+    relationship_columns:
+      - left_column: RULE_ID
+        right_column: RULE_ID
+  - name: RING_MEMBERS_TO_ACCOUNTS
+    left_table: RING_MEMBERS
+    right_table: ACCOUNTS
+    relationship_columns:
+      - left_column: ACCOUNT_ID
+        right_column: ACCOUNT_ID
+  - name: RING_MEMBERS_TO_RINGS
+    left_table: RING_MEMBERS
+    right_table: RINGS
+    relationship_columns:
+      - left_column: RING_ID
+        right_column: RING_ID
+  - name: RISK_SCORES_TO_ACCOUNTS
+    left_table: RISK_SCORES
+    right_table: ACCOUNTS
+    relationship_columns:
+      - left_column: ACCOUNT_ID
+        right_column: ACCOUNT_ID
+  - name: TRANSACTIONS_TO_ACCOUNTS
+    left_table: TRANSACTIONS
+    right_table: ACCOUNTS
+    relationship_columns:
+      - left_column: ACCOUNT_ID
+        right_column: ACCOUNT_ID
+module_custom_instructions:
+  sql_generation: |
+    Indian banking context. Use fiscal year April to March. Amounts in INR. Lakh = 100000. Crore = 10000000. Round amounts to 2 decimal places. Data covers a recent 6-month window.
+  question_categorization: |
+    If user asks about a specific customer by name, ask for CUSTOMER_ID. Never reveal PAN, Aadhaar, or date of birth. HR, compensation, and non-compliance topics are out of scope.
+verified_queries:
+  - name: BRANCH_ALERT_COUNT
+    sql: |
+      SELECT a.BRANCH_CODE, COUNT(DISTINCT al.ALERT_ID) AS alert_count FROM KAVACH_DB.CORE.ALERTS al JOIN KAVACH_DB.CORE.ACCOUNTS a ON al.ACCOUNT_ID = a.ACCOUNT_ID WHERE al.SEVERITY = 'HIGH' GROUP BY a.BRANCH_CODE ORDER BY alert_count DESC LIMIT 10
+    question: Which branches had the most high-risk alerts?
+    verified_by: compliance_team
+    use_as_onboarding_question: true
+  - name: STR_DUE
+    sql: |
+      SELECT al.ALERT_ID, al.ACCOUNT_ID, al.TYPOLOGY, al.CITATION, al.CREATED_AT FROM KAVACH_DB.CORE.ALERTS al WHERE al.ACTION_REQUIRED = 'STR' AND al.STATUS = 'OPEN' ORDER BY al.CREATED_AT ASC
+    question: Which STRs are due?
+    verified_by: compliance_team
+    use_as_onboarding_question: true
+  - name: TOP_RISK_ACCOUNTS
+    sql: |
+      SELECT rs.ACCOUNT_ID, rs.RISK_SCORE_CALIBRATED, a.BRANCH_CODE, c.CUSTOMER_NAME, c.RISK_CATEGORY FROM KAVACH_DB.ML.LATEST_RISK_SCORES rs JOIN KAVACH_DB.CORE.ACCOUNTS a ON rs.ACCOUNT_ID = a.ACCOUNT_ID JOIN KAVACH_DB.CORE.CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID ORDER BY rs.RISK_SCORE_CALIBRATED DESC LIMIT 10
+    question: What are the top 10 accounts by risk score?
+    verified_by: compliance_team
+    use_as_onboarding_question: true
+  - name: ALERTS_BY_TYPOLOGY
+    sql: |
+      SELECT TYPOLOGY, COUNT(*) AS alert_count, COUNT(CASE WHEN STATUS = 'OPEN' THEN 1 END) AS open_count FROM KAVACH_DB.CORE.ALERTS GROUP BY TYPOLOGY ORDER BY alert_count DESC
+    question: Show alert volume by typology.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: ALERTS_PER_MONTH
+    sql: |
+      SELECT DATE_TRUNC('month', CREATED_AT)::DATE AS month, TYPOLOGY, COUNT(*) AS alert_count FROM KAVACH_DB.CORE.ALERTS GROUP BY month, TYPOLOGY ORDER BY month, TYPOLOGY
+    question: Show the alert trend by month.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: OPEN_VS_RESOLVED
+    sql: |
+      SELECT STATUS, COUNT(*) AS cnt, ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) AS pct FROM KAVACH_DB.CORE.ALERTS GROUP BY STATUS
+    question: What is the open vs resolved alert ratio?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: DUAL_TYPOLOGY_ACCOUNTS
+    sql: |
+      SELECT ACCOUNT_ID, COUNT(DISTINCT TYPOLOGY) AS typology_count, COUNT(DISTINCT ALERT_ID) AS alert_count FROM KAVACH_DB.CORE.ALERTS WHERE TYPOLOGY IN ('STRUCTURING', 'MULE_RING') GROUP BY ACCOUNT_ID HAVING COUNT(DISTINCT TYPOLOGY) = 2 ORDER BY alert_count DESC
+    question: Which accounts have both structuring and mule ring alerts?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: MULE_RING_FLOW
+    sql: |
+      SELECT r.RING_ID, r.RING_SIZE, r.CONFIDENCE_LABEL, SUM(t.AMOUNT_INR) AS total_flow FROM KAVACH_DB.CORE.RINGS r JOIN KAVACH_DB.CORE.RING_MEMBERS rm ON r.RING_ID = rm.RING_ID JOIN KAVACH_DB.CORE.TRANSACTIONS t ON rm.ACCOUNT_ID = t.ACCOUNT_ID WHERE t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS)) AND r.CONFIDENCE_LABEL IN ('HIGH', 'MEDIUM') GROUP BY r.RING_ID, r.RING_SIZE, r.CONFIDENCE_LABEL ORDER BY total_flow DESC
+    question: How much money moved through mule rings in the last 30 days?
+    verified_by: compliance_team
+    use_as_onboarding_question: true
+  - name: INCOME_MISMATCH
+    sql: |
+      SELECT c.CUSTOMER_ID, c.CUSTOMER_NAME, c.DECLARED_ANNUAL_INCOME, SUM(t.AMOUNT_INR) AS total_turnover, ROUND(SUM(t.AMOUNT_INR) / NULLIF(c.DECLARED_ANNUAL_INCOME, 0), 1) AS multiplier FROM KAVACH_DB.CORE.CUSTOMERS c JOIN KAVACH_DB.CORE.ACCOUNTS a ON c.CUSTOMER_ID = a.CUSTOMER_ID JOIN KAVACH_DB.CORE.TRANSACTIONS t ON a.ACCOUNT_ID = t.ACCOUNT_ID GROUP BY c.CUSTOMER_ID, c.CUSTOMER_NAME, c.DECLARED_ANNUAL_INCOME HAVING SUM(t.AMOUNT_INR) > c.DECLARED_ANNUAL_INCOME * 10 ORDER BY multiplier DESC LIMIT 20
+    question: Show customers whose turnover exceeds 10x declared income.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: CASH_NEAR_10L
+    sql: |
+      SELECT t.TXN_ID, t.ACCOUNT_ID, t.AMOUNT_INR, t.TXN_TS, t.DIRECTION FROM KAVACH_DB.CORE.TRANSACTIONS t WHERE t.CHANNEL = 'CASH' AND t.AMOUNT_INR BETWEEN 900000 AND 999999 ORDER BY t.TXN_TS DESC LIMIT 50
+    question: Show cash transactions above 9 lakh that could indicate structuring.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: SWIFT_BY_COUNTRY
+    sql: |
+      SELECT t.COUNTRY, COUNT(*) AS txn_count, SUM(t.AMOUNT_INR) AS total_amount FROM KAVACH_DB.CORE.TRANSACTIONS t WHERE t.CHANNEL = 'SWIFT' AND t.COUNTRY NOT IN ('IN', 'India') GROUP BY t.COUNTRY ORDER BY total_amount DESC
+    question: Show high-risk SWIFT transactions grouped by country.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: TOP_COUNTERPARTIES
+    sql: |
+      SELECT COUNTERPARTY, COUNTERPARTY_BANK, COUNT(*) AS txn_count, SUM(AMOUNT_INR) AS total_amount FROM KAVACH_DB.CORE.TRANSACTIONS WHERE COUNTERPARTY IS NOT NULL GROUP BY COUNTERPARTY, COUNTERPARTY_BANK ORDER BY total_amount DESC LIMIT 15
+    question: Who are the top counterparties by transaction volume?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: WORST_FP_RULE
+    sql: |
+      SELECT al.RULE_NAME, al.TYPOLOGY, COUNT(*) AS total_alerts, COUNT(CASE WHEN al.RESOLUTION = 'FALSE_POSITIVE' THEN 1 END) AS fp_count, ROUND(COUNT(CASE WHEN al.RESOLUTION = 'FALSE_POSITIVE' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS fp_rate_pct FROM KAVACH_DB.CORE.ALERTS al WHERE al.STATUS = 'CLOSED' GROUP BY al.RULE_NAME, al.TYPOLOGY ORDER BY fp_count DESC
+    question: Which rule produces the most false positives?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: RULES_FROM_CIRCULAR
+    sql: |
+      SELECT RULE_ID, RULE_NAME, TYPOLOGY, SOURCE_CITATION, STATUS FROM KAVACH_DB.RULES.RULE_LIBRARY ORDER BY SOURCE_CITATION, RULE_NAME
+    question: Show all rules compiled from a specific circular.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: INCOME_RULE_PRECISION
+    sql: |
+      SELECT al.RULE_NAME, COUNT(*) AS total_fired, COUNT(CASE WHEN al.RESOLUTION = 'TRUE_POSITIVE' THEN 1 END) AS true_pos, COUNT(CASE WHEN al.RESOLUTION = 'FALSE_POSITIVE' THEN 1 END) AS false_pos, ROUND(COUNT(CASE WHEN al.RESOLUTION = 'TRUE_POSITIVE' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS precision_pct FROM KAVACH_DB.CORE.ALERTS al WHERE al.TYPOLOGY = 'INCOME_MISMATCH' AND al.STATUS = 'CLOSED' GROUP BY al.RULE_NAME
+    question: What is the precision of the income mismatch rule?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: RULES_BY_TYPOLOGY
+    sql: |
+      SELECT TYPOLOGY, STATUS, COUNT(*) AS rule_count FROM KAVACH_DB.RULES.RULE_LIBRARY GROUP BY TYPOLOGY, STATUS ORDER BY TYPOLOGY
+    question: Show the rule library grouped by typology and status.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: ROUND_TRIP_CYCLES
+    sql: |
+      SELECT CYCLE_LENGTH, COUNT(*) AS cycle_count, ROUND(AVG(STARTING_AMOUNT), 2) AS avg_starting_amount, ROUND(AVG(DAYS_SPAN), 1) AS avg_days FROM KAVACH_DB.CORE.ROUND_TRIP_CYCLES GROUP BY CYCLE_LENGTH ORDER BY CYCLE_LENGTH
+    question: How many round-trip cycles have been detected?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: RING_CONFIDENCE_DIST
+    sql: |
+      SELECT CONFIDENCE_LABEL, COUNT(*) AS ring_count, SUM(RING_SIZE) AS total_accounts, ROUND(AVG(RING_SCORE), 3) AS avg_score FROM KAVACH_DB.CORE.RINGS GROUP BY CONFIDENCE_LABEL ORDER BY avg_score DESC
+    question: Show the distribution of ring confidence levels.
+    verified_by: compliance_team
+    use_as_onboarding_question: true
+  - name: FLAGGED_NOT_IN_RING
+    sql: |
+      SELECT DISTINCT al.ACCOUNT_ID, al.TYPOLOGY, al.SEVERITY FROM KAVACH_DB.CORE.ALERTS al WHERE al.STATUS = 'OPEN' AND al.ACCOUNT_ID NOT IN (SELECT ACCOUNT_ID FROM KAVACH_DB.CORE.RING_MEMBERS) ORDER BY al.SEVERITY DESC, al.ACCOUNT_ID LIMIT 20
+    question: Which flagged accounts are not part of any detected ring?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: DORMANT_REACTIVATED
+    sql: |
+      SELECT al.ACCOUNT_ID, a.STATUS AS account_status, al.CREATED_AT AS alert_date, al.CITATION FROM KAVACH_DB.CORE.ALERTS al JOIN KAVACH_DB.CORE.ACCOUNTS a ON al.ACCOUNT_ID = a.ACCOUNT_ID WHERE al.TYPOLOGY = 'DORMANT_REACTIVATION' ORDER BY al.CREATED_AT DESC
+    question: Show dormant accounts that were reactivated recently.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: PEP_CASH
+    sql: |
+      SELECT c.CUSTOMER_ID, c.CUSTOMER_NAME, c.RISK_CATEGORY, SUM(CASE WHEN t.CHANNEL = 'CASH' THEN t.AMOUNT_INR ELSE 0 END) AS cash_volume, COUNT(CASE WHEN t.CHANNEL = 'CASH' THEN 1 END) AS cash_txn_count FROM KAVACH_DB.CORE.CUSTOMERS c JOIN KAVACH_DB.CORE.ACCOUNTS a ON c.CUSTOMER_ID = a.CUSTOMER_ID JOIN KAVACH_DB.CORE.TRANSACTIONS t ON a.ACCOUNT_ID = t.ACCOUNT_ID WHERE c.IS_PEP = TRUE GROUP BY c.CUSTOMER_ID, c.CUSTOMER_NAME, c.RISK_CATEGORY HAVING SUM(CASE WHEN t.CHANNEL = 'CASH' THEN t.AMOUNT_INR ELSE 0 END) > 0 ORDER BY cash_volume DESC LIMIT 20
+    question: Show PEP customers with high cash transaction volume.
+    verified_by: compliance_team
+    use_as_onboarding_question: false
+  - name: RISK_BY_SEGMENT
+    sql: |
+      SELECT c.SEGMENT, ROUND(AVG(rs.RISK_SCORE_CALIBRATED), 4) AS avg_risk_score, COUNT(*) AS account_count FROM KAVACH_DB.ML.LATEST_RISK_SCORES rs JOIN KAVACH_DB.CORE.ACCOUNTS a ON rs.ACCOUNT_ID = a.ACCOUNT_ID JOIN KAVACH_DB.CORE.CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID GROUP BY c.SEGMENT ORDER BY avg_risk_score DESC
+    question: What is the average risk score by customer segment?
+    verified_by: compliance_team
+    use_as_onboarding_question: false
