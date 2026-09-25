@@ -19,7 +19,14 @@ class EvidenceResponse(BaseModel):
     sha256_hash: Optional[str]
     created_by: str
     created_at: str
+    # Primary artifact: readable HTML evidence pack
     presigned_url: Optional[str] = None
+    html_sha256_hash: Optional[str] = None
+    # Best-effort PDF rendering of the same pack
+    pdf_presigned_url: Optional[str] = None
+    pdf_sha256_hash: Optional[str] = None
+    # JSON is kept as a downloadable attachment, not the primary artifact
+    json_presigned_url: Optional[str] = None
 
 
 class VerifyResponse(BaseModel):
@@ -75,7 +82,11 @@ async def get_evidence(alert_id: str):
             sha256_hash=evidence.sha256_hash,
             created_by=evidence.created_by,
             created_at=evidence.created_at.isoformat(),
-            presigned_url=_get_presigned_url(evidence.file_path)
+            presigned_url=_get_presigned_url(evidence.html_file_path),
+            html_sha256_hash=evidence.html_sha256_hash,
+            pdf_presigned_url=_get_presigned_url(evidence.pdf_file_path),
+            pdf_sha256_hash=evidence.pdf_sha256_hash,
+            json_presigned_url=_get_presigned_url(evidence.file_path),
         )
     except HTTPException:
         raise
@@ -97,7 +108,11 @@ async def create_evidence(alert_id: str):
             sha256_hash=evidence.sha256_hash,
             created_by=evidence.created_by,
             created_at=evidence.created_at.isoformat(),
-            presigned_url=_get_presigned_url(evidence.file_path)
+            presigned_url=_get_presigned_url(evidence.html_file_path),
+            html_sha256_hash=evidence.html_sha256_hash,
+            pdf_presigned_url=_get_presigned_url(evidence.pdf_file_path),
+            pdf_sha256_hash=evidence.pdf_sha256_hash,
+            json_presigned_url=_get_presigned_url(evidence.file_path),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create evidence: {str(e)}")
@@ -110,7 +125,9 @@ async def verify_evidence(alert_id: str):
         service = get_evidence_service()
         result = service.verify_evidence(alert_id)
         
-        verified = result.get('integrity_status') == 'MATCH'
+        verified = result.get('integrity_status') == 'MATCH' and result.get(
+            'html_integrity_status', 'MATCH'
+        ) == 'MATCH'
         
         return VerifyResponse(
             verified=verified,

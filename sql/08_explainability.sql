@@ -131,11 +131,17 @@ $$;
 -- ----------------------------------------------------------------------------
 -- 3. BUILD_EVIDENCE_PACK: Generate JSON evidence for an alert
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE TABLE AUDIT.EVIDENCE_REGISTRY (
+CREATE TABLE IF NOT EXISTS AUDIT.EVIDENCE_REGISTRY (
     alert_id VARCHAR PRIMARY KEY,
     evidence_json VARIANT,
     file_path VARCHAR,
     sha256_hash VARCHAR,
+    -- Human-readable evidence pack (rendered by the backend from evidence_json,
+    -- not by this procedure). PDF is best-effort and may be NULL.
+    html_file_path VARCHAR,
+    html_sha256_hash VARCHAR,
+    pdf_file_path VARCHAR,
+    pdf_sha256_hash VARCHAR,
     created_by VARCHAR,
     created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );

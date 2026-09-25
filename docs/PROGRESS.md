@@ -487,3 +487,272 @@ service account or role queries the table.
 - `backend/.env` currently uses password auth, not key-pair auth as originally
   assumed; it is correctly `.gitignore`d either way.
 
+---
+
+## CHECKPOINT 4 — Cortex Agent Integration, Identity Model & HTML Evidence
+
+### 1. `/api/ask` now calls the real Cortex Agent, not Cortex Analyst directly
+
+`backend/app/presentation/api/v1/ask.py` was rewritten to call
+`POST /api/v2/databases/KAVACH_DB/schemas/AI/agents/KAVACH_AGENT:run` (the
+Agents Run REST API) instead of the legacy Cortex Analyst message endpoint.
+Both streaming (`?stream=true`, normalized SSE: `status`, `text_delta`,
+`tool_call`, `tool_result`, `done`, `error`) and non-streaming modes are
+implemented and tested.
+
+**What the real event/tool shapes look like in this account** (differs from
+the simplified shapes in the public docs page, which imply a single
+`cortex_analyst_text_to_sql` tool type):
+
+- The agent decomposes `kavach_analyst` into an internal
+  `system_agentic_semantic_context` step (loads the semantic model) followed
+  by one or more `system_execute_sql` steps (the actual SQL, carrying
+  `verified_query_used` and `sql` when Cortex Analyst matched a Verified
+  Query).
+- `kavach_reg_search` is a `cortex_search` tool call; its `tool_result` JSON
+  contains `search_results: [{id, search_service_name, source_id, text}]` —
+  no `circular_no`/`para_no` are present directly. The backend resolves these
+  by exact-matching the returned `text` against `AI.REG_CHUNKS.TEXT` (both in
+  the tool_result content and in `text.annotation` citations), then dedupes
+  by `(circular_no, para_no, text)`.
+- Generic tools (`explain_alert`, `why_not_flagged`, `build_evidence_pack`,
+  `time_machine`) return `{execution_type, query_id, result}` on success, or
+  `{error, query_id, result}` on failure — captured in the tool-call trace's
+  `summary` field.
+- `server_skill` and `data_to_chart` are internal chart-rendering plumbing;
+  they are filtered out of the public `tool_calls` trace as noise.
+
+### 2. Four required questions, run end-to-end through `/api/ask`
+
+All four were run against the live `KAVACH_AGENT` through the actual FastAPI
+endpoint (not raw curl to the agent), as `KAVACH_ADMIN`.
+
+**(a) "Which branches had the most high-risk alerts?"** — Analyst tool,
+`verified_query: true`
+
+> **BR0111** is the clear outlier with 10 high-risk alerts — nearly 43% more
+> than the next group. Three branches (BR0120, BR0178, BR0191) tie at 7 alerts
+> each, forming the second tier... **BR0111** should be prioritised for
+> immediate review...
+
+SQL used (verified query, transformed to logical table names by Cortex
+Analyst, then executed by the agent):
+```sql
+WITH __alerts AS (
+  SELECT account_id, alert_id, severity FROM KAVACH_DB.CORE.ALERTS
+), __accounts AS (
+  SELECT account_id, branch_code FROM KAVACH_DB.CORE.ACCOUNTS
+)
+SELECT a.branch_code, COUNT(DISTINCT al.alert_id) AS alert_count
+FROM __alerts AS al JOIN __accounts AS a ON al.account_id = a.account_id
+WHERE al.severity = 'HIGH' GROUP BY a.branch_code ORDER BY alert_count DESC LIMIT 10
+```
+Tool trace: `system_execute_sql` (blocked once on a physical-table reference
+validation error, self-corrected), `system_execute_sql` (success,
+`verified_query_used: true`). Badge: **VERIFIED** ✅.
+
+**(b) "What does the circular say about cash deposits near the reporting
+threshold?"** — Search tool, citations expected
+
+> The circulars are clear on this: cash deposits deliberately kept just below
+> the ₹10 lakh CTR threshold are treated as potential **structuring** and must
+> be escalated as a Suspicious Transaction Report (STR)... Sub-₹10 lakh range
+> (₹9,00,000–₹9,99,999): more than 3 deposits in 30 days → STR... Higher range
+> (₹13,00,000–₹14,99,999) also triggers structuring alerts...
+
+Citations returned (circular_no/para_no resolved via `AI.REG_CHUNKS` lookup,
+deduplicated across 2 search calls and text annotations):
+
+| Circular | Para | Text |
+|---|---|---|
+| KAVACH/2024/01 | 1 | "All Regulated Entities (REs) shall report Cash Transaction Reports (CTRs) for all cash transactions of value exceeding Rs. 10,00,000..." |
+| KAVACH/2024/01 | 2 | "All attempts of cash deposits in amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period..." |
+| KAVACH/2024/01 | 4 | "REs shall implement automated monitoring systems to detect patterns of cash deposits consistently just below reporting thresholds..." |
+| KAVACH/2025/01 | 2 | "Structuring detection threshold revised: deposits Rs. 13,00,000 to Rs. 14,99,999 conducted 3+ times in 30 days trigger structuring alerts." |
+| KAVACH/2025/01 | 3 | "PAN verification threshold for individual cash deposits at Rs. 50,000 remains unchanged." |
+
+Tool trace: `kavach_reg_search` ×2 (agent re-queried to cover the revised
+₹15L threshold), both success.
+
+**(c) "Explain alert `ALT-8965bf88-deb0-4c1f-9b23-9acb29f95469`"** — generic
+tool, `explain_alert`, run as `KAVACH_ADMIN` (unmasked baseline)
+
+> **Alert ALT-8965bf88-deb0-4c1f-9b23-9acb29f95469** is an **Income Mismatch**
+> alert with **Medium** severity... raised against an MSME customer in Karnal
+> whose recent transaction activity appears inconsistent with their declared
+> income profile... **Customer: Lakshmi Pillai** | City: Karnal...
+
+Tool trace: `explain_alert` (generic, success). Raw procedure output includes
+`Customer: Lakshmi Pillai` (unmasked) — this is the baseline used for the
+masking comparison below.
+
+**(d) "What if the structuring threshold were 8 lakh instead of 9 lakh for
+rule `RL-5cb231e0-2c9f-41aa-a8f2-2493cfcb31bb`?"** — `time_machine` tool
+
+**Honest result: the `time_machine` generic tool fails when invoked directly
+by the agent**, with:
+```
+error building SQL query for generic tool time_machine: generic tool named
+time_machine uses argument type object which is not supported for execution
+environment type warehouse
+```
+This is a real platform-level constraint on this agent's configuration — the
+tool's `new_params` input is schema'd as an `object`, and object-typed
+arguments aren't supported for warehouse-executed generic tools. This is not
+a backend bug and was not "fixed" by disguising the failure; it is reported
+here as-is. The agent retried the tool 3 times, then gracefully recovered by
+answering the question directly via `kavach_analyst` + ad-hoc SQL against
+`CORE.TRANSACTIONS`/`RULES.RULE_LIBRARY`/`CORE.ALERTS`, plus one
+`kavach_reg_search` call for regulatory context:
+
+> The **time_machine** tool encountered a backend infrastructure issue on this
+> run, so I performed the what-if analysis directly against the transaction
+> data... **Lowering the threshold to ₹8 lakh would generate zero incremental
+> alerts** under current transaction patterns... No parameter change is
+> recommended at this time.
+
+Full tool trace: `time_machine` (error) ×3, `system_execute_sql` (error, one
+SQL syntax issue self-corrected), `system_execute_sql` (success) ×4,
+`kavach_reg_search` (success). This question took ~78–108s end-to-end due to
+the multiple self-correction rounds; `/api/ask`'s HTTP client timeout was
+raised from 120s to 240s to accommodate this.
+
+### 3. Identity model: `KAVACH_ADMIN` locally, never `ACCOUNTADMIN`
+
+- `backend/.env` now sets `SNOWFLAKE_ROLE=KAVACH_ADMIN` for the Snowpark
+  session, and `SNOWFLAKE_TOKEN` to a **role-restricted** Programmatic Access
+  Token (`KAVACH_BACKEND_ADMIN_PAT`,
+  `ROLE_RESTRICTION = 'KAVACH_ADMIN'`, 30-day expiry) used for both the
+  Cortex Analyst and Agents Run REST calls.
+- Grants added so `KAVACH_ADMIN` (and, for the masking test,
+  `KAVACH_REVIEWER`) can use the agent and its tool resources:
+  `USAGE ON AGENT KAVACH_AGENT`, `SELECT ON SEMANTIC VIEW KAVACH_SV`,
+  `USAGE ON PROCEDURE {EXPLAIN_ALERT, WHY_NOT_FLAGGED, BUILD_EVIDENCE_PACK,
+  TIME_MACHINE}`, plus `USAGE ON CORTEX SEARCH SERVICE KAVACH_REG_SEARCH` and
+  the underlying table/view grants (`CORE.ACCOUNTS`, `ML.LATEST_RISK_SCORES`,
+  and — found missing during testing — `USAGE ON SCHEMA ML`) for
+  `KAVACH_REVIEWER`.
+- Full identity model, including the SPCS/OAuth production plan, documented in
+  `docs/architecture.md`.
+
+**Masking through the agent — question (c) re-run as `KAVACH_REVIEWER`:**
+
+Swapped `backend/.env` to a temporary PAT restricted to `KAVACH_REVIEWER`,
+restarted the backend, asked the identical question, then restored
+`KAVACH_ADMIN` and restarted again.
+
+| Role | Raw `explain_alert` output (customer line) |
+|---|---|
+| `KAVACH_ADMIN` | `Customer: Lakshmi Pillai` |
+| `KAVACH_REVIEWER` | `Customer: La************` |
+
+This works because `EXPLAIN_ALERT` (like the other three generic tools) is
+declared `EXECUTE AS CALLER` — confirmed via `GET_DDL` — so the procedure
+runs with the *caller's* masking-policy exemptions, not the procedure owner's.
+The agent itself has no fixed identity baked into its tool definitions; the
+identity that determines masking is whichever role's PAT/token was used to
+call `agent:run`. First attempt under `KAVACH_REVIEWER` actually failed with
+`Schema 'KAVACH_DB.ML' does not exist or not authorized` (the role had
+`SELECT` on `ML.LATEST_RISK_SCORES` but not `USAGE ON SCHEMA ML`) — a real
+grant gap, fixed with `GRANT USAGE ON SCHEMA KAVACH_DB.ML TO ROLE
+KAVACH_REVIEWER`, after which it succeeded and returned the masked output
+above.
+
+### 4. HTML (+ PDF) evidence pack, alongside the JSON
+
+- `app/application/services/evidence_rendering.py` (new, pure — no
+  Snowflake/FastAPI dependency): `render_evidence_html()` builds a standalone
+  HTML document (case summary, rule + citation + regulatory quote pulled from
+  `AI.REG_CHUNKS`, transaction timeline, top ML SHAP drivers, analyst approval
+  trail, and a `SYNTHETIC DATA` watermark); `render_evidence_pdf()` is a
+  best-effort `reportlab` rendering of the same content.
+- `evidence_repository.create_evidence()` now, after `CALL
+  AI.BUILD_EVIDENCE_PACK`, renders both documents, hashes them
+  (`hashlib.sha256`), uploads them to `@APP.EVIDENCE_STAGE` via
+  `session.file.put_stream`, and records `html_file_path`/`html_sha256_hash`/
+  `pdf_file_path`/`pdf_sha256_hash` on `AUDIT.EVIDENCE_REGISTRY` (new columns,
+  added live and in `sql/08_explainability.sql`).
+- `GET/POST /api/alerts/{id}/evidence` now returns the **HTML presigned URL as
+  the primary `presigned_url`**, with `pdf_presigned_url` alongside it, and
+  the original JSON demoted to `json_presigned_url` (still available as an
+  attachment).
+- `GET /api/alerts/{id}/verify` now independently re-downloads the staged HTML
+  file and re-hashes it in Python, in addition to the existing
+  `AI.VERIFY_EVIDENCE` JSON-hash check; `verified` is `true` only if **both**
+  match.
+
+**Known data-quality caveat found while testing (not introduced by this
+change):** the regulatory quote lookup is correct and exact (`circular_no` +
+`para_no` match against `AI.REG_CHUNKS`), but for at least one rule
+(`INCOME_MISMATCH_KAVACH_2024_07_1`, citation `KAVACH/2024/07 para 1`) the
+citation stored in `RULES.RULE_LIBRARY` points to a circular paragraph about
+digital-channel authentication, not income mismatch/EDD. This is a
+pre-existing mismatch in the synthetic rule-generation data, not a bug in the
+new lookup code, and is called out here rather than silently papered over.
+
+**End-to-end re-verification**, alert `ALT-8965bf88-deb0-4c1f-9b23-9acb29f95469`:
+
+```json
+{
+  "verified": true,
+  "details": {
+    "integrity_status": "MATCH",
+    "html_integrity_status": "MATCH",
+    "html_file_path": "evidence_ALT-8965bf88-deb0-4c1f-9b23-9acb29f95469.html",
+    "html_stored_hash": "094f9f500c7145f54783128b196e01727f3d6f7f0bea517d1c3a1464fed55879",
+    "html_computed_hash": "094f9f500c7145f54783128b196e01727f3d6f7f0bea517d1c3a1464fed55879"
+  }
+}
+```
+
+The PDF rendered successfully too (3-page, valid `PDF document, version 1.4`),
+though PDF was explicitly best-effort per the requirements and isn't hashed
+into the `verified` boolean.
+
+### 5. Final smoke test
+
+`scripts/smoke_test.py` re-run (bumped `/api/ask`'s per-call timeout to 90s to
+accommodate multi-step agent questions) against the rewritten backend:
+
+```
+TOTAL: 23  PASS: 23  FAIL: 0
+```
+
+### Files changed this checkpoint
+
+- `backend/app/presentation/api/v1/ask.py` (full rewrite — Cortex Agent via
+  Agents Run API, replacing the direct Cortex Analyst call)
+- `backend/app/presentation/api/v1/evidence.py` (HTML-first evidence response,
+  HTML-aware verify)
+- `backend/app/infrastructure/repositories/evidence_repository.py`
+  (render + stage + hash HTML/PDF artifacts)
+- `backend/app/application/services/evidence_rendering.py` (new)
+- `backend/app/domain/entities.py` (`Evidence` gained `html_file_path`,
+  `html_sha256_hash`, `pdf_file_path`, `pdf_sha256_hash`)
+- `backend/app/infrastructure/config/settings.py` (`agent_database`,
+  `agent_schema`, `agent_name`; `snowflake_role` default now `KAVACH_ADMIN`)
+- `backend/.env` (role → `KAVACH_ADMIN`; new role-restricted PAT; agent config)
+- `backend/requirements.txt` (added `reportlab==5.0.1`)
+- `sql/08_explainability.sql` (`EVIDENCE_REGISTRY` gained HTML/PDF columns)
+- `scripts/smoke_test.py` (configurable per-check timeout; 90s for `/api/ask`)
+- `docs/architecture.md` (new — identity model, local PAT vs. SPCS OAuth)
+- `docs/openapi.json` (re-exported)
+
+### Known follow-ups (not blocking)
+
+- `time_machine`'s generic-tool `new_params` argument is schema'd as an
+  `object`, which the warehouse execution environment for generic tools
+  rejects outright. Fixing this requires reshaping the tool's parameter
+  schema at the agent-configuration level (e.g. flattening to scalar
+  parameters) — out of scope for this backend-focused checkpoint, but should
+  be tracked before `time_machine` is relied on as a first-class tool rather
+  than a fallback path.
+- The `KAVACH/2024/07 para 1` citation/topic mismatch noted above suggests a
+  handful of synthetic rule citations may not semantically match their cited
+  circular paragraph; worth a data-quality pass over `RULES.RULE_LIBRARY.
+  source_citation` values against `AI.REG_CHUNKS` topics.
+- `/api/me` still returns a hardcoded stub profile (`KAVACH_ANALYST`) rather
+  than deriving identity from the actual session/token — pre-existing, not
+  touched in this checkpoint.
+
+

@@ -80,10 +80,10 @@ class SmokeTest:
         self.base_url = base_url.rstrip("/")
         self.results = []
 
-    def check(self, name, method, path, expected_status=200, json_body=None, params=None, shape_check=None):
+    def check(self, name, method, path, expected_status=200, json_body=None, params=None, shape_check=None, timeout=30):
         url = f"{self.base_url}{path}"
         try:
-            resp = requests.request(method, url, json=json_body, params=params, timeout=30)
+            resp = requests.request(method, url, json=json_body, params=params, timeout=timeout)
         except Exception as e:
             self.results.append((name, method, path, "ERROR", str(e)))
             return None
@@ -163,7 +163,7 @@ def main():
     # --- AI Ask ---
     t.check("ask", "POST", "/api/ask",
             json_body={"question": "How many alerts are open right now?"},
-            shape_check=lambda b: ("sql" in b, None))
+            shape_check=lambda b: ("sql" in b, None), timeout=90)
 
     # --- Analysis ---
     t.check("why_not", "GET", f"/api/why-not/{ids['txn_id']}",

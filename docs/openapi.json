@@ -431,7 +431,7 @@
                     "AI"
                 ],
                 "summary": "Ask Question",
-                "description": "Ask a question to Cortex Analyst over the KAVACH semantic view.\n\nIf stream=true, returns SSE stream of Cortex Analyst's native events\n(status, message.content.delta, warnings, response_metadata, done).\nOtherwise returns the complete parsed response.",
+                "description": "Ask KAVACH_AGENT a question.\n\nIf stream=true, returns a normalized SSE stream (status, text_delta, tool_call,\ntool_result, done, error). Otherwise returns the complete parsed response.",
                 "operationId": "ask_question_api_ask_post",
                 "parameters": [
                     {
@@ -1271,11 +1271,6 @@
                     "question": {
                         "type": "string",
                         "title": "Question"
-                    },
-                    "semantic_view": {
-                        "type": "string",
-                        "title": "Semantic View",
-                        "default": "KAVACH_DB.AI.KAVACH_SV"
                     }
                 },
                 "type": "object",
@@ -1366,6 +1361,50 @@
                             }
                         ],
                         "title": "Presigned Url"
+                    },
+                    "html_sha256_hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Html Sha256 Hash"
+                    },
+                    "pdf_presigned_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Presigned Url"
+                    },
+                    "pdf_sha256_hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Sha256 Hash"
+                    },
+                    "json_presigned_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Json Presigned Url"
                     }
                 },
                 "type": "object",

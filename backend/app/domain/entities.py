@@ -68,3 +68,7 @@ class Evidence:
     sha256_hash: Optional[str]
     created_by: str
     created_at: datetime
+    html_file_path: Optional[str] = None
+    html_sha256_hash: Optional[str] = None
+    pdf_file_path: Optional[str] = None
+    pdf_sha256_hash: Optional[str] = None
