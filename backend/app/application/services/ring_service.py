@@ -3,7 +3,7 @@ Ring application service
 """
 from typing import Optional, List
 from app.domain.repositories import RingRepository
-from app.domain.entities import Ring
+from app.domain.entities import Ring, RingDetail
 
 
 class RingService:
@@ -30,3 +30,7 @@ class RingService:
     def get_ring(self, ring_id: str) -> Optional[Ring]:
         """Get a single ring"""
         return self.ring_repo.get_ring(ring_id)
+
+    def get_ring_detail(self, ring_id: str) -> Optional[RingDetail]:
+        """Ring with its members, links and transfers"""
+        return self.ring_repo.get_ring_detail(ring_id)

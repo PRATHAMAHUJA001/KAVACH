@@ -1,0 +1,82 @@
+{
+  "ring": {
+    "ring_id": "RING-0001",
+    "ring_name": "Ring 1",
+    "member_count": 3,
+    "total_volume_inr": 4500000.0,
+    "risk_score": 0.93,
+    "status": "HIGH",
+    "ring_name_hi": "समूह 1",
+    "confidence": "HIGH",
+    "speed_hours": 0.32,
+    "detected_at": "2026-09-24T18:00:00",
+    "alerted_members": 1,
+    "shared_devices": 2,
+    "city": "Madurai"
+  },
+  "members": [
+    {
+      "id": "ACC-1",
+      "label": "Member 1",
+      "risk_level": 4,
+      "kind": "member",
+      "role": "collector",
+      "city": "Madurai",
+      "alert_id": "ALT-001",
+      "money_in_inr": 3000000.0,
+      "money_out_inr": 1000000.0
+    },
+    {
+      "id": "ACC-2",
+      "label": "Member 2",
+      "risk_level": 4,
+      "kind": "member",
+      "role": "exit",
+      "city": "Madurai",
+      "alert_id": null,
+      "money_in_inr": 1000000.0,
+      "money_out_inr": 2900000.0
+    },
+    {
+      "id": "ACC-3",
+      "label": "Member 3",
+      "risk_level": 4,
+      "kind": "member",
+      "role": "mule",
+      "city": "Madurai",
+      "alert_id": null,
+      "money_in_inr": 1500000.0,
+      "money_out_inr": 1400000.0
+    }
+  ],
+  "edges": [
+    {
+      "source": "ACC-1",
+      "target": "ACC-2",
+      "kind": "sent_money",
+      "amount_inr": 1000000.0,
+      "count": 3
+    },
+    {
+      "source": "ACC-1",
+      "target": "ACC-3",
+      "kind": "shared_device",
+      "amount_inr": null,
+      "count": 2
+    }
+  ],
+  "transactions": [
+    {
+      "txn_id": "TXN-9",
+      "account_id": "ACC-1",
+      "txn_ts": "2026-09-21T18:00:00",
+      "amount_inr": 1000000.0,
+      "channel": "IMPS",
+      "direction": "DEBIT",
+      "counterparty": "ACC-2",
+      "counterparty_bank": "KAVACH",
+      "country": "IN",
+      "narration": "IMPS payment"
+    }
+  ]
+}

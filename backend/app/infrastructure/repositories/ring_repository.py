@@ -1,10 +1,74 @@
 """
-Concrete implementation of RingRepository using Snowflake
+Concrete implementation of RingRepository using Snowflake.
+
+Rings come from CORE.DETECT_MULE_RINGS() (sql/11_graph_detection.sql). "Money moved"
+and "how fast" only count transfers between members of the same ring, not the members'
+ordinary banking. All values are bound (`params=`).
 """
-from typing import Optional, List
+from __future__ import annotations
+
+from typing import List, Optional
+
 from snowflake.snowpark import Session
-from app.domain.entities import Ring
+
+from app.domain import policies
+from app.domain.entities import GraphEdgeFact, GraphNodeFact, Ring, RingDetail, TxnFact
 from app.domain.repositories import RingRepository
+from app.infrastructure.repositories.dashboard_repository import _naive
+
+_SEVERITY_RANK = "CASE a.severity WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 END"
+
+# Transfers where both sides are members of the same ring.
+_RING_TXNS = """
+    SELECT m.ring_id, t.*
+    FROM CORE.TRANSACTIONS t
+    JOIN CORE.RING_MEMBERS m ON m.account_id = t.account_id
+    JOIN CORE.RING_MEMBERS c ON c.account_id = t.counterparty AND c.ring_id = m.ring_id
+"""
+
+_RING_SELECT = f"""
+    WITH rt AS ({_RING_TXNS}),
+    vol AS (SELECT ring_id, SUM(IFF(direction = 'DEBIT', amount_inr, 0)) AS volume FROM rt GROUP BY ring_id),
+    speed AS (
+        -- hours from money arriving in a member account to the next payment out of it
+        SELECT ring_id, MEDIAN(DATEDIFF('minute', txn_ts, next_debit)) / 60 AS hours
+        FROM (
+            SELECT ring_id, direction, txn_ts,
+                   MIN(IFF(direction = 'DEBIT', txn_ts, NULL)) OVER (
+                       PARTITION BY account_id ORDER BY txn_ts ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS next_debit
+            FROM rt
+        )
+        WHERE direction = 'CREDIT' AND next_debit IS NOT NULL
+        GROUP BY ring_id
+    ),
+    city AS (
+        SELECT m.ring_id, MODE(c.city) AS city
+        FROM CORE.RING_MEMBERS m
+        JOIN CORE.ACCOUNTS acc ON acc.account_id = m.account_id
+        JOIN CORE.CUSTOMERS c ON c.customer_id = acc.customer_id
+        GROUP BY m.ring_id
+    )
+    SELECT r.ring_id, r.ring_size, r.alerted_members, r.shared_devices, r.ring_score,
+           r.confidence_label, r.detected_at, COALESCE(vol.volume, 0) AS volume, speed.hours, city.city,
+           COUNT(*) OVER () AS total_count
+    FROM CORE.RINGS r
+    LEFT JOIN vol ON vol.ring_id = r.ring_id
+    LEFT JOIN speed ON speed.ring_id = r.ring_id
+    LEFT JOIN city ON city.ring_id = r.ring_id
+"""
+
+
+def _edge_kind(edge_type: str | None) -> str | None:
+    t = (edge_type or "").upper()
+    if "MONEY" in t:
+        return "sent_money"
+    if "DEVICE" in t:
+        return "shared_device"
+    if "IP" in t:
+        return "shared_ip"
+    if "PHONE" in t or "MOBILE" in t:
+        return "shared_phone"
+    return None
 
 
 class SnowflakeRingRepository(RingRepository):
@@ -13,78 +77,109 @@ class SnowflakeRingRepository(RingRepository):
     def __init__(self, session: Session):
         self.session = session
 
+    @staticmethod
+    def _to_ring(r) -> Ring:
+        return Ring(
+            ring_id=r['RING_ID'],
+            ring_name=policies.ring_name(r['RING_ID']),
+            member_count=int(r['RING_SIZE'] or 0),
+            total_volume_inr=float(r['VOLUME'] or 0),
+            risk_score=float(r['RING_SCORE'] or 0),
+            status=r['CONFIDENCE_LABEL'] or "LOW",
+            confidence=r['CONFIDENCE_LABEL'],
+            speed_hours=round(float(r['HOURS']), 2) if r['HOURS'] is not None else None,
+            detected_at=_naive(r['DETECTED_AT']) if r['DETECTED_AT'] else None,
+            alerted_members=int(r['ALERTED_MEMBERS'] or 0),
+            shared_devices=int(r['SHARED_DEVICES'] or 0),
+            city=r['CITY'],
+        )
+
     def list_rings(self, limit: int = 20, offset: int = 0) -> tuple[List[Ring], int]:
-        """List mule rings"""
-        # Get total count
-        count_sql = "SELECT COUNT(*) AS total FROM CORE.RINGS"
-        total = self.session.sql(count_sql).collect()[0]['TOTAL']
-
-        # Get rings, with total transaction volume across member accounts
-        rings_sql = f"""
-            SELECT 
-                r.ring_id,
-                'Ring ' || r.ring_id AS ring_name,
-                r.ring_size AS member_count,
-                COALESCE(v.total_volume_inr, 0) AS total_volume_inr,
-                r.ring_score AS risk_score,
-                r.confidence_label AS status
-            FROM CORE.RINGS r
-            LEFT JOIN (
-                SELECT rm.ring_id, SUM(t.amount_inr) AS total_volume_inr
-                FROM CORE.RING_MEMBERS rm
-                JOIN CORE.TRANSACTIONS t ON t.account_id = rm.account_id
-                GROUP BY rm.ring_id
-            ) v ON r.ring_id = v.ring_id
-            ORDER BY r.ring_score DESC
-            LIMIT {limit} OFFSET {offset}
-        """
-
-        rows = self.session.sql(rings_sql).collect()
-        rings = [
-            Ring(
-                ring_id=row['RING_ID'],
-                ring_name=row['RING_NAME'],
-                member_count=row['MEMBER_COUNT'],
-                total_volume_inr=float(row['TOTAL_VOLUME_INR']),
-                risk_score=float(row['RISK_SCORE']),
-                status=row['STATUS']
-            )
-            for row in rows
-        ]
-
-        return rings, total
+        rows = self.session.sql(f"{_RING_SELECT} ORDER BY r.ring_score DESC, r.ring_id LIMIT {int(limit)} OFFSET {int(offset)}").collect()
+        total = int(rows[0]['TOTAL_COUNT']) if rows else int(self.session.sql("SELECT COUNT(*) AS n FROM CORE.RINGS").collect()[0]['N'])
+        return [self._to_ring(r) for r in rows], total
 
     def get_ring(self, ring_id: str) -> Optional[Ring]:
-        """Get a single ring by ID"""
-        sql = f"""
-            SELECT 
-                r.ring_id,
-                'Ring ' || r.ring_id AS ring_name,
-                r.ring_size AS member_count,
-                COALESCE(v.total_volume_inr, 0) AS total_volume_inr,
-                r.ring_score AS risk_score,
-                r.confidence_label AS status
-            FROM CORE.RINGS r
-            LEFT JOIN (
-                SELECT rm.ring_id, SUM(t.amount_inr) AS total_volume_inr
-                FROM CORE.RING_MEMBERS rm
-                JOIN CORE.TRANSACTIONS t ON t.account_id = rm.account_id
-                WHERE rm.ring_id = '{ring_id}'
-                GROUP BY rm.ring_id
-            ) v ON r.ring_id = v.ring_id
-            WHERE r.ring_id = '{ring_id}'
-        """
+        rows = self.session.sql(f"{_RING_SELECT} WHERE r.ring_id = ?", params=[ring_id]).collect()
+        return self._to_ring(rows[0]) if rows else None
 
-        rows = self.session.sql(sql).collect()
-        if not rows:
+    def get_ring_detail(self, ring_id: str) -> Optional[RingDetail]:
+        ring = self.get_ring(ring_id)
+        if not ring:
             return None
+        members = self.session.sql(
+            f"""
+            WITH rt AS ({_RING_TXNS} WHERE m.ring_id = ?),
+            flows AS (
+                SELECT account_id, SUM(IFF(direction = 'CREDIT', amount_inr, 0)) AS money_in,
+                       SUM(IFF(direction = 'DEBIT', amount_inr, 0)) AS money_out
+                FROM rt GROUP BY account_id
+            )
+            SELECT m.account_id, MAX(c.customer_name) AS customer_name, MAX(c.city) AS city,
+                   MAX({_SEVERITY_RANK}) AS risk, MAX(a.alert_id) AS alert_id,
+                   MAX(f.money_in) AS money_in, MAX(f.money_out) AS money_out
+            FROM CORE.RING_MEMBERS m
+            LEFT JOIN flows f ON f.account_id = m.account_id
+            LEFT JOIN CORE.ACCOUNTS acc ON acc.account_id = m.account_id
+            LEFT JOIN CORE.CUSTOMERS c ON c.customer_id = acc.customer_id
+            LEFT JOIN CORE.ALERTS a ON a.account_id = m.account_id AND a.status <> 'CLOSED'
+            WHERE m.ring_id = ?
+            GROUP BY m.account_id
+            ORDER BY m.account_id
+            """,
+            params=[ring_id, ring_id],
+        ).collect()
+        money = {m['ACCOUNT_ID']: (float(m['MONEY_IN'] or 0), float(m['MONEY_OUT'] or 0)) for m in members}
+        roles = policies.ring_roles(money)
+        # Members without an open alert take the ring's own risk band.
+        ring_risk = {"HIGH": 4, "MEDIUM": 3}.get((ring.confidence or "").upper(), 2)
+        nodes = [
+            GraphNodeFact(
+                id=m['ACCOUNT_ID'], label=m['CUSTOMER_NAME'] or m['ACCOUNT_ID'],
+                risk_level=int(m['RISK']) if m['RISK'] else ring_risk, kind="member", city=m['CITY'],
+                alert_id=m['ALERT_ID'], role=roles.get(m['ACCOUNT_ID']),
+                money_in_inr=money[m['ACCOUNT_ID']][0], money_out_inr=money[m['ACCOUNT_ID']][1],
+            )
+            for m in members
+        ]
 
-        row = rows[0]
-        return Ring(
-            ring_id=row['RING_ID'],
-            ring_name=row['RING_NAME'],
-            member_count=row['MEMBER_COUNT'],
-            total_volume_inr=float(row['TOTAL_VOLUME_INR']),
-            risk_score=float(row['RISK_SCORE']),
-            status=row['STATUS']
-        )
+        edges: dict[tuple[str, str, str], GraphEdgeFact] = {}
+        for e in self.session.sql(
+            """
+            SELECT e.account_a, e.account_b, e.edge_type, e.edge_key
+            FROM CORE.ACCOUNT_EDGES e
+            JOIN CORE.RING_MEMBERS a ON a.account_id = e.account_a AND a.ring_id = ?
+            JOIN CORE.RING_MEMBERS b ON b.account_id = e.account_b AND b.ring_id = ?
+            """,
+            params=[ring_id, ring_id],
+        ).collect():
+            kind = _edge_kind(e['EDGE_TYPE'])
+            if not kind or e['ACCOUNT_A'] == e['ACCOUNT_B']:
+                continue
+            if kind == "sent_money":
+                amt, _, n = str(e['EDGE_KEY'] or "").partition("|")
+                key = (e['ACCOUNT_A'], e['ACCOUNT_B'], kind)
+                edges[key] = GraphEdgeFact(e['ACCOUNT_A'], e['ACCOUNT_B'], kind,
+                                           amount_inr=float(amt) if amt else None, count=int(n) if n.isdigit() else None)
+            else:
+                a, b = sorted((e['ACCOUNT_A'], e['ACCOUNT_B']))
+                prev = edges.get((a, b, kind))
+                edges[(a, b, kind)] = GraphEdgeFact(a, b, kind, count=(prev.count or 0) + 1 if prev else 1)
+
+        txns = self.session.sql(
+            f"""
+            SELECT txn_id, account_id, txn_ts, amount_inr, channel, direction, counterparty, counterparty_bank, country, narration
+            FROM ({_RING_TXNS} WHERE m.ring_id = ?)
+            ORDER BY txn_ts DESC LIMIT 100
+            """,
+            params=[ring_id],
+        ).collect()
+        transactions = [
+            TxnFact(
+                txn_id=t['TXN_ID'], account_id=t['ACCOUNT_ID'], txn_ts=_naive(t['TXN_TS']), amount_inr=float(t['AMOUNT_INR'] or 0),
+                channel=t['CHANNEL'], direction=t['DIRECTION'], counterparty=t['COUNTERPARTY'],
+                counterparty_bank=t['COUNTERPARTY_BANK'], country=t['COUNTRY'], narration=t['NARRATION'],
+            )
+            for t in txns
+        ]
+        return RingDetail(ring=ring, members=nodes, edges=list(edges.values()), transactions=transactions)
