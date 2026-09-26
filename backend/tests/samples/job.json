@@ -1,0 +1,12 @@
+{
+  "job_id": "JOB-B9AD207775F0",
+  "status": "COMPLETED",
+  "progress": 100,
+  "message": "2 checks ready for review",
+  "step": 4,
+  "circular_no": "KAVACH/2026/09",
+  "rule_ids": [
+    "RL-9",
+    "RL-10"
+  ]
+}

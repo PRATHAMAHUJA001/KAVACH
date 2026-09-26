@@ -1,0 +1,42 @@
+{
+  "total_rules": 3,
+  "active_rules": 0,
+  "pending_rules": 3,
+  "rejected_rules": 0,
+  "avg_precision": 0.475,
+  "rules": [
+    {
+      "rule_id": "RL-2",
+      "rule_name": "CTR",
+      "typology": "CASH_REPORTING",
+      "alerts_30d": 500,
+      "confirmed_30d": 10,
+      "precision": 0.2,
+      "verdict": "noisy",
+      "proposed_fix": "It raised 500 alerts in 30 days. Try a higher limit in Time Machine before changing it.",
+      "proposed_fix_hi": "इसने 30 दिनों में 500 अलर्ट बनाए। बदलने से पहले टाइम मशीन में ऊँची सीमा आज़माएँ।"
+    },
+    {
+      "rule_id": "RL-1",
+      "rule_name": "STR",
+      "typology": "STRUCTURING",
+      "alerts_30d": 12,
+      "confirmed_30d": 6,
+      "precision": 0.75,
+      "verdict": "healthy",
+      "proposed_fix": null,
+      "proposed_fix_hi": null
+    },
+    {
+      "rule_id": "RL-3",
+      "rule_name": "STR2",
+      "typology": "STRUCTURING",
+      "alerts_30d": 0,
+      "confirmed_30d": 0,
+      "precision": 0.0,
+      "verdict": "quiet",
+      "proposed_fix": "It hasn't fired in 30 days. Check that the data it reads is still arriving.",
+      "proposed_fix_hi": "30 दिनों में यह एक बार भी नहीं चला। जाँचें कि इसका डेटा अब भी आ रहा है।"
+    }
+  ]
+}

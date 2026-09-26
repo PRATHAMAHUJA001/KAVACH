@@ -1,0 +1,31 @@
+{
+  "conflicts": [
+    {
+      "conflict_id": "CONF-1",
+      "typology": "STRUCTURING",
+      "entity": "TXN",
+      "description": "Different limits",
+      "status": "OPEN",
+      "detected_at": "2026-09-24T18:00:00",
+      "kind": "contradiction",
+      "rule_a": {
+        "rule_id": "RL-1",
+        "rule_name": "STRUCTURING_KAVACH_2024_01_2",
+        "citation": "KAVACH/2024/01 para 2",
+        "circular_no": "KAVACH/2024/01",
+        "para_no": "2",
+        "clause_text": "All attempts of cash deposits in amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be flagged as potential structuring and reported as STR.",
+        "plain_english": "Flags incoming cash transactions between ₹9 L and ₹10 L 3 or more times in the last 30 days."
+      },
+      "rule_b": {
+        "rule_id": "RL-3",
+        "rule_name": "STRUCTURING_KAVACH_2024_01_2",
+        "citation": "KAVACH/2025/01 (amends KAVACH/2024/01)",
+        "circular_no": "KAVACH/2024/01",
+        "para_no": "2",
+        "clause_text": "All attempts of cash deposits in amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be flagged as potential structuring and reported as STR.",
+        "plain_english": "Flags incoming cash transactions between ₹13 L and ₹15 L 3 or more times in the last 30 days."
+      }
+    }
+  ]
+}

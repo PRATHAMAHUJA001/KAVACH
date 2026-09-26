@@ -1,0 +1,144 @@
+{
+  "rules": [
+    {
+      "rule_id": "RL-1",
+      "rule_name": "STRUCTURING_KAVACH_2024_01_2",
+      "version": 1,
+      "typology": "STRUCTURING",
+      "sql_text": "SELECT 1 FROM t WHERE t.CHANNEL = 'CASH' AND t.DIRECTION = 'CREDIT' AND t.AMOUNT_INR BETWEEN 900000 AND 999999 AND t.TXN_TS >= DATEADD('day', -30, x) GROUP BY 1 HAVING COUNT(*) >= 3",
+      "status": "PENDING_APPROVAL",
+      "source_citation": "KAVACH/2024/01 para 2",
+      "created_at": "2026-09-24T18:00:00",
+      "plain_english": "Flags incoming cash transactions between ₹9 L and ₹10 L 3 or more times in the last 30 days.",
+      "plain_hindi": "पिछले 30 दिनों में ₹9 लाख से ₹10 लाख के बीच के आने वाले नकद लेनदेन (3 या ज़्यादा बार) पर अलर्ट बनाता है।",
+      "circular_no": "KAVACH/2024/01",
+      "para_no": "2",
+      "source_quote": "All attempts of cash deposits in amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be flagged as potential structuring and reported as STR.",
+      "highlight": "amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be",
+      "severity": "HIGH",
+      "entity": "TXN",
+      "params": [
+        {
+          "key": "min_amount",
+          "label": "Lowest amount",
+          "label_hi": "न्यूनतम रकम",
+          "unit": "inr",
+          "value": 900000.0,
+          "min": 450000.0,
+          "max": 1350000.0,
+          "step": 10000.0
+        },
+        {
+          "key": "max_amount",
+          "label": "Highest amount",
+          "label_hi": "अधिकतम रकम",
+          "unit": "inr",
+          "value": 999999.0,
+          "min": 500000.0,
+          "max": 1500000.0,
+          "step": 10000.0
+        },
+        {
+          "key": "max_frequency",
+          "label": "How many times",
+          "label_hi": "कितनी बार",
+          "unit": "count",
+          "value": 3.0,
+          "min": 1.0,
+          "max": 9.0,
+          "step": 1.0
+        }
+      ],
+      "approved_by": null,
+      "rejection_reason": null
+    },
+    {
+      "rule_id": "RL-2",
+      "rule_name": "CASH_REPORTING_KAVACH_2024_01_1",
+      "version": 1,
+      "typology": "CASH_REPORTING",
+      "sql_text": "SELECT 1 FROM t WHERE t.CHANNEL = 'CASH' AND t.AMOUNT_INR >= 1000000 AND t.TXN_TS >= DATEADD('day', -30, x)",
+      "status": "PENDING_APPROVAL",
+      "source_citation": "KAVACH/2024/01 para 1",
+      "created_at": "2026-09-24T18:00:00",
+      "plain_english": "Flags cash transactions of ₹10 L or more in the last 30 days.",
+      "plain_hindi": "पिछले 30 दिनों में ₹10 लाख या उससे ज़्यादा के नकद लेनदेन पर अलर्ट बनाता है।",
+      "circular_no": "KAVACH/2024/01",
+      "para_no": "1",
+      "source_quote": "All attempts of cash deposits in amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be flagged as potential structuring and reported as STR.",
+      "highlight": "amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be",
+      "severity": "HIGH",
+      "entity": "TXN",
+      "params": [
+        {
+          "key": "amount",
+          "label": "Amount limit",
+          "label_hi": "रकम की सीमा",
+          "unit": "inr",
+          "value": 1000000.0,
+          "min": 500000.0,
+          "max": 1500000.0,
+          "step": 50000.0
+        }
+      ],
+      "approved_by": null,
+      "rejection_reason": null
+    },
+    {
+      "rule_id": "RL-3",
+      "rule_name": "STRUCTURING_KAVACH_2024_01_2",
+      "version": 2,
+      "typology": "STRUCTURING",
+      "sql_text": "SELECT 1 FROM t WHERE t.CHANNEL = 'CASH' AND t.DIRECTION = 'CREDIT' AND t.AMOUNT_INR BETWEEN 1300000 AND 1499999 AND t.TXN_TS >= DATEADD('day', -30, x) GROUP BY 1 HAVING COUNT(*) >= 3",
+      "status": "PENDING_APPROVAL",
+      "source_citation": "KAVACH/2025/01 (amends KAVACH/2024/01)",
+      "created_at": "2026-09-24T18:00:00",
+      "plain_english": "Flags incoming cash transactions between ₹13 L and ₹15 L 3 or more times in the last 30 days.",
+      "plain_hindi": "पिछले 30 दिनों में ₹13 लाख से ₹15 लाख के बीच के आने वाले नकद लेनदेन (3 या ज़्यादा बार) पर अलर्ट बनाता है।",
+      "circular_no": "KAVACH/2024/01",
+      "para_no": "2",
+      "source_quote": "All attempts of cash deposits in amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be flagged as potential structuring and reported as STR.",
+      "highlight": "amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be",
+      "severity": "HIGH",
+      "entity": "TXN",
+      "params": [
+        {
+          "key": "min_amount",
+          "label": "Lowest amount",
+          "label_hi": "न्यूनतम रकम",
+          "unit": "inr",
+          "value": 900000.0,
+          "min": 450000.0,
+          "max": 1350000.0,
+          "step": 10000.0
+        },
+        {
+          "key": "max_amount",
+          "label": "Highest amount",
+          "label_hi": "अधिकतम रकम",
+          "unit": "inr",
+          "value": 999999.0,
+          "min": 500000.0,
+          "max": 1500000.0,
+          "step": 10000.0
+        },
+        {
+          "key": "max_frequency",
+          "label": "How many times",
+          "label_hi": "कितनी बार",
+          "unit": "count",
+          "value": 3.0,
+          "min": 1.0,
+          "max": 9.0,
+          "step": 1.0
+        }
+      ],
+      "approved_by": null,
+      "rejection_reason": null
+    }
+  ],
+  "total": 3,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 1
+}

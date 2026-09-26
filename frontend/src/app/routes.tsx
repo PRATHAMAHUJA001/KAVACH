@@ -18,7 +18,7 @@ export const ROUTES: AppRoute[] = [
   { path: "/alerts", key: "alerts", icon: Bell, hotkey: "a", element: lazy(() => import("@/pages/AlertsPage")) },
   { path: "/ask", key: "ask", icon: MessagesSquare, hotkey: "k", element: lazy(() => import("@/pages/AskPage")) },
   { path: "/rings", key: "rings", icon: Network, hotkey: "r", element: lazy(() => import("@/pages/RingsPage")) },
-  { path: "/rulebook", key: "rulebook", icon: ScrollText, hotkey: "b", element: page("rulebook") },
+  { path: "/rulebook", key: "rulebook", icon: ScrollText, hotkey: "b", element: lazy(() => import("@/pages/RulebookPage")) },
   { path: "/time-machine", key: "timeMachine", icon: History, hotkey: "m", element: page("timeMachine") },
 ];
 
