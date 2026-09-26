@@ -10,16 +10,14 @@ export interface AppRoute {
   element: React.LazyExoticComponent<React.ComponentType>;
 }
 
-const page = (key: AppRoute["key"]) => lazy(() => import("@/pages/PlaceholderPage").then((m) => ({ default: () => <m.default pageKey={key} /> })));
-
-/** Sidebar order follows DESIGN_SPEC §3. Pages are swapped in as each build step lands. */
+/** Sidebar order follows DESIGN_SPEC §3. */
 export const ROUTES: AppRoute[] = [
   { path: "/today", key: "today", icon: CalendarClock, hotkey: "t", element: lazy(() => import("@/pages/TodayPage")) },
   { path: "/alerts", key: "alerts", icon: Bell, hotkey: "a", element: lazy(() => import("@/pages/AlertsPage")) },
   { path: "/ask", key: "ask", icon: MessagesSquare, hotkey: "k", element: lazy(() => import("@/pages/AskPage")) },
   { path: "/rings", key: "rings", icon: Network, hotkey: "r", element: lazy(() => import("@/pages/RingsPage")) },
   { path: "/rulebook", key: "rulebook", icon: ScrollText, hotkey: "b", element: lazy(() => import("@/pages/RulebookPage")) },
-  { path: "/time-machine", key: "timeMachine", icon: History, hotkey: "m", element: page("timeMachine") },
+  { path: "/time-machine", key: "timeMachine", icon: History, hotkey: "m", element: lazy(() => import("@/pages/TimeMachinePage")) },
 ];
 
 export function routeFor(pathname: string): AppRoute | undefined {

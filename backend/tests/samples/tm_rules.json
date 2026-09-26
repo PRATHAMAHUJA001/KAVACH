@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "rule_id": "RL-1",
+      "rule_name": "STR",
+      "typology": "STRUCTURING",
+      "param": {
+        "key": "min_amount",
+        "label": "Lowest amount that counts",
+        "label_hi": "गिनी जाने वाली सबसे कम रकम",
+        "unit": "inr",
+        "value": 900000.0,
+        "min": 450000.0,
+        "max": 950000.0,
+        "step": 50000.0
+      }
+    }
+  ]
+}

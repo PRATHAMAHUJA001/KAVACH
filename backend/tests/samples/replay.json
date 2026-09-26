@@ -1,0 +1,17 @@
+{
+  "rule_id": "RL-1",
+  "days": 90,
+  "current": {
+    "value": 900000.0,
+    "alerts": 42,
+    "fraud_caught": 11,
+    "analyst_hours": 31.5
+  },
+  "proposed": {
+    "value": 800000.0,
+    "alerts": 57,
+    "fraud_caught": 15,
+    "analyst_hours": 42.8
+  },
+  "fraud_total": 19
+}
