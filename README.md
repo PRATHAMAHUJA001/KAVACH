@@ -54,10 +54,42 @@ themselves compiled into the checks that run.
 | Criterion | Weight | Where to look |
 |---|---|---|
 | **Real-world relevance** | 30% | [The problem](#-the-problem) — four loops a compliance team actually lives with. Bilingual EN/हिन्दी for Indian bank floors, RBI-style circulars, PAN masking, STR drafting, deadline clocks. |
-| **Technical execution** | 40% | [Snowflake features at every step](#-snowflake-features-at-every-step) — 16 Snowflake capabilities across 12 SQL steps, 33 API endpoints in an N-layered backend, real per-user Snowflake sessions, database-enforced governance, deployed on SPCS. |
+| **Technical execution** | 40% | [Snowflake features at every step](#-snowflake-features-at-every-step) and [how CoCo was used at every stage](#-how-coco-was-used-across-the-lifecycle) — 16 Snowflake capabilities across 12 SQL steps, 33 API endpoints in an N-layered backend, real per-user Snowflake sessions, database-enforced governance, deployed on SPCS. |
 | **Solution completeness** | 30% | [Feature tour](#-feature-tour) — 8 working pages, not mockups: live deployment, [evaluated detection](#-detection--evaluation) on a held-out split, 4 real personas, evidence packs that verify, and [limitations stated honestly](#-honest-limitations). |
 
 </details>
+
+---
+
+## 🧰 How CoCo Was Used Across the Lifecycle
+
+The hackathon asks for evidence of CoCo CLI at every stage, so here is exactly what ran where —
+and every row is **reproducible from artifacts committed to this repo**, not a story told
+afterwards. Full detail in **[docs/COCO_USAGE.md](docs/COCO_USAGE.md)**.
+
+| Phase | CoCo evidence |
+|---|---|
+| **Planning / design** | **7 CoCo plan-mode artifacts tracked in git**, written before any DDL ran — `phase-2-synthetic-data` (`2026-09-25T05:31:33Z`), `phase-3-regulation-compiler`, `phase-4-detection-engine` (`09:39:00Z`), `phase-5-conversational-intel` (`11:09:43Z`), `agent-identity-html-evidence` (`14:05:23Z`), `alerts-page-case-drawer` (`20:26:11Z`), `migrate-account-and-build-alerts-page`. CoCo's persistent project memory (`.snowflake/cortex/memory/projects/…/kavach-project.md`) is what let later sessions resume knowing the account topology, roles and cost constraints. |
+| **Execution — building in Snowflake** | Every schema, masking policy, row access policy, procedure, dynamic table, stream, task, Cortex Search service, semantic view and agent in [`sql/`](sql/) was authored **and executed** through CoCo against `ONFHCCI-TV84204`. Sessions: `01fbfb1f` (*KAVACH Phase 1 Foundation Setup*), `04e512ea` (*Finish Checkpoint 1 Phase 6*), `2ec02ea4` (*Finish Phases 6 to 8*), `f780b911` (*Export Snowflake Metadata to Repo*). CoCo's **credit audit** changed the architecture — warehouses to `AUTO_SUSPEND=60` and the dynamic table to `TARGET_LAG = DOWNSTREAM` (commit `CHECKPOINT 0`). |
+| **Development / debugging** | The largest session in the project is the application build: `71694ce4` (*Alerts Page and Case Drawer*) — alerts queue, case drawer, rings, rulebook, time machine, tour, landing + login, SPCS deploy; plus `98a5af70` (*Build Fintech App Demo UI*). Real bugs traced to root cause, each with a commit: the Mule Rings overscroll (grid `min-height: auto` beating a descendant `max-h`, fixed with `min-h-0`), mule-ring data where no account ever terminated the chain, the live-vs-local `401` (a container cannot make an outbound password connection — rewrote auth onto the mounted OAuth token), and the top bar showing the shared service identity instead of the signed-in persona. |
+| **Testing / verification** | Run through CoCo, not by hand: session `c308d4af` (*Backend Endpoints Smoke Test*) → commit **`23/23 endpoints passing`** against live Snowflake. Also verified in CoCo: **per-persona masking** on one customer record across all four roles (`admin` → `Umesh Nair / TGDCT5500H`, `reviewer` → `An********* / XXXXX6428G`, writes `403` for read-only roles), the detection split arithmetic (`TP+FP = 50`, `TP+FN = 58`), ring regeneration leaving **0 orphaned alerts**, and the logout round-trip. CoCo also **disproved a documentation claim** — the old README asserted Time Travel usage; a grep across all twelve SQL files found nothing supporting it, so it was removed rather than shipped. |
+| **Deployment** | Service spec authored, image built `linux/amd64`, pushed to the Snowflake image registry, service upgraded **in place** with `ALTER SERVICE … FROM SPECIFICATION`. CoCo discovered the two constraints that shaped the demo: a public SPCS endpoint **always** requires Snowflake auth (hence four real persona users, no anonymous link), and **EAI is unavailable on trial accounts**, so the container authenticates with the OAuth token at `/snowflake/session/token`. |
+| **Reusable skills** | Four CoCo skills committed in [`skills/`](skills/) for recurring compliance work: `compile_circular`, `triage_alerts`, `rule_health`, `deadline_watch`. |
+
+**Reproduce the evidence yourself** — 8 CoCo sessions (25-Sep → 27-Sep), 26 commits, 7 plan artifacts:
+
+```bash
+ls -la .snowflake/cortex/plans/                      # CoCo plan-mode artifacts
+grep -H '^created:' .snowflake/cortex/plans/*.md     # with creation timestamps
+cat .snowflake/cortex/memory/projects/*/kavach-project.md   # CoCo project memory
+ls skills/                                           # CoCo skills
+git log --format='%ad  %s' --date=format:'%d-%b %H:%M' --reverse   # 26 commits
+git log --format='%B' | grep -c 'Co-authored-by: Snowflake CoCo'   # trailer on every commit
+ls ~/.snowflake/cortex/conversations/*/              # CoCo session store
+```
+
+> Session transcripts are trimmed by CoCo once summarised, so session **titles, IDs and dates** are
+> cited above rather than message counts, which are not recoverable from the saved files.
 
 ---
 
@@ -101,6 +133,7 @@ the service can get through. So there are **two** gates, and both use the same c
 
 - [Hackathon submission](#-snowflake-coco-cli-hackathon-2026--gcc-edition)
 - [Demo & live deployment](#-demo--live-deployment)
+- [How CoCo was used across the lifecycle](#-how-coco-was-used-across-the-lifecycle)
 - [The problem](#-the-problem)
 - [What KAVACH does](#-what-kavach-does)
 - [Feature tour with screenshots](#-feature-tour)
