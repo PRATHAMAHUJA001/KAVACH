@@ -138,6 +138,7 @@ the service can get through. So there are **two** gates, and both use the same c
 - [What KAVACH does](#-what-kavach-does)
 - [Feature tour with screenshots](#-feature-tour)
   - [Landing & sign-in](#landing--sign-in) · [Today](#1-today--the-morning-briefing) · [Alerts & case file](#2-alerts--the-case-file) · [Why-not](#3-why-not-the-negative-explainer) · [Ask KAVACH](#4-ask-kavach--conversational-intelligence) · [Mule rings](#5-mule-rings--graph-detection) · [Rulebook](#6-rulebook--the-regulation-compiler) · [Time machine](#7-time-machine--threshold-replay) · [Shell](#8-shell-search-shortcuts-and-read-only-mode) · [Bilingual](#bilingual-by-design) · [Tour](#guided-product-tour)
+- [Tech stack](#-tech-stack)
 - [Architecture](#-architecture)
 - [Snowflake features used](#-snowflake-features-used)
 - [AI models](#-ai-models)
@@ -302,6 +303,60 @@ Every colour, type ramp, and component is a semantic token with a light and dark
 documented on a live `/styleguide` route.
 
 <img src="docs/screens/styleguide-1920-light.png" alt="KAVACH design system styleguide" width="900">
+
+---
+
+## 🧱 Tech Stack
+
+### Frontend — `frontend/`
+
+| Concern | Choice |
+|---|---|
+| Framework | **React 18.3** + **TypeScript 5.9** (strict) |
+| Build | **Vite 8** with `@vitejs/plugin-react` |
+| Styling | **Tailwind CSS 4** — every colour and type step is a semantic token with a light and dark value |
+| Components | **Radix UI** primitives (dialog, dropdown, popover, slider, switch, tabs, tooltip, collapsible) wrapped in a local design system |
+| Charts | **Recharts 2** for trends and distributions |
+| Graph | **React Flow (`@xyflow/react` 12)** for the mule-ring network |
+| Data layer | **TanStack Query 5** + **openapi-fetch** against types generated from `docs/openapi.json` |
+| Motion | **framer-motion 11**, reduced-motion aware |
+| i18n | **i18next 26** / **react-i18next** — English + हिन्दी, with Noto Sans Devanagari |
+| Tour | **react-joyride** — 12 steps, navigates across routes |
+| Mocks | **MSW 2** — every endpoint served locally, so the UI runs with no Snowflake account |
+| Testing | **Playwright** (e2e + the visual QA suite that produced the screenshots above), **Lighthouse** |
+
+### Backend — `backend/`
+
+| Concern | Choice |
+|---|---|
+| API | **FastAPI 0.115** on **Uvicorn**, 33 endpoints, N-layered (presentation → application → domain → infrastructure) |
+| Snowflake | **snowflake-snowpark-python 1.55** — one session per signed-in user, bound per request via `contextvars` |
+| Validation | **Pydantic 2.9** + `pydantic-settings` |
+| PDF | **reportlab** for evidence packs |
+| Tests | **pytest** + `pytest-asyncio` |
+
+### Container — `Dockerfile`
+
+One image, two stages, **one thing to deploy**: Node builds the React bundle, then the Python
+runtime serves both the API **and** that built bundle from the same process — so there is no
+separate static host, no CORS between UI and API, and the frontend is versioned with the backend
+that serves it.
+
+```dockerfile
+# Stage 1 — build the frontend
+FROM node:20-slim AS frontend-build
+RUN npm ci && npm run build          # → /app/frontend/dist
+
+# Stage 2 — Python serves API + the built SPA
+FROM python:3.11-slim
+COPY --from=frontend-build /app/frontend/dist ./frontend_dist
+USER appuser                          # non-root
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+FastAPI mounts `frontend_dist` as static assets with an SPA fallback, so client-side routes like
+`/alerts` and `/login` resolve on a hard refresh. See [Deploying to SPCS](#-deploying-to-spcs) for
+how this image reaches the live URL.
 
 ---
 
@@ -560,11 +615,27 @@ npm run gen:api       # regenerate API types from docs/openapi.json
 
 ## 🚀 Deploying to SPCS
 
-The container is multi-stage: Node builds the frontend, Python serves both the API and the
-built SPA from one process, so there is a single thing to deploy.
+The whole app ships as **one container image**: the React frontend is compiled during the Docker
+build and baked into the image, and the Python process serves both that bundle and the API. That
+image is pushed to the **Snowflake image registry** inside the account, and a **Snowpark Container
+Services** service runs it on a compute pool — so the UI, the API and the data all live in
+Snowflake, and nothing is hosted outside it.
+
+```
+frontend/ ──npm run build──┐
+                           ├──► docker build (linux/amd64) ──► Snowflake image registry
+backend/app/ ──────────────┘                                    kavach_db/app/kavach_repo
+                                                                          │
+                                                                          ▼
+                                                        SPCS service KAVACH_DB.APP.KAVACH_WEB
+                                                        on compute pool KAVACH_POOL
+                                                                          │
+                                                                          ▼
+                                    https://ea5glc-onfhcci-tv84204.snowflakecomputing.app
+```
 
 ```bash
-# 1. Build for SPCS (linux/amd64 regardless of your host)
+# 1. Build for SPCS (linux/amd64 regardless of your host — required by SPCS)
 docker build --platform linux/amd64 \
   -t <org>-<acct>.registry.snowflakecomputing.com/kavach_db/app/kavach_repo/kavach-web:latest .
 
@@ -577,7 +648,9 @@ ALTER SERVICE KAVACH_DB.APP.KAVACH_WEB FROM SPECIFICATION $$ ... $$;
 ```
 
 Service spec lives in [`deploy/spec.yaml`](deploy/spec.yaml); compute pool `KAVACH_POOL`
-(`CPU_X64_XS`, auto-suspend 600s).
+(`CPU_X64_XS`, auto-suspend 600s). Service credentials are injected from a **Snowflake secret** via
+`secretKeyRef` — never baked into the image. Inside the container the app authenticates to
+Snowflake with the OAuth token Snowflake mounts at `/snowflake/session/token`.
 
 **Two constraints worth knowing before you copy this setup:**
 
