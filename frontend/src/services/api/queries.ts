@@ -2,10 +2,11 @@
  * TanStack Query hooks — the only way features read or write server data.
  * Previous data is kept while refetching so screens never flash empty.
  */
-import { keepPreviousData, QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, QueryClient, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as api from "./client";
 import { ApiError } from "./client";
 import type { AlertListParams, FeedbackRequestDTO } from "./dto";
+import type { AlertDetail } from "./models";
 
 export const qk = {
   me: ["me"] as const,
@@ -25,6 +26,9 @@ export const qk = {
   job: (id: string) => ["job", id] as const,
   tunables: ["tunables"] as const,
   whyNot: (id: string) => ["whyNot", id] as const,
+  strDraft: (id: string) => ["strDraft", id] as const,
+  verification: (id: string) => ["verification", id] as const,
+  ruleEval: ["ruleEval"] as const,
 };
 
 export function createQueryClient() {
@@ -76,10 +80,25 @@ export function usePrefetchAlert() {
   return (id: string) => void qc.prefetchQuery({ queryKey: qk.alert(id), queryFn: () => api.getAlert(id), staleTime: 30_000 });
 }
 
+/** Optimistic: the case file shows the verdict at once and rolls back if the server refuses. */
 export function useFeedback(alertId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: FeedbackRequestDTO) => api.sendFeedback(alertId, body),
+    onMutate: async (body) => {
+      if (!body.verdict) return { previous: undefined };
+      await qc.cancelQueries({ queryKey: qk.alert(alertId) });
+      const previous = qc.getQueryData<AlertDetail>(qk.alert(alertId));
+      if (previous)
+        qc.setQueryData<AlertDetail>(qk.alert(alertId), {
+          ...previous,
+          alert: { ...previous.alert, status: "CLOSED", resolution: body.verdict === "FRAUD" ? "TRUE_POSITIVE" : "FALSE_POSITIVE" },
+        });
+      return { previous };
+    },
+    onError: (_err, _body, ctx) => {
+      if (ctx?.previous) qc.setQueryData(qk.alert(alertId), ctx.previous);
+    },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["alerts"] });
       void qc.invalidateQueries({ queryKey: qk.alert(alertId) });
@@ -91,13 +110,37 @@ export function useFeedback(alertId: string) {
 export function useCreateEvidence(alertId: string) {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: ["createEvidence", alertId],
     mutationFn: () => api.createEvidence(alertId),
-    onSuccess: (e) => qc.setQueryData(qk.evidence(alertId), e),
+    onSuccess: (e) => {
+      qc.setQueryData(qk.evidence(alertId), e);
+      // A new pack hasn't been checked yet.
+      qc.removeQueries({ queryKey: qk.verification(alertId) });
+    },
   });
 }
 
+/** Verifies the stored pack; the result is cached so every part of the case file sees the same seal. */
 export function useVerifyEvidence(alertId: string) {
-  return useMutation({ mutationFn: () => api.verifyEvidence(alertId) });
+  const qc = useQueryClient();
+  return useMutation({
+    mutationKey: ["verify", alertId],
+    mutationFn: () => api.verifyEvidence(alertId),
+    onSuccess: (v) => qc.setQueryData(qk.verification(alertId), v),
+  });
+}
+export const useVerification = (alertId: string) =>
+  useQuery({ queryKey: qk.verification(alertId), queryFn: () => api.verifyEvidence(alertId), enabled: false, placeholderData: undefined, staleTime: Infinity });
+export const useIsVerifying = (alertId: string) => useIsMutating({ mutationKey: ["verify", alertId] }) > 0;
+export const useIsCreatingEvidence = (alertId: string) => useIsMutating({ mutationKey: ["createEvidence", alertId] }) > 0;
+
+/** The draft doesn't change within a session, so it's fetched once when asked for. */
+export const useSTRDraft = (id: string | null) =>
+  useQuery({ queryKey: qk.strDraft(id ?? ""), queryFn: () => api.getStrDraft(id!), enabled: !!id, staleTime: Infinity, placeholderData: undefined, retry: false });
+
+/** "Why wasn't this flagged?" — a lookup on submit, not a query on mount. */
+export function useWhyNot() {
+  return useMutation({ mutationFn: (txnId: string) => api.whyNot(txnId.trim().toUpperCase()) });
 }
 
 export function useRuleDecision() {
@@ -111,6 +154,24 @@ export function useRuleDecision() {
       void qc.invalidateQueries({ queryKey: qk.home });
     },
   });
+}
+
+export const useRuleEval = () => useQuery({ queryKey: qk.ruleEval, queryFn: api.getEval, staleTime: 5 * 60_000 });
+
+/** Starts a circular upload; the job is then polled with useJob until it completes. */
+export function useUploadCircular() {
+  return useMutation({ mutationFn: (file: File) => api.uploadCircular(file) });
+}
+
+/** Once an upload finishes, the new rules, conflicts and health need a fresh read. */
+export function useRefreshRules() {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ["rules"] });
+    void qc.invalidateQueries({ queryKey: qk.conflicts });
+    void qc.invalidateQueries({ queryKey: qk.ruleHealth });
+    void qc.invalidateQueries({ queryKey: qk.home });
+  };
 }
 
 export function useReplay() {

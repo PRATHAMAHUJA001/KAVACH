@@ -312,3 +312,19 @@
 .anim-dialog[data-state="closed"] {
   animation: fade-out 140ms ease-in;
 }
+
+/* One-shot entrance (graph nodes). Off under reduced motion. */
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+}
+.anim-enter {
+  animation: enter-up 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-enter {
+    animation: none;
+  }
+}

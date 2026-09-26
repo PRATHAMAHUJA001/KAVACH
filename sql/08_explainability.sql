@@ -17,6 +17,10 @@ CREATE OR REPLACE TABLE AI.ALERT_STORIES (
     model_used VARCHAR
 );
 
+-- Stories for the 200 alerts an analyst meets first (the tour's alert and ring members
+-- first, then by severity). The LLM only rephrases facts computed here in SQL.
+-- The customer is written as the token XCUSTX and swapped for CUSTOMER_NAME when the
+-- story is read, so Snowflake's masking policy still applies to names in stories.
 CREATE OR REPLACE PROCEDURE AI.GENERATE_ALERT_STORIES()
 RETURNS STRING
 LANGUAGE SQL
@@ -26,79 +30,59 @@ $$
 DECLARE
     rows_generated INT DEFAULT 0;
 BEGIN
-    -- Generate stories for top 200 HIGH priority alerts only (credit discipline)
-    -- Use batched AI_COMPLETE to avoid per-row calls
-    
     TRUNCATE TABLE AI.ALERT_STORIES;
-    
-    -- Step 1: Build structured prompts with REAL data from SQL
+
     CREATE OR REPLACE TEMP TABLE story_prompts AS
-    WITH top_alerts AS (
-        SELECT 
-            a.alert_id,
-            a.account_id,
-            a.customer_id,
-            a.typology,
-            a.score,
-            a.rule_name,
-            a.citation,
-            a.severity,
-            -- Get transaction summary
-            t.txn_count,
-            t.total_amount_inr,
-            t.date_range
+    WITH win AS (
+        SELECT account_id, COUNT(*) AS n, SUM(amount_inr) AS amt,
+               MIN(txn_ts) AS d1, MAX(txn_ts) AS d2
+        FROM CORE.TRANSACTIONS
+        WHERE txn_ts >= DATEADD('day', -30, (SELECT MAX(txn_ts) FROM CORE.TRANSACTIONS))
+        GROUP BY account_id
+    ),
+    picked AS (
+        SELECT a.*, w.n, w.amt, w.d1, w.d2, t.amount_inr AS trig_amt, t.channel AS trig_channel, t.txn_ts AS trig_ts,
+               REGEXP_SUBSTR(a.citation, 'KAVACH/[0-9]{4}/[0-9]{2}') AS circ,
+               REGEXP_SUBSTR(a.citation, '[0-9]+$') AS para
         FROM CORE.ALERTS a
-        LEFT JOIN (
-            SELECT 
-                account_id,
-                COUNT(*) AS txn_count,
-                SUM(amount_inr) AS total_amount_inr,
-                MIN(txn_ts)::DATE || ' to ' || MAX(txn_ts)::DATE AS date_range
-            FROM CORE.TRANSACTIONS
-            WHERE txn_ts >= DATEADD('day', -30, CURRENT_DATE())
-            GROUP BY account_id
-        ) t ON a.account_id = t.account_id
-        WHERE a.severity IN ('HIGH', 'CRITICAL')
-        ORDER BY a.score DESC
+        LEFT JOIN win w ON w.account_id = a.account_id
+        LEFT JOIN CORE.TRANSACTIONS t ON t.txn_id = a.txn_id
+        WHERE a.status <> 'CLOSED'
+        ORDER BY IFF(a.alert_id = (SELECT value FROM APP.SETTINGS WHERE key = 'TOUR_ALERT_ID'), 0, 1),
+                 IFF(a.account_id IN (SELECT account_id FROM CORE.RING_MEMBERS), 0, 1),
+                 CASE a.severity WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
+                 a.score DESC, a.alert_id
         LIMIT 200
     )
-    SELECT 
-        alert_id,
-        -- Template: LLM only rephrases, never invents numbers
-        'You are a compliance analyst. Rephrase this alert into a clear 3-5 sentence story in simple English. ' ||
-        'Use EXACTLY the numbers provided; do not invent any data. ' ||
-        'Alert ID: ' || alert_id || '. ' ||
-        'Account ' || account_id || COALESCE(' (Customer ' || customer_id || ')', '') || ' was flagged for ' || typology || '. ' ||
-        'The account had ' || COALESCE(txn_count, 0) || ' transactions totaling ₹' || 
-        COALESCE(ROUND(total_amount_inr/100000, 2), 0) || ' lakh ' ||
-        'from ' || COALESCE(date_range, 'unknown period') || '. ' ||
-        'This triggered rule "' || rule_name || '" (source: ' || citation || '). ' ||
-        'Risk score: ' || ROUND(score, 2) || '.' AS prompt_en
-    FROM top_alerts;
-    
-    -- Step 2: Batch call AI_COMPLETE (one call for all 200, not 200 calls)
+    SELECT alert_id,
+        'Write 3 or 4 short sentences in simple English telling a bank compliance officer why this account was flagged. ' ||
+        'Rules: write only the sentences, with no introduction, heading or quotes. Call the customer XCUSTX exactly. ' ||
+        'Use only the facts below and copy numbers and amounts exactly as written. ' ||
+        'Do not mention scores, rule names, alert IDs or account numbers. Do not add anything that is not in the facts: ' ||
+        'no comparisons with the past, no guesses about intent, no words like largest or unusual. ' ||
+        'The last sentence must name the regulation exactly as written below. ' ||
+        'Facts: The pattern found: ' || LOWER(REPLACE(typology, '_', ' ')) || '. ' ||
+        IFF(n IS NULL, '',
+            'In the 30 days from ' || TO_CHAR(d1, 'DD Mon YYYY') || ' to ' || TO_CHAR(d2, 'DD Mon YYYY') || ' the account had ' || n ||
+            ' transactions worth Rs. ' || IFF(amt >= 1e7, TO_VARCHAR(ROUND(amt / 1e7, 2)) || ' crore', TO_VARCHAR(ROUND(amt / 1e5, 2)) || ' lakh') || '. ') ||
+        IFF(trig_amt IS NULL, '',
+            'The transaction that set off the check was Rs. ' ||
+            IFF(trig_amt >= 1e7, TO_VARCHAR(ROUND(trig_amt / 1e7, 2)) || ' crore', TO_VARCHAR(ROUND(trig_amt / 1e5, 2)) || ' lakh') ||
+            ' by ' || trig_channel || ' on ' || TO_CHAR(trig_ts, 'DD Mon YYYY') || '. ') ||
+        IFF(account_id IN (SELECT account_id FROM CORE.RING_MEMBERS), 'The account also moves money with a group of linked accounts that share phones or devices. ', '') ||
+        'Regulation: synthetic circular ' || COALESCE(circ, citation) || COALESCE(', paragraph ' || para, '') || '.' AS prompt_en
+    FROM picked;
+
     INSERT INTO AI.ALERT_STORIES (alert_id, story_en, model_used)
-    SELECT 
-        alert_id,
-        SNOWFLAKE.CORTEX.AI_COMPLETE(
-            'llama3.1-8b',  -- efficient open-source model for rephrasing
-            prompt_en
-        ) AS story_en,
-        'llama3.1-8b'
+    SELECT alert_id,
+           TRIM(REGEXP_REPLACE(AI_COMPLETE('llama3.1-70b', prompt_en)::STRING, '^\\s*(here is|here''s|sure)[^:\\n]*:\\s*', '', 1, 1, 'i'), ' "\n'),
+           'llama3.1-70b'
     FROM story_prompts;
-    
-    -- Step 3: Translate to Hindi (batched)
-    UPDATE AI.ALERT_STORIES
-    SET story_hi = SNOWFLAKE.CORTEX.AI_TRANSLATE(
-        story_en,
-        'en',
-        'hi'
-    )
-    WHERE story_hi IS NULL;
-    
+
+    UPDATE AI.ALERT_STORIES SET story_hi = AI_TRANSLATE(story_en, 'en', 'hi') WHERE story_hi IS NULL;
+
     SELECT COUNT(*) INTO rows_generated FROM AI.ALERT_STORIES;
-    
-    RETURN 'Generated ' || rows_generated || ' alert stories (EN + HI) for top 200 high-priority alerts';
+    RETURN 'Generated ' || rows_generated || ' alert stories (EN + HI)';
 END;
 $$;
 
@@ -159,7 +143,7 @@ DECLARE
     file_rel_path VARCHAR;
     ref_date TIMESTAMP_NTZ;
 BEGIN
-    ref_date := (SELECT MAX(created_at) FROM CORE.ALERTS);
+    ref_date := (SELECT MAX(TXN_TS) FROM CORE.TRANSACTIONS);
 
     -- Build structured evidence JSON. Note: correlated subqueries inside a
     -- SELECT ... INTO block are not allowed in Snowflake Scripting, so the
@@ -225,11 +209,14 @@ BEGIN
     LEFT JOIN timeline_agg tx ON tx.account_id = a.account_id
     LEFT JOIN ml_agg ml ON ml.account_id = a.account_id
     LEFT JOIN notes_agg n ON n.account_id = a.account_id
-    WHERE a.alert_id = p_alert_id;
+    WHERE a.alert_id = :p_alert_id;
 
-    evidence_str := TO_JSON(evidence);
-    hash_val := SHA2(evidence_str, 256);
-    file_rel_path := 'evidence_' || p_alert_id || '.json';
+    -- NOTE: Snowflake Scripting requires colon-prefixed references to both
+    -- procedure parameters AND DECLARE'd variables inside embedded SQL
+    -- statements (assignments that call SQL functions count as SQL).
+    evidence_str := TO_JSON(:evidence);
+    hash_val := SHA2(:evidence_str, 256);
+    file_rel_path := 'evidence_' || :p_alert_id || '.json';
 
     -- Persist the exact hashed JSON string to the evidence stage so the
     -- stored SHA-256 can be independently verified against the downloaded file.
@@ -238,9 +225,12 @@ BEGIN
         USING (evidence_str);
 
     -- Store in registry
-    DELETE FROM AUDIT.EVIDENCE_REGISTRY WHERE alert_id = p_alert_id;
+    DELETE FROM AUDIT.EVIDENCE_REGISTRY WHERE alert_id = :p_alert_id;
+    -- NOTE: Snowflake disallows function calls on bind variables (e.g.
+    -- PARSE_JSON(:x)) inside an INSERT...VALUES clause -- must use
+    -- INSERT...SELECT instead.
     INSERT INTO AUDIT.EVIDENCE_REGISTRY (alert_id, evidence_json, file_path, sha256_hash, created_by)
-    VALUES (p_alert_id, evidence, file_rel_path, hash_val, CURRENT_USER());
+    SELECT :p_alert_id, PARSE_JSON(:evidence_str), :file_rel_path, :hash_val, CURRENT_USER();
 
     RETURN evidence;
 END;
@@ -284,7 +274,7 @@ $$
             SUM(amount_inr) AS total_inr,
             LISTAGG(DISTINCT channel, ', ') AS channels
         FROM CORE.TRANSACTIONS
-        WHERE txn_ts >= DATEADD('day', -30, (SELECT MAX(created_at) FROM CORE.ALERTS))
+        WHERE txn_ts >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM CORE.TRANSACTIONS))
         GROUP BY account_id
     ) tx ON a.account_id = tx.account_id
     WHERE a.alert_id = p_alert_id
@@ -385,13 +375,18 @@ WITH metrics AS (
         ) * 30 AS evidence_score,
         
         -- Metric 4: Open rule conflicts (penalty)
-        COUNT(DISTINCT c.conflict_pair) * -3 AS conflict_penalty
+        -- NOTE: RULES.RULE_CONFLICTS (created in sql/07) has columns
+        -- CONFLICT_ID and STATUS -- this originally referenced
+        -- c.conflict_pair/c.resolution_status, which don't exist on that
+        -- table and would fail at CREATE VIEW time. Fixed to match the real
+        -- schema.
+        COUNT(DISTINCT c.conflict_id) * -3 AS conflict_penalty
         
     FROM RULES.RULE_LIBRARY r
     LEFT JOIN AI.DEADLINE_CLOCK d ON 1=1
     LEFT JOIN CORE.ALERTS a ON 1=1
     LEFT JOIN AUDIT.EVIDENCE_REGISTRY e ON a.alert_id = e.alert_id
-    LEFT JOIN RULES.RULE_CONFLICTS c ON c.resolution_status = 'OPEN'
+    LEFT JOIN RULES.RULE_CONFLICTS c ON c.status = 'OPEN'
 )
 SELECT 
     GREATEST(0, LEAST(100, 
@@ -407,26 +402,30 @@ FROM metrics;
 -- ----------------------------------------------------------------------------
 -- 8. RESET_TOUR_DATA: Restore demo data for product tour
 -- ----------------------------------------------------------------------------
+-- The tour always uses the same alert, ring, rule and circular, pinned in APP.SETTINGS
+-- (TOUR_ALERT_ID, TOUR_RING_ID, TOUR_RULE_ID, TOUR_CIRCULAR_NO). Reset puts exactly
+-- those back: the rule waiting for review, the alert open with no verdict or evidence.
 CREATE OR REPLACE PROCEDURE AI.RESET_TOUR_DATA()
 RETURNS STRING
 LANGUAGE SQL
 EXECUTE AS CALLER
 AS
 $$
+DECLARE
+    tour_alert STRING DEFAULT (SELECT value FROM KAVACH_DB.APP.SETTINGS WHERE key = 'TOUR_ALERT_ID');
+    tour_rule  STRING DEFAULT (SELECT value FROM KAVACH_DB.APP.SETTINGS WHERE key = 'TOUR_RULE_ID');
 BEGIN
-    -- Mark specific demo rows as tour data
-    UPDATE RULES.RULE_LIBRARY 
-    SET status = 'PENDING_APPROVAL' 
-    WHERE rule_id = (SELECT rule_id FROM RULES.RULE_LIBRARY WHERE status = 'APPROVED' ORDER BY created_at DESC LIMIT 1);
-    
-    UPDATE CORE.ALERTS 
-    SET status = 'NEW' 
-    WHERE alert_id = (SELECT alert_id FROM CORE.ALERTS WHERE typology = 'STRUCTURING' AND status = 'CLOSED' ORDER BY created_at DESC LIMIT 1);
-    
-    DELETE FROM AUDIT.EVIDENCE_REGISTRY 
-    WHERE alert_id = (SELECT alert_id FROM CORE.ALERTS WHERE typology = 'STRUCTURING' ORDER BY created_at DESC LIMIT 1);
-    
-    RETURN 'Tour data reset: 1 pending rule, 1 reopened alert';
+    IF (tour_alert IS NULL OR tour_rule IS NULL) THEN
+        RETURN 'Tour data not seeded: set TOUR_ALERT_ID and TOUR_RULE_ID in APP.SETTINGS';
+    END IF;
+    UPDATE KAVACH_DB.RULES.RULE_LIBRARY
+       SET status = 'PENDING_APPROVAL', approved_by = NULL, approved_at = NULL,
+           rejected_by = NULL, rejection_reason = NULL, rejected_at = NULL
+     WHERE rule_id = :tour_rule;
+    UPDATE KAVACH_DB.CORE.ALERTS SET status = 'NEW', resolution = NULL, resolved_at = NULL WHERE alert_id = :tour_alert;
+    DELETE FROM KAVACH_DB.AUDIT.EVIDENCE_REGISTRY WHERE alert_id = :tour_alert;
+    DELETE FROM KAVACH_DB.AUDIT.ALERT_FEEDBACK WHERE alert_id = :tour_alert;
+    RETURN 'Tour data reset: rule ' || :tour_rule || ' pending, alert ' || :tour_alert || ' reopened';
 END;
 $$;
 

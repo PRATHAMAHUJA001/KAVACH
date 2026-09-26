@@ -33,10 +33,9 @@ export interface paths {
         };
         /**
          * Get Home Dashboard
-         * @description Get home dashboard data:
-         *     - Readiness score
-         *     - Top 5 alerts
-         *     - 7-day trend
+         * @description Today dashboard: readiness score (with the factors pulling it down), KPIs,
+         *     the five things needing attention, a 30-day alerts vs confirmed-fraud trend
+         *     and a one-paragraph weekly brief. Deadlines use the data's as-of date.
          */
         get: operations["get_home_dashboard_api_home_get"];
         put?: never;
@@ -56,7 +55,9 @@ export interface paths {
         };
         /**
          * Get Current User
-         * @description Get current user profile
+         * @description The signed-in identity. The role is the Snowflake session's CURRENT_ROLE(), so the
+         *     UI's read-only mode matches what masking and row-access policies actually enforce.
+         *     `as_of` is the data's "today" used for report deadlines.
          */
         get: operations["get_current_user_api_me_get"];
         put?: never;
@@ -76,7 +77,8 @@ export interface paths {
         };
         /**
          * List Alerts
-         * @description List alerts with optional filters
+         * @description List alerts with optional filters. `priority` puts open alerts first, then the
+         *     nearest report deadline, then severity.
          */
         get: operations["list_alerts_api_alerts_get"];
         put?: never;
@@ -96,7 +98,7 @@ export interface paths {
         };
         /**
          * Get Alert Detail
-         * @description Get detailed information for a specific alert
+         * @description The case file: story, reasons, timeline, transactions, connections and the cited paragraph.
          */
         get: operations["get_alert_detail_api_alerts__alert_id__get"];
         put?: never;
@@ -162,7 +164,8 @@ export interface paths {
         put?: never;
         /**
          * Submit Feedback
-         * @description Submit feedback for an alert
+         * @description Submit feedback for an alert. With a verdict, the alert is closed as confirmed
+         *     fraud (TRUE_POSITIVE) or a false alarm (FALSE_POSITIVE).
          */
         post: operations["submit_feedback_api_alerts__alert_id__feedback_post"];
         delete?: never;
@@ -223,7 +226,7 @@ export interface paths {
         };
         /**
          * Why Not
-         * @description Explain why a transaction didn't trigger an alert
+         * @description Explain why a transaction didn't trigger an alert (or open its alert if it did)
          */
         get: operations["why_not_api_why_not__txn_id__get"];
         put?: never;
@@ -243,11 +246,52 @@ export interface paths {
         };
         /**
          * Time Machine
-         * @description Get historical alert trends
+         * @description Daily alert counts for the last `days` of data, with the top patterns per day
          */
         get: operations["time_machine_api_time_machine_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/time-machine/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tunable Rules
+         * @description Rules with a limit the what-if slider can move
+         */
+        get: operations["tunable_rules_api_time_machine_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/time-machine/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replay
+         * @description Run the rule over the last `days` at its current limit and at `value`; compare alerts,
+         *     planted fraud caught and review hours (45 minutes per alert).
+         */
+        post: operations["replay_api_time_machine_replay_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -263,7 +307,7 @@ export interface paths {
         };
         /**
          * List Rings
-         * @description List mule rings
+         * @description List mule rings, most suspicious first
          */
         get: operations["list_rings_api_rings_get"];
         put?: never;
@@ -283,7 +327,7 @@ export interface paths {
         };
         /**
          * Get Ring Detail
-         * @description Get detailed information for a specific ring
+         * @description Members (with roles), shared-device/IP and money links between them, and their transfers
          */
         get: operations["get_ring_detail_api_rings__ring_id__get"];
         put?: never;
@@ -363,7 +407,7 @@ export interface paths {
         };
         /**
          * Get Rule Conflicts
-         * @description Get rule conflicts
+         * @description Pairs of rules that overlap, or contradict each other on thresholds
          */
         get: operations["get_rule_conflicts_api_rules_conflicts_get"];
         put?: never;
@@ -383,9 +427,90 @@ export interface paths {
         };
         /**
          * Get Rule Health
-         * @description Get rule health metrics
+         * @description Counts by status, and per rule: alerts and confirmed fraud in the last 30 days, with a verdict
          */
         get: operations["get_rule_health_api_rules_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/eval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rule Eval
+         * @description How many planted fraud cases per typology the rules catch (ML.EVAL_* or RAW.GROUND_TRUTH)
+         */
+        get: operations["get_rule_eval_api_rules_eval_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Circular
+         * @description Upload a circular PDF. It is read, its obligations extracted and checks written in
+         *     the background; poll /rules/jobs/{job_id}.
+         */
+        post: operations["upload_circular_api_rules_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Status
+         * @description Progress of a circular upload
+         */
+        get: operations["get_job_status_api_rules_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/{rule_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rule Versions
+         * @description This rule's history: the original and any versions created by amendments
+         */
+        get: operations["get_rule_versions_api_rules__rule_id__versions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -414,7 +539,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/upload": {
+    "/api/circulars/paragraph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paragraph
+         * @description One paragraph of a synthetic circular, with its neighbours for context
+         */
+        get: operations["paragraph_api_circulars_paragraph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search
+         * @description Alerts, accounts, customers, transactions, rings and rules matching `q`
+         */
+        get: operations["search_api_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tour/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -424,30 +589,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Upload Rules
-         * @description Upload rules from CSV/YAML file
+         * Tour Reset
+         * @description Put the tour's alert, rule and evidence back to their starting state
          */
-        post: operations["upload_rules_api_rules_upload_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/rules/jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Status
-         * @description Get status of a rule upload job
-         */
-        get: operations["get_job_status_api_rules_jobs__job_id__get"];
-        put?: never;
-        post?: never;
+        post: operations["tour_reset_api_tour_reset_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -472,6 +617,23 @@ export interface components {
             txn_count: number;
             /** Total Amount Inr */
             total_amount_inr: number;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: components["schemas"]["ReasonResponse"][];
+            /**
+             * Timeline
+             * @default []
+             */
+            timeline: components["schemas"]["TimelineEventResponse"][];
+            /**
+             * Transactions
+             * @default []
+             */
+            transactions: components["schemas"]["TxnResponse"][];
+            connections?: components["schemas"]["GraphResponse"] | null;
+            citation_ref?: components["schemas"]["CitationRefResponse"] | null;
         };
         /**
          * AlertListResponse
@@ -520,6 +682,28 @@ export interface components {
             customer_name?: string | null;
             /** Pan */
             pan?: string | null;
+            /** Amount Inr */
+            amount_inr?: number | null;
+            /** Txn Count */
+            txn_count?: number | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Str Filed */
+            str_filed?: boolean | null;
+            /** Risk Level */
+            risk_level?: number | null;
+            /** Ring Id */
+            ring_id?: string | null;
+            /** Window Start */
+            window_start?: string | null;
+            /** Window End */
+            window_end?: string | null;
+            /** Branch */
+            branch?: string | null;
+            /** City */
+            city?: string | null;
+            /** Action Required */
+            action_required?: string | null;
         };
         /**
          * ApproveRejectRequest
@@ -539,13 +723,77 @@ export interface components {
             /** Question */
             question: string;
         };
-        /** Body_upload_rules_api_rules_upload_post */
-        Body_upload_rules_api_rules_upload_post: {
+        /** AttentionItem */
+        AttentionItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "report_overdue" | "report_due" | "rule_pending" | "ring_new" | "conflict_open";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "overdue" | "act" | "attention";
+            /** Entity Id */
+            entity_id: string;
+            params: components["schemas"]["AttentionParams"];
+        };
+        /** AttentionParams */
+        AttentionParams: {
+            /** Name */
+            name?: string | null;
+            /** Name Hi */
+            name_hi?: string | null;
+            /** Amount Inr */
+            amount_inr?: number | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Count */
+            count?: number | null;
+            /** Typology */
+            typology?: string | null;
+        };
+        /** Body_upload_circular_api_rules_upload_post */
+        Body_upload_circular_api_rules_upload_post: {
             /**
              * File
              * Format: binary
              */
             file: string;
+        };
+        /** CitationRefResponse */
+        CitationRefResponse: {
+            /** Circular No */
+            circular_no: string;
+            /** Para No */
+            para_no: string;
+            /** Highlight */
+            highlight?: string | null;
+        };
+        /** ConflictItem */
+        ConflictItem: {
+            /** Conflict Id */
+            conflict_id: string;
+            /** Typology */
+            typology: string;
+            /** Entity */
+            entity?: string | null;
+            /** Description */
+            description: string;
+            /** Status */
+            status: string;
+            /** Detected At */
+            detected_at?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "overlap" | "contradiction";
+            rule_a: components["schemas"]["ConflictSideResponse"];
+            rule_b: components["schemas"]["ConflictSideResponse"];
         };
         /**
          * ConflictResponse
@@ -553,7 +801,24 @@ export interface components {
          */
         ConflictResponse: {
             /** Conflicts */
-            conflicts: Record<string, never>[];
+            conflicts: components["schemas"]["ConflictItem"][];
+        };
+        /** ConflictSideResponse */
+        ConflictSideResponse: {
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Name */
+            rule_name: string;
+            /** Citation */
+            citation: string;
+            /** Circular No */
+            circular_no?: string | null;
+            /** Para No */
+            para_no?: string | null;
+            /** Clause Text */
+            clause_text: string;
+            /** Plain English */
+            plain_english: string;
         };
         /**
          * EvidenceResponse
@@ -563,7 +828,9 @@ export interface components {
             /** Alert Id */
             alert_id: string;
             /** Evidence Json */
-            evidence_json: Record<string, never>;
+            evidence_json: {
+                [key: string]: unknown;
+            };
             /** File Path */
             file_path: string | null;
             /** Sha256 Hash */
@@ -582,6 +849,8 @@ export interface components {
             pdf_sha256_hash?: string | null;
             /** Json Presigned Url */
             json_presigned_url?: string | null;
+            /** Generation Ms */
+            generation_ms?: number | null;
         };
         /**
          * FeedbackRequest
@@ -592,6 +861,45 @@ export interface components {
             rating: number;
             /** Comment */
             comment?: string | null;
+            /** Verdict */
+            verdict?: ("FRAUD" | "NOT_FRAUD") | null;
+        };
+        /** GraphEdgeResponse */
+        GraphEdgeResponse: {
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "shared_phone" | "shared_ip" | "shared_device" | "sent_money";
+        };
+        /** GraphNodeResponse */
+        GraphNodeResponse: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Risk Level */
+            risk_level: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "subject" | "member" | "external";
+            /** City */
+            city?: string | null;
+            /** Alert Id */
+            alert_id?: string | null;
+        };
+        /** GraphResponse */
+        GraphResponse: {
+            /** Nodes */
+            nodes: components["schemas"]["GraphNodeResponse"][];
+            /** Edges */
+            edges: components["schemas"]["GraphEdgeResponse"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -607,6 +915,29 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** HomeKpis */
+        HomeKpis: {
+            /** New Alerts */
+            new_alerts: number;
+            /** New Alerts Prev */
+            new_alerts_prev: number;
+            /** Serious New Alerts */
+            serious_new_alerts: number;
+            /** Money At Risk Inr */
+            money_at_risk_inr: number;
+            /** Money At Risk Prev Inr */
+            money_at_risk_prev_inr: number;
+            /** Reports Due 48H */
+            reports_due_48h: number;
+            /** Reports Overdue */
+            reports_overdue: number;
+            /** Active Rings */
+            active_rings: number;
+            /** Active Rings Prev */
+            active_rings_prev: number;
+            /** Ring Volume 30D Inr */
+            ring_volume_30d_inr: number;
+        };
         /** HomeResponse */
         HomeResponse: {
             readiness_score: components["schemas"]["ReadinessScore"];
@@ -614,6 +945,15 @@ export interface components {
             top_alerts: components["schemas"]["TopAlert"][];
             /** Trend */
             trend: components["schemas"]["TrendData"][];
+            kpis?: components["schemas"]["HomeKpis"] | null;
+            /**
+             * Attention
+             * @default []
+             */
+            attention: components["schemas"]["AttentionItem"][];
+            weekly_brief?: components["schemas"]["WeeklyBrief"] | null;
+            /** As Of */
+            as_of?: string | null;
         };
         /**
          * JobStatusResponse
@@ -628,6 +968,51 @@ export interface components {
             progress: number;
             /** Message */
             message: string;
+            /** Step */
+            step?: number | null;
+            /** Circular No */
+            circular_no?: string | null;
+            /**
+             * Rule Ids
+             * @default []
+             */
+            rule_ids: string[];
+        };
+        /** Neighbour */
+        Neighbour: {
+            /** Para No */
+            para_no: string;
+            /** Text */
+            text: string;
+        };
+        /** ParagraphResponse */
+        ParagraphResponse: {
+            /** Circular No */
+            circular_no: string;
+            /** Para No */
+            para_no: string;
+            /** Text */
+            text: string;
+            /** Issue Date */
+            issue_date?: string | null;
+            /** Is Amendment */
+            is_amendment: boolean;
+            /** Amends Circular */
+            amends_circular?: string | null;
+            before?: components["schemas"]["Neighbour"] | null;
+            after?: components["schemas"]["Neighbour"] | null;
+        };
+        /** ReadinessFactor */
+        ReadinessFactor: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "overdue" | "due_soon" | "rules_pending" | "conflicts";
+            /** Count */
+            count: number;
+            /** Points */
+            points: number;
         };
         /** ReadinessScore */
         ReadinessScore: {
@@ -635,6 +1020,56 @@ export interface components {
             score: number;
             /** Reason */
             reason: string;
+            /** Reason Hi */
+            reason_hi?: string | null;
+            /**
+             * Factors
+             * @default []
+             */
+            factors: components["schemas"]["ReadinessFactor"][];
+        };
+        /** ReasonResponse */
+        ReasonResponse: {
+            /** Text */
+            text: string;
+            /** Text Hi */
+            text_hi?: string | null;
+            /** Weight */
+            weight: number;
+        };
+        /** ReplayOutcome */
+        ReplayOutcome: {
+            /** Value */
+            value: number;
+            /** Alerts */
+            alerts: number;
+            /** Fraud Caught */
+            fraud_caught: number;
+            /** Analyst Hours */
+            analyst_hours: number;
+        };
+        /** ReplayRequest */
+        ReplayRequest: {
+            /** Rule Id */
+            rule_id: string;
+            /** Value */
+            value: number;
+            /**
+             * Days
+             * @default 90
+             */
+            days: number;
+        };
+        /** ReplayResponse */
+        ReplayResponse: {
+            /** Rule Id */
+            rule_id: string;
+            /** Days */
+            days: number;
+            current: components["schemas"]["ReplayOutcome"];
+            proposed: components["schemas"]["ReplayOutcome"];
+            /** Fraud Total */
+            fraud_total: number;
         };
         /**
          * RingDetailResponse
@@ -643,9 +1078,30 @@ export interface components {
         RingDetailResponse: {
             ring: components["schemas"]["RingResponse"];
             /** Members */
-            members: Record<string, never>[];
+            members: components["schemas"]["RingMemberResponse"][];
+            /**
+             * Edges
+             * @default []
+             */
+            edges: components["schemas"]["RingEdgeResponse"][];
             /** Transactions */
-            transactions: Record<string, never>[];
+            transactions: components["schemas"]["TxnResponse"][];
+        };
+        /** RingEdgeResponse */
+        RingEdgeResponse: {
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "shared_phone" | "shared_ip" | "shared_device" | "sent_money";
+            /** Amount Inr */
+            amount_inr?: number | null;
+            /** Count */
+            count?: number | null;
         };
         /**
          * RingListResponse
@@ -662,6 +1118,30 @@ export interface components {
             page_size: number;
             /** Total Pages */
             total_pages: number;
+        };
+        /** RingMemberResponse */
+        RingMemberResponse: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Risk Level */
+            risk_level: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "subject" | "member" | "external";
+            /** Role */
+            role?: ("collector" | "mule" | "exit") | null;
+            /** City */
+            city?: string | null;
+            /** Alert Id */
+            alert_id?: string | null;
+            /** Money In Inr */
+            money_in_inr?: number | null;
+            /** Money Out Inr */
+            money_out_inr?: number | null;
         };
         /**
          * RingResponse
@@ -680,6 +1160,36 @@ export interface components {
             risk_score: number;
             /** Status */
             status: string;
+            /** Ring Name Hi */
+            ring_name_hi?: string | null;
+            /** Confidence */
+            confidence?: string | null;
+            /** Speed Hours */
+            speed_hours?: number | null;
+            /** Detected At */
+            detected_at?: string | null;
+            /** Alerted Members */
+            alerted_members?: number | null;
+            /** Shared Devices */
+            shared_devices?: number | null;
+            /** City */
+            city?: string | null;
+        };
+        /** RuleChecked */
+        RuleChecked: {
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Name */
+            rule_name: string;
+            /** Typology */
+            typology?: string | null;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "passed" | "not_applicable" | "near_miss";
+            /** Reason */
+            reason: string;
         };
         /**
          * RuleHealthResponse
@@ -696,6 +1206,35 @@ export interface components {
             rejected_rules: number;
             /** Avg Precision */
             avg_precision: number;
+            /**
+             * Rules
+             * @default []
+             */
+            rules: components["schemas"]["RuleHealthRowResponse"][];
+        };
+        /** RuleHealthRowResponse */
+        RuleHealthRowResponse: {
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Name */
+            rule_name: string;
+            /** Typology */
+            typology: string;
+            /** Alerts 30D */
+            alerts_30d: number;
+            /** Confirmed 30D */
+            confirmed_30d: number;
+            /** Precision */
+            precision: number;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "healthy" | "noisy" | "quiet";
+            /** Proposed Fix */
+            proposed_fix?: string | null;
+            /** Proposed Fix Hi */
+            proposed_fix_hi?: string | null;
         };
         /**
          * RuleListResponse
@@ -712,6 +1251,28 @@ export interface components {
             page_size: number;
             /** Total Pages */
             total_pages: number;
+        };
+        /** RuleParamResponse */
+        RuleParamResponse: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Label Hi */
+            label_hi: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "inr" | "count" | "hours" | "days" | "percent";
+            /** Value */
+            value: number;
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+            /** Step */
+            step: number;
         };
         /**
          * RuleResponse
@@ -734,6 +1295,31 @@ export interface components {
             source_citation: string;
             /** Created At */
             created_at: string;
+            /** Plain English */
+            plain_english?: string | null;
+            /** Plain Hindi */
+            plain_hindi?: string | null;
+            /** Circular No */
+            circular_no?: string | null;
+            /** Para No */
+            para_no?: string | null;
+            /** Source Quote */
+            source_quote?: string | null;
+            /** Highlight */
+            highlight?: string | null;
+            /** Severity */
+            severity?: string | null;
+            /** Entity */
+            entity?: string | null;
+            /**
+             * Params
+             * @default []
+             */
+            params: components["schemas"]["RuleParamResponse"][];
+            /** Approved By */
+            approved_by?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
         };
         /**
          * STRDraftResponse
@@ -746,6 +1332,26 @@ export interface components {
             str_draft: string;
             /** Format */
             format: string;
+        };
+        /** SearchResponse */
+        SearchResponse: {
+            /** Results */
+            results: components["schemas"]["SearchResult"][];
+        };
+        /** SearchResult */
+        SearchResult: {
+            /** Kind */
+            kind: string;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Title Hi */
+            title_hi?: string | null;
+            /** Subtitle */
+            subtitle: string;
+            /** Alert Id */
+            alert_id?: string | null;
         };
         /**
          * TimeMachineResponse
@@ -761,7 +1367,34 @@ export interface components {
             /** Total Risk Score */
             total_risk_score: number;
             /** Top Typologies */
-            top_typologies: Record<string, never>[];
+            top_typologies: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** TimelineEventResponse */
+        TimelineEventResponse: {
+            /** Id */
+            id: string;
+            /** At */
+            at: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "login" | "device_change" | "new_beneficiary" | "cash_deposit" | "transfer_in" | "transfer_out" | "alert" | "kyc";
+            /** Title */
+            title: string;
+            /** Title Hi */
+            title_hi?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** Amount Inr */
+            amount_inr?: number | null;
+            /**
+             * Suspicious
+             * @default false
+             */
+            suspicious: boolean;
         };
         /** TopAlert */
         TopAlert: {
@@ -778,12 +1411,53 @@ export interface components {
             /** Created At */
             created_at: string;
         };
+        /** TourResetResponse */
+        TourResetResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Alert Id */
+            alert_id: string;
+            /** Ring Id */
+            ring_id: string;
+            /** Rule Id */
+            rule_id: string;
+            /** Circular No */
+            circular_no: string;
+        };
         /** TrendData */
         TrendData: {
             /** Date */
             date: string;
             /** Alert Count */
             alert_count: number;
+            /** Confirmed Fraud */
+            confirmed_fraud?: number | null;
+        };
+        /** TxnResponse */
+        TxnResponse: {
+            /** Txn Id */
+            txn_id: string;
+            /** Account Id */
+            account_id: string;
+            /** Txn Ts */
+            txn_ts: string;
+            /** Amount Inr */
+            amount_inr: number;
+            /** Channel */
+            channel: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "CREDIT" | "DEBIT";
+            /** Counterparty */
+            counterparty: string;
+            /** Counterparty Bank */
+            counterparty_bank: string;
+            /** Country */
+            country: string;
+            /** Narration */
+            narration: string;
         };
         /**
          * UploadResponse
@@ -807,6 +1481,8 @@ export interface components {
             role: string;
             /** Email */
             email: string;
+            /** As Of */
+            as_of?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -825,7 +1501,18 @@ export interface components {
             /** Verified */
             verified: boolean;
             /** Details */
-            details: Record<string, never>;
+            details: {
+                [key: string]: unknown;
+            };
+        };
+        /** WeeklyBrief */
+        WeeklyBrief: {
+            /** Text */
+            text: string;
+            /** Text Hi */
+            text_hi: string;
+            /** Generated At */
+            generated_at: string;
         };
         /**
          * WhyNotResponse
@@ -837,7 +1524,7 @@ export interface components {
             /** Explanation */
             explanation: string;
             /** Rules Checked */
-            rules_checked: Record<string, never>[];
+            rules_checked: components["schemas"]["RuleChecked"][];
             /** Recommendation */
             recommendation: string;
         };
@@ -915,6 +1602,12 @@ export interface operations {
             query?: {
                 status?: string | null;
                 severity?: string | null;
+                typology?: string | null;
+                /** @description Report deadline band */
+                due?: ("overdue" | "48h" | "open") | null;
+                /** @description Matches alert id, account, customer name or city */
+                q?: string | null;
+                sort?: "priority" | "amount" | "newest";
                 page?: number;
                 page_size?: number;
             };
@@ -1203,11 +1896,6 @@ export interface operations {
     time_machine_api_time_machine_get: {
         parameters: {
             query?: {
-                /** @description Start date (YYYY-MM-DD) */
-                start_date?: string | null;
-                /** @description End date (YYYY-MM-DD) */
-                end_date?: string | null;
-                /** @description Number of days to look back */
                 days?: number;
             };
             header?: never;
@@ -1223,6 +1911,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimeMachineResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tunable_rules_api_time_machine_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    replay_api_time_machine_replay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplayRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1442,13 +2183,11 @@ export interface operations {
             };
         };
     };
-    get_rule_api_rules__rule_id__get: {
+    get_rule_eval_api_rules_eval_get: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                rule_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -1459,21 +2198,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuleResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": unknown;
                 };
             };
         };
     };
-    upload_rules_api_rules_upload_post: {
+    upload_circular_api_rules_upload_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1482,7 +2212,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_rules_api_rules_upload_post"];
+                "multipart/form-data": components["schemas"]["Body_upload_circular_api_rules_upload_post"];
             };
         };
         responses: {
@@ -1533,6 +2263,151 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rule_versions_api_rules__rule_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rule_api_rules__rule_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    paragraph_api_circulars_paragraph_get: {
+        parameters: {
+            query: {
+                circular_no: string;
+                para_no: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParagraphResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_api_search_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tour_reset_api_tour_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TourResetResponse"];
                 };
             };
         };

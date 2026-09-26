@@ -1,0 +1,191 @@
+{
+  "alert": {
+    "alert_id": "ALT-002",
+    "account_id": "ACC-002",
+    "customer_id": "CUST-002",
+    "typology": "MULE_RING",
+    "severity": "HIGH",
+    "score": 0.95,
+    "status": "NEW",
+    "rule_name": "MULE_RING_RULE",
+    "citation": "KAVACH/2024/01 para 2",
+    "created_at": "2026-09-16T18:00:00",
+    "resolution": null,
+    "customer_name": "Customer 002",
+    "pan": "ABCDE1234F",
+    "amount_inr": 1250000.0,
+    "txn_count": 4,
+    "due_at": "2026-09-25T18:00:00",
+    "str_filed": false,
+    "risk_level": 4,
+    "ring_id": "RING-A",
+    "window_start": "2026-08-25T18:00:00",
+    "window_end": "2026-09-24T18:00:00",
+    "branch": "BR0106",
+    "city": "Mumbai",
+    "action_required": "STR"
+  },
+  "story_en": "Here is a 3-5 sentence story in simple English: Test story.",
+  "story_hi": "परीक्षण कहानी।",
+  "txn_count": 4,
+  "total_amount_inr": 1250000.0,
+  "reasons": [
+    {
+      "text": "Matches the pattern: accounts working together to move money",
+      "text_hi": "इस पैटर्न से मेल: मिलकर पैसा घुमाने वाले खाते",
+      "weight": 0.6
+    },
+    {
+      "text": "4 transactions worth ₹12.5 L in the last 30 days",
+      "text_hi": "पिछले 30 दिनों में ₹12.5 लाख के 4 लेनदेन",
+      "weight": 0.3
+    }
+  ],
+  "timeline": [
+    {
+      "id": "ALT-002-alert",
+      "at": "2026-09-16T18:00:00",
+      "type": "alert",
+      "title": "Alert raised",
+      "title_hi": "अलर्ट बना",
+      "detail": null,
+      "amount_inr": null,
+      "suspicious": false
+    },
+    {
+      "id": "TXN-002-0",
+      "at": "2026-09-19T18:00:00",
+      "type": "cash_deposit",
+      "title": "Cash deposited",
+      "title_hi": "नकद जमा किया गया",
+      "detail": "HDFC Bank",
+      "amount_inr": 312500.0,
+      "suspicious": false
+    },
+    {
+      "id": "TXN-002-1",
+      "at": "2026-09-20T18:00:00",
+      "type": "cash_deposit",
+      "title": "Cash deposited",
+      "title_hi": "नकद जमा किया गया",
+      "detail": "HDFC Bank",
+      "amount_inr": 312500.0,
+      "suspicious": false
+    },
+    {
+      "id": "TXN-002-2",
+      "at": "2026-09-21T18:00:00",
+      "type": "cash_deposit",
+      "title": "Cash deposited",
+      "title_hi": "नकद जमा किया गया",
+      "detail": "HDFC Bank",
+      "amount_inr": 312500.0,
+      "suspicious": true
+    },
+    {
+      "id": "TXN-002-3",
+      "at": "2026-09-22T18:00:00",
+      "type": "transfer_out",
+      "title": "Sent to R. Traders by NEFT",
+      "title_hi": "R. Traders को NEFT द्वारा पैसा भेजा",
+      "detail": "HDFC Bank",
+      "amount_inr": 312500.0,
+      "suspicious": false
+    }
+  ],
+  "transactions": [
+    {
+      "txn_id": "TXN-002-0",
+      "account_id": "ACC-002",
+      "txn_ts": "2026-09-19T18:00:00",
+      "amount_inr": 312500.0,
+      "channel": "CASH",
+      "direction": "CREDIT",
+      "counterparty": "",
+      "counterparty_bank": "HDFC Bank",
+      "country": "IN",
+      "narration": ""
+    },
+    {
+      "txn_id": "TXN-002-1",
+      "account_id": "ACC-002",
+      "txn_ts": "2026-09-20T18:00:00",
+      "amount_inr": 312500.0,
+      "channel": "CASH",
+      "direction": "CREDIT",
+      "counterparty": "",
+      "counterparty_bank": "HDFC Bank",
+      "country": "IN",
+      "narration": ""
+    },
+    {
+      "txn_id": "TXN-002-2",
+      "account_id": "ACC-002",
+      "txn_ts": "2026-09-21T18:00:00",
+      "amount_inr": 312500.0,
+      "channel": "CASH",
+      "direction": "CREDIT",
+      "counterparty": "",
+      "counterparty_bank": "HDFC Bank",
+      "country": "IN",
+      "narration": ""
+    },
+    {
+      "txn_id": "TXN-002-3",
+      "account_id": "ACC-002",
+      "txn_ts": "2026-09-22T18:00:00",
+      "amount_inr": 312500.0,
+      "channel": "NEFT",
+      "direction": "DEBIT",
+      "counterparty": "R. Traders",
+      "counterparty_bank": "HDFC Bank",
+      "country": "IN",
+      "narration": ""
+    }
+  ],
+  "connections": {
+    "nodes": [
+      {
+        "id": "ACC-002",
+        "label": "Customer 002",
+        "risk_level": 4,
+        "kind": "subject",
+        "city": "Mumbai",
+        "alert_id": "ALT-002"
+      },
+      {
+        "id": "ACC-900",
+        "label": "Member 900",
+        "risk_level": 4,
+        "kind": "member",
+        "city": "Mumbai",
+        "alert_id": "ALT-900"
+      },
+      {
+        "id": "ACC-901",
+        "label": "Member 901",
+        "risk_level": 2,
+        "kind": "member",
+        "city": null,
+        "alert_id": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "ACC-002",
+        "target": "ACC-900",
+        "kind": "shared_device"
+      },
+      {
+        "source": "ACC-900",
+        "target": "ACC-901",
+        "kind": "shared_ip"
+      }
+    ]
+  },
+  "citation_ref": {
+    "circular_no": "KAVACH/2024/01",
+    "para_no": "2",
+    "highlight": "amounts ranging from Rs. 9,00,000 to Rs. 9,99,999 conducted more than three times in a rolling 30-day period by the same customer or linked accounts shall be"
+  }
+}

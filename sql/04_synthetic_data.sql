@@ -21,16 +21,18 @@ CREATE OR REPLACE PROCEDURE RAW.GENERATE_BASE_ENTITIES(SCALE_FACTOR FLOAT, SEED 
 RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
-PACKAGES = ('snowflake-snowpark-python', 'numpy', 'pandas')
+PACKAGES = ('snowflake-snowpark-python', 'numpy')
 HANDLER = 'run'
 EXECUTE AS CALLER
 AS
 $$
 import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 import random
 import string
+# NOTE: pandas is unavailable to Snowpark in stored procs on this account
+# (create_dataframe()/to_pandas() both fail with "Optional dependency: pandas
+# is not installed") — use session.create_dataframe(list_of_dicts) instead.
 
 def run(session, scale_factor, seed):
     np.random.seed(seed)
@@ -38,8 +40,10 @@ def run(session, scale_factor, seed):
     SF = float(scale_factor)
 
     # ---- Load reference data ----
-    geo = session.sql("SELECT CITY, STATE_NAME, STATE_CODE, REGION, TIER FROM KAVACH_DB.REF.GEO_INDIA").to_pandas()
-    cities = geo.to_dict('records')
+    # NOTE: to_pandas() is unavailable in stored procs on this account (connector's
+    # pandas dependency not installed) — use collect() + Row.as_dict() instead.
+    geo = session.sql("SELECT CITY, STATE_NAME, STATE_CODE, REGION, TIER FROM KAVACH_DB.REF.GEO_INDIA").collect()
+    cities = [r.as_dict() for r in geo]
 
     # ---- Constants ----
     FIRST_NAMES_M = ['Aarav','Aditi','Amit','Anand','Anil','Arjun','Ashok','Bharat','Chandan','Deepak',
@@ -85,8 +89,8 @@ def run(session, scale_factor, seed):
         income = max(50000, min(income, 50000000))
         risk_p = np.random.random()
         risk = 'LOW' if risk_p < 0.7 else ('MEDIUM' if risk_p < 0.92 else 'HIGH')
-        is_pep = np.random.random() < 0.005
-        kyc_status = np.random.choice(['VERIFIED','VERIFIED','VERIFIED','PENDING','EXPIRED'], p=[0.7,0.1,0.05,0.1,0.05])
+        is_pep = bool(np.random.random() < 0.005)
+        kyc_status = str(np.random.choice(['VERIFIED','VERIFIED','VERIFIED','PENDING','EXPIRED'], p=[0.7,0.1,0.05,0.1,0.05]))
         kyc_date = datetime(2023,1,1) + timedelta(days=np.random.randint(0,700))
         segment = random.choice(SEGMENTS)
         if income > 5000000:
@@ -112,8 +116,7 @@ def run(session, scale_factor, seed):
             'SEGMENT': segment
         })
 
-    cust_df = pd.DataFrame(cust_rows)
-    session.create_dataframe(cust_df).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.CUSTOMERS')
+    session.create_dataframe(cust_rows).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.CUSTOMERS')
 
     # ---- ACCOUNTS ----
     acct_rows = []
@@ -161,22 +164,23 @@ def run(session, scale_factor, seed):
             'AVG_MONTHLY_BALANCE': max(100, min(bal, 50000000))
         })
 
-    acct_df = pd.DataFrame(acct_rows)
-    session.create_dataframe(acct_df).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.ACCOUNTS')
+    session.create_dataframe(acct_rows).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.ACCOUNTS')
 
     # ---- DEVICES ----
     N_DEVICES = int(15000 * SF)
-    ip_ranges = session.sql("SELECT START_INT, END_INT, COUNTRY_CODE, CITY, REGION, ASN_NAME, IS_VPN, IS_HOSTING FROM KAVACH_DB.REF.IP_GEO").to_pandas()
-    india_ips = ip_ranges[ip_ranges['COUNTRY_CODE'] == 'IN']
+    india_ips = [r.as_dict() for r in session.sql(
+        "SELECT START_INT, END_INT, COUNTRY_CODE, CITY, REGION, ASN_NAME, IS_VPN, IS_HOSTING "
+        "FROM KAVACH_DB.REF.IP_GEO WHERE COUNTRY_CODE = 'IN'"
+    ).collect()]
 
     dev_rows = []
     device_types = ['ANDROID','ANDROID','ANDROID','IOS','IOS','DESKTOP','DESKTOP']
-    os_map = {'ANDROID':'Android','IOS':'iOS','DESKTOP':np.random.choice(['Windows','macOS','Linux'])}
+    os_map = {'ANDROID':'Android','IOS':'iOS','DESKTOP':str(np.random.choice(['Windows','macOS','Linux']))}
     active_acct_ids = [r['ACCOUNT_ID'] for r in acct_rows if r['STATUS'] == 'ACTIVE']
 
     for i in range(N_DEVICES):
         dtype = random.choice(device_types)
-        ip_row = india_ips.iloc[np.random.randint(0, len(india_ips))]
+        ip_row = india_ips[np.random.randint(0, len(india_ips))]
         ip_int = np.random.randint(int(ip_row['START_INT']), int(ip_row['END_INT']))
         ip = f"{(ip_int >> 24) & 0xFF}.{(ip_int >> 16) & 0xFF}.{(ip_int >> 8) & 0xFF}.{ip_int & 0xFF}"
         dev_rows.append({
@@ -190,8 +194,7 @@ def run(session, scale_factor, seed):
             'ACCOUNT_ID': random.choice(active_acct_ids)
         })
 
-    dev_df = pd.DataFrame(dev_rows)
-    session.create_dataframe(dev_df).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.DEVICES')
+    session.create_dataframe(dev_rows).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.DEVICES')
 
     # ---- BENEFICIARIES ----
     N_BENE = int(40000 * SF)
@@ -212,8 +215,7 @@ def run(session, scale_factor, seed):
             'ADDED_AT': (datetime(2024,1,1) + timedelta(days=np.random.randint(0, 180))).strftime('%Y-%m-%d %H:%M:%S')
         })
 
-    bene_df = pd.DataFrame(bene_rows)
-    session.create_dataframe(bene_df).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.BENEFICIARIES')
+    session.create_dataframe(bene_rows).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.BENEFICIARIES')
 
     # ---- ANALYST_FEEDBACK (empty) ----
     session.sql("""
@@ -242,13 +244,12 @@ CREATE OR REPLACE PROCEDURE RAW.GENERATE_TRANSACTIONS(SCALE_FACTOR FLOAT, SEED I
 RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
-PACKAGES = ('snowflake-snowpark-python', 'numpy', 'pandas')
+PACKAGES = ('snowflake-snowpark-python', 'numpy')
 HANDLER = 'run'
 EXECUTE AS CALLER
 AS
 $$
 import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 import random
 import string
@@ -261,18 +262,20 @@ def run(session, scale_factor, seed):
     N_TXN = int(1500000 * SF)
     BATCH_SIZE = 100000
 
-    # Load accounts
-    accts = session.sql("SELECT ACCOUNT_ID, CUSTOMER_ID, ACCOUNT_TYPE, STATUS FROM KAVACH_DB.RAW.ACCOUNTS WHERE STATUS = 'ACTIVE'").to_pandas()
-    acct_ids = accts['ACCOUNT_ID'].tolist()
-    acct_types = dict(zip(accts['ACCOUNT_ID'], accts['ACCOUNT_TYPE']))
+    # Load accounts (to_pandas() unavailable in stored procs on this account — use collect())
+    accts = [r.as_dict() for r in session.sql(
+        "SELECT ACCOUNT_ID, CUSTOMER_ID, ACCOUNT_TYPE, STATUS FROM KAVACH_DB.RAW.ACCOUNTS WHERE STATUS = 'ACTIVE'"
+    ).collect()]
+    acct_ids = [r['ACCOUNT_ID'] for r in accts]
+    acct_types = {r['ACCOUNT_ID']: r['ACCOUNT_TYPE'] for r in accts}
 
     # Load devices
-    devs = session.sql("SELECT DEVICE_ID, IP_ADDRESS, ACCOUNT_ID FROM KAVACH_DB.RAW.DEVICES").to_pandas()
-    dev_list = devs['DEVICE_ID'].tolist()
-    dev_ips = dict(zip(devs['DEVICE_ID'], devs['IP_ADDRESS']))
+    devs = [r.as_dict() for r in session.sql(
+        "SELECT DEVICE_ID, IP_ADDRESS, ACCOUNT_ID FROM KAVACH_DB.RAW.DEVICES"
+    ).collect()]
+    dev_list = [r['DEVICE_ID'] for r in devs]
+    dev_ips = {r['DEVICE_ID']: r['IP_ADDRESS'] for r in devs}
 
-    # Load IP ranges for generating IPs
-    ip_ranges = session.sql("SELECT START_INT, END_INT, COUNTRY_CODE FROM KAVACH_DB.REF.IP_GEO WHERE COUNTRY_CODE = 'IN'").to_pandas()
 
     # Constants
     CHANNELS = ['UPI','UPI','UPI','IMPS','IMPS','NEFT','NEFT','RTGS','CASH','CASH','CARD','CARD','SWIFT']
@@ -322,20 +325,20 @@ def run(session, scale_factor, seed):
             # Amount distribution: mostly small, some large
             amt_p = np.random.random()
             if amt_p < 0.4:
-                amount = round(np.random.uniform(50, 5000), 2)
+                amount = float(round(np.random.uniform(50, 5000), 2))
             elif amt_p < 0.7:
-                amount = round(np.random.uniform(5000, 50000), 2)
+                amount = float(round(np.random.uniform(5000, 50000), 2))
             elif amt_p < 0.9:
-                amount = round(np.random.uniform(50000, 500000), 2)
+                amount = float(round(np.random.uniform(50000, 500000), 2))
             elif amt_p < 0.97:
-                amount = round(np.random.uniform(500000, 2000000), 2)
+                amount = float(round(np.random.uniform(500000, 2000000), 2))
             else:
-                amount = round(np.random.uniform(2000000, 10000000), 2)
+                amount = float(round(np.random.uniform(2000000, 10000000), 2))
 
             if channel == 'RTGS':
-                amount = max(amount, 200000)
+                amount = max(amount, 200000.0)
             elif channel == 'SWIFT':
-                amount = max(amount, 100000)
+                amount = max(amount, 100000.0)
 
             ts = START_DATE + timedelta(
                 days=np.random.randint(0, 180),
@@ -372,8 +375,7 @@ def run(session, scale_factor, seed):
                 'IP_ADDRESS': ip
             })
 
-        batch_df = pd.DataFrame(rows)
-        session.create_dataframe(batch_df).write.mode('append').save_as_table('KAVACH_DB.RAW.TRANSACTIONS')
+        session.create_dataframe(rows).write.mode('append').save_as_table('KAVACH_DB.RAW.TRANSACTIONS')
         total_written += batch_n
 
     return f"OK: {total_written} transactions generated"
@@ -386,13 +388,12 @@ CREATE OR REPLACE PROCEDURE RAW.INJECT_FRAUD_PATTERNS(SCALE_FACTOR FLOAT, SEED I
 RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
-PACKAGES = ('snowflake-snowpark-python', 'numpy', 'pandas')
+PACKAGES = ('snowflake-snowpark-python', 'numpy')
 HANDLER = 'run'
 EXECUTE AS CALLER
 AS
 $$
 import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 import random
 import string
@@ -410,13 +411,17 @@ def run(session, scale_factor, seed):
         )
     """).collect()
 
-    accts = session.sql("SELECT ACCOUNT_ID, CUSTOMER_ID, STATUS FROM KAVACH_DB.RAW.ACCOUNTS WHERE STATUS='ACTIVE'").to_pandas()
-    active_ids = accts['ACCOUNT_ID'].tolist()
-    acct_to_cust = dict(zip(accts['ACCOUNT_ID'], accts['CUSTOMER_ID']))
+    accts = [r.as_dict() for r in session.sql(
+        "SELECT ACCOUNT_ID, CUSTOMER_ID, STATUS FROM KAVACH_DB.RAW.ACCOUNTS WHERE STATUS='ACTIVE'"
+    ).collect()]
+    active_ids = [r['ACCOUNT_ID'] for r in accts]
+    acct_to_cust = {r['ACCOUNT_ID']: r['CUSTOMER_ID'] for r in accts}
 
-    devs = session.sql("SELECT DEVICE_ID, IP_ADDRESS FROM KAVACH_DB.RAW.DEVICES LIMIT 100").to_pandas()
-    dev_list = devs['DEVICE_ID'].tolist()
-    dev_ips = dict(zip(devs['DEVICE_ID'], devs['IP_ADDRESS']))
+    devs = [r.as_dict() for r in session.sql(
+        "SELECT DEVICE_ID, IP_ADDRESS FROM KAVACH_DB.RAW.DEVICES LIMIT 100"
+    ).collect()]
+    dev_list = [r['DEVICE_ID'] for r in devs]
+    dev_ips = {r['DEVICE_ID']: r['IP_ADDRESS'] for r in devs}
 
     foreign_ips = ['104.238.45.67','185.100.85.12','198.51.100.55','185.220.101.33']
     high_risk_countries = ['IR','KP','SY','MM','AF','NG','SO']
@@ -488,10 +493,12 @@ def run(session, scale_factor, seed):
             })
 
     # ---- 3. DORMANT REACTIVATION ----
-    dormant_accts = session.sql("SELECT ACCOUNT_ID FROM KAVACH_DB.RAW.ACCOUNTS WHERE STATUS='DORMANT' LIMIT 30").to_pandas()
+    dormant_accts = [r.as_dict() for r in session.sql(
+        "SELECT ACCOUNT_ID FROM KAVACH_DB.RAW.ACCOUNTS WHERE STATUS='DORMANT' LIMIT 30"
+    ).collect()]
     n_dormant = min(int(25 * SF), len(dormant_accts))
     for idx in range(n_dormant):
-        aid = dormant_accts.iloc[idx]['ACCOUNT_ID']
+        aid = dormant_accts[idx]['ACCOUNT_ID']
         txn_counter += 1
         tid = f'TXN{txn_counter:08d}'
         ts = START + timedelta(days=random.randint(100, 170), hours=random.randint(10, 16))
@@ -545,9 +552,12 @@ def run(session, scale_factor, seed):
 
     # ---- 5. INCOME MISMATCH ----
     n_income = int(40 * SF)
-    low_income = session.sql("SELECT c.CUSTOMER_ID, a.ACCOUNT_ID FROM KAVACH_DB.RAW.CUSTOMERS c JOIN KAVACH_DB.RAW.ACCOUNTS a ON c.CUSTOMER_ID = a.CUSTOMER_ID WHERE c.DECLARED_ANNUAL_INCOME < 500000 AND a.STATUS = 'ACTIVE' LIMIT 50").to_pandas()
+    low_income = [r.as_dict() for r in session.sql(
+        "SELECT c.CUSTOMER_ID, a.ACCOUNT_ID FROM KAVACH_DB.RAW.CUSTOMERS c JOIN KAVACH_DB.RAW.ACCOUNTS a "
+        "ON c.CUSTOMER_ID = a.CUSTOMER_ID WHERE c.DECLARED_ANNUAL_INCOME < 500000 AND a.STATUS = 'ACTIVE' LIMIT 50"
+    ).collect()]
     for idx in range(min(n_income, len(low_income))):
-        row = low_income.iloc[idx]
+        row = low_income[idx]
         aid = row['ACCOUNT_ID']
         cid = row['CUSTOMER_ID']
         txn_ids = []
@@ -648,10 +658,13 @@ def run(session, scale_factor, seed):
         })
 
     # ---- 9. PEP UNUSUAL CASH ----
-    pep_custs = session.sql("SELECT c.CUSTOMER_ID, a.ACCOUNT_ID FROM KAVACH_DB.RAW.CUSTOMERS c JOIN KAVACH_DB.RAW.ACCOUNTS a ON c.CUSTOMER_ID = a.CUSTOMER_ID WHERE c.IS_PEP = TRUE AND a.STATUS = 'ACTIVE' LIMIT 12").to_pandas()
+    pep_custs = [r.as_dict() for r in session.sql(
+        "SELECT c.CUSTOMER_ID, a.ACCOUNT_ID FROM KAVACH_DB.RAW.CUSTOMERS c JOIN KAVACH_DB.RAW.ACCOUNTS a "
+        "ON c.CUSTOMER_ID = a.CUSTOMER_ID WHERE c.IS_PEP = TRUE AND a.STATUS = 'ACTIVE' LIMIT 12"
+    ).collect()]
     n_pep = min(int(10 * SF), len(pep_custs))
     for idx in range(n_pep):
-        row = pep_custs.iloc[idx]
+        row = pep_custs[idx]
         aid = row['ACCOUNT_ID']
         cid = row['CUSTOMER_ID']
         txn_ids = []
@@ -676,13 +689,11 @@ def run(session, scale_factor, seed):
 
     # ---- Write fraud transactions ----
     if fraud_txns:
-        fraud_df = pd.DataFrame(fraud_txns)
-        session.create_dataframe(fraud_df).write.mode('append').save_as_table('KAVACH_DB.RAW.TRANSACTIONS')
+        session.create_dataframe(fraud_txns).write.mode('append').save_as_table('KAVACH_DB.RAW.TRANSACTIONS')
 
     # ---- Write ground truth ----
     if gt_rows:
-        gt_df = pd.DataFrame(gt_rows)
-        session.create_dataframe(gt_df).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.GROUND_TRUTH')
+        session.create_dataframe(gt_rows).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.GROUND_TRUTH')
 
     return f"OK: {len(fraud_txns)} fraud transactions, {len(gt_rows)} ground truth records across 9 typologies"
 $$;
@@ -712,13 +723,12 @@ CREATE OR REPLACE PROCEDURE RAW.GENERATE_LOGINS(SEED INT DEFAULT 42)
 RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
-PACKAGES = ('snowflake-snowpark-python', 'numpy', 'pandas')
+PACKAGES = ('snowflake-snowpark-python', 'numpy')
 HANDLER = 'run'
 EXECUTE AS CALLER
 AS
 $$
 import numpy as np
-import pandas as pd
 from datetime import timedelta
 import random
 
@@ -726,14 +736,13 @@ def run(session, seed):
     np.random.seed(seed + 300)
     random.seed(seed + 300)
 
-    devs = session.sql("""
+    devs = [r.as_dict() for r in session.sql("""
         SELECT d.DEVICE_ID, d.ACCOUNT_ID, d.IP_ADDRESS, d.CITY, d.COUNTRY_CODE
         FROM KAVACH_DB.RAW.DEVICES d
-    """).to_pandas()
+    """).collect()]
 
-    # Generate ~10 logins per device
     rows = []
-    for _, dev in devs.iterrows():
+    for dev in devs:
         n_logins = np.random.randint(5, 20)
         for _ in range(n_logins):
             from datetime import datetime
@@ -750,10 +759,9 @@ def run(session, seed):
                 'LOGIN_TS': ts.strftime('%Y-%m-%d %H:%M:%S'),
                 'CITY': dev['CITY'],
                 'COUNTRY': dev['COUNTRY_CODE'],
-                'SUCCESS': np.random.random() > 0.05
+                'SUCCESS': bool(np.random.random() > 0.05)
             })
 
-    df = pd.DataFrame(rows)
-    session.create_dataframe(df).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.LOGINS')
+    session.create_dataframe(rows).write.mode('overwrite').save_as_table('KAVACH_DB.RAW.LOGINS')
     return f"OK: {len(rows)} logins generated"
 $$;

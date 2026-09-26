@@ -114,10 +114,14 @@ export const alertHandlers = [
     await latency();
     const a = findAlert(db, String(params.id));
     if (!a) return notFound("Alert");
+    // Reviewers see masked names everywhere, including inside the story text.
+    const reviewer = mockRole() === "KAVACH_REVIEWER";
+    const maskIn = (s: string | null, ...names: Array<string | null | undefined>) =>
+      !reviewer || !s ? s : names.reduce<string>((acc, n) => (n ? acc.split(n).join(maskName(n)) : acc), s);
     const body: AlertDetailDTO = {
       alert: toListDTO(a),
-      story_en: a.story_en,
-      story_hi: a.story_hi,
+      story_en: maskIn(a.story_en, a.customer_name),
+      story_hi: maskIn(a.story_hi, a.customer_name_hi, a.customer_name),
       txn_count: a.txn_count ?? a.transactions.length,
       total_amount_inr: a.amount_inr ?? 0,
       reasons: a.reasons,

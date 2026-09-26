@@ -36,3 +36,6 @@ export * from "./filter-chips";
 export * from "./demo-data-chip";
 export * from "./segmented";
 export * from "./charts";
+export * from "./network-graph";
+export * from "./rich-text";
+export * from "./bar-list";

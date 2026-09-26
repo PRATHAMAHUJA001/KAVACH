@@ -152,7 +152,8 @@ export interface AlertDetailExt {
   connections: { nodes: GraphNodeDTO[]; edges: GraphEdgeDTO[] };
   citation_ref: CitationRefDTO;
 }
-export type AlertDetailDTO = Omit<S["AlertDetailResponse"], "alert"> & { alert: AlertDTO } & Partial<AlertDetailExt>;
+/** EXT fields are typed here (the generated schema has them too, with `null`s); ours win. */
+export type AlertDetailDTO = Omit<S["AlertDetailResponse"], "alert" | keyof AlertDetailExt> & { alert: AlertDTO } & Partial<AlertDetailExt>;
 
 export type EvidenceDTO = Omit<S["EvidenceResponse"], "evidence_json"> & {
   /** Untyped JSON in openapi.json (generated as Record<string, never>). */
@@ -209,7 +210,7 @@ export interface HomeKpisDTO {
 
 export type TrendPointDTO = S["TrendData"] & { confirmed_fraud?: number };
 
-export type HomeDTO = Omit<S["HomeResponse"], "trend" | "readiness_score"> & {
+export type HomeDTO = Omit<S["HomeResponse"], "trend" | "readiness_score" | "kpis" | "attention" | "weekly_brief" | "as_of"> & {
   readiness_score: S["ReadinessScore"] & {
     reason_hi?: string;
     /** EXT: what pulls the score down, so the number is explained in words. */

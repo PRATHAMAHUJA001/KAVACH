@@ -121,7 +121,9 @@
     "ACCOUNT_TAKEOVER": "Account possibly taken over",
     "CASH_REPORTING": "Large cash transaction reporting",
     "KYC_CDD": "Customer checks out of date",
-    "WIRE_TRANSFER": "Wire transfer details missing"
+    "WIRE_TRANSFER": "Wire transfer details missing",
+    "GENERAL_AML": "Activity that doesn't fit the customer's profile",
+    "SANCTIONS_SCREENING": "Possible match on a sanctions list"
   },
   "nav": {
     "label": "Main navigation",
@@ -302,6 +304,401 @@
     "brief": {
       "title": "This week in one paragraph",
       "source": "Written from this week's numbers · {{when}}"
+    }
+  },
+  "graph": {
+    "summary_one": "{{count}} linked account",
+    "summary_other": "{{count}} linked accounts",
+    "edge": {
+      "shared_phone": "Same phone number",
+      "shared_ip": "Same internet address",
+      "shared_device": "Same device",
+      "sent_money": "Sent money"
+    },
+    "more": "+{{count}} more",
+    "link": "{{a}} and {{b}}: {{kind}}",
+    "open": "See this ring in Mule rings"
+  },
+  "alerts": {
+    "view": {
+      "label": "Show",
+      "open": "Open",
+      "overdue": "Report overdue",
+      "48h": "Report due in 48 h",
+      "all": "All, including closed"
+    },
+    "typology": {
+      "label": "Pattern",
+      "all": "All patterns"
+    },
+    "sort": {
+      "label": "Sort by",
+      "priority": "Most urgent",
+      "amount": "Largest amount",
+      "newest": "Newest"
+    },
+    "searchPlaceholder": "Filter by name, account or city",
+    "count_one": "{{count}} alert",
+    "count_other": "{{count}} alerts",
+    "range": "{{from}}–{{to}} of {{total}}",
+    "prev": "Previous page",
+    "next": "Next page",
+    "txns_one": "{{count}} transaction",
+    "txns_other": "{{count}} transactions",
+    "open": "Open case file for {{name}}",
+    "resolution": {
+      "TRUE_POSITIVE": "Confirmed fraud",
+      "FALSE_POSITIVE": "Not fraud",
+      "filed": "Report filed",
+      "closed": "Closed"
+    },
+    "whyNot": {
+      "title": "Why wasn't this flagged?",
+      "hint": "Enter a transaction ID to see which checks looked at it and why none raised an alert.",
+      "placeholder": "Transaction ID, e.g. TXN5500123",
+      "submit": "Check",
+      "notFound": "We couldn't find transaction {{id}}.",
+      "flagged": "This transaction was flagged.",
+      "openCase": "Open the case file",
+      "result": {
+        "passed": "Checked, no issue",
+        "not_applicable": "Doesn't apply",
+        "near_miss": "Almost flagged"
+      },
+      "checks": "Checks that looked at it"
+    }
+  },
+  "case": {
+    "loading": "Opening the case file…",
+    "notFound": "This alert no longer exists.",
+    "story": "The story",
+    "storyLang": "Story language",
+    "storyFallback": "{{name}}'s account was flagged for this pattern: {{pattern}}.",
+    "storyFallbackAmount": "{{name}}'s account was flagged for this pattern: {{pattern}}. It had {{count}} transactions worth {{amount}} in the 30 days before.",
+    "noReasons": "The check didn't record details beyond the pattern it matched.",
+    "noTimeline": "No transactions in the last 30 days of data.",
+    "connected": "Who is connected",
+    "noConnections": "No known links to other accounts.",
+    "transactions": "All transactions",
+    "txn": {
+      "when": "When",
+      "channel": "Channel",
+      "direction": "In / out",
+      "counterparty": "Other party",
+      "amount": "Amount",
+      "in": "In",
+      "out": "Out"
+    },
+    "evidence": "Evidence pack",
+    "action": {
+      "fraud": "Mark as fraud",
+      "notFraud": "Not fraud",
+      "download": "Download evidence pack",
+      "verify": "Verify evidence",
+      "draft": "Create draft report",
+      "readOnly": "Read-only access: you can view this case but not change it."
+    },
+    "toast": {
+      "fraud": "Marked as fraud. The case is closed.",
+      "notFraud": "Marked as not fraud. The case is closed.",
+      "failed": "That didn't save. Please try again.",
+      "evidenceFailed": "We couldn't create the evidence pack. Please try again.",
+      "verifyFirst": "Create the evidence pack first, then verify it.",
+      "copied": "Draft copied."
+    },
+    "draft": {
+      "title": "Draft suspicious transaction report",
+      "hint": "AI-written from this case. A compliance officer must review it before filing.",
+      "copy": "Copy text",
+      "failed": "We couldn't write the draft. Please try again."
+    }
+  },
+  "ask": {
+    "emptyTitle": "Ask anything in plain English.",
+    "emptySub": "Ask about alerts, customers, money flows or regulations.",
+    "suggest": {
+      "branches": "Which branches had the most high-risk alerts?",
+      "circular": "What does the circular say about cash deposits near the reporting threshold?",
+      "topRisk": "Which are the top 10 risk accounts?",
+      "due": "Which reports are due this week?",
+      "explain": "Explain why the most urgent alert was flagged",
+      "whatIf": "What if the structuring limit were ₹8 lakh instead of ₹9 lakh?"
+    },
+    "placeholder": "Ask a question… (Enter to send, Shift+Enter for a new line)",
+    "send": "Send question",
+    "stop": "Stop answering",
+    "newChat": "New conversation",
+    "disclaimer": "Answers come from synthetic data and synthetic circulars. Check anything important.",
+    "step": {
+      "thinking": "Understanding the question…",
+      "data": "Looked up the data",
+      "circulars": "Searched the circulars",
+      "check": "Ran a check",
+      "writing": "Writing the answer…"
+    },
+    "showData": "Show the data",
+    "showSql": "Show the SQL",
+    "rows_one": "{{count}} row",
+    "rows_other": "{{count}} rows",
+    "chartCaption": "{{y}} by {{x}}",
+    "helpful": "Was this helpful?",
+    "thanks": "Thanks for the feedback.",
+    "voteUp": "Helpful",
+    "voteDown": "Not helpful",
+    "failed": "The assistant couldn't answer this time.",
+    "stopped": "You stopped this answer."
+  },
+  "rings": {
+    "listLabel": "Mule rings",
+    "empty": "No groups of accounts working together were found.",
+    "confidence": {
+      "HIGH": "Very likely",
+      "MEDIUM": "Possible",
+      "LOW": "Weak signs"
+    },
+    "members_one": "{{count}} account",
+    "members_other": "{{count}} accounts",
+    "speedMinutes_one": "money moves on in {{count}} minute",
+    "speedMinutes_other": "money moves on in {{count}} minutes",
+    "speedHours_one": "money moves on in {{count}} hour",
+    "speedHours_other": "money moves on in {{count}} hours",
+    "summary_one": "{{count}} account moved",
+    "summary_other": "{{count}} accounts moved",
+    "role": {
+      "collector": "Collector — receives the money first",
+      "mule": "Mule — passes money on",
+      "exit": "Exit — sends the money out"
+    },
+    "moneyIn": "Received {{amount}}",
+    "moneyOut": "Sent {{amount}}",
+    "hasAlert": "Has an open alert — click to open the case file",
+    "graphLabel": "Network of {{count}} linked accounts",
+    "graphHint": "Hover an account or a line for details. Click an account with an open alert to open its case file. Drag to pan, scroll to zoom.",
+    "edge": {
+      "sentAmount": "sent {{amount}}"
+    },
+    "legend": {
+      "money": "Sent money",
+      "shared": "Same phone, device or internet address",
+      "risk": "Risk: high · elevated · low",
+      "alert": "Has an open alert"
+    },
+    "membersTitle": "Accounts in this ring",
+    "transfersTitle": "Money moving between them",
+    "transfersSub": "Most recent transfers first",
+    "col": {
+      "name": "Account",
+      "role": "Role",
+      "in": "Received",
+      "out": "Sent",
+      "when": "When",
+      "fromTo": "From → to"
+    },
+    "openCase": "Open case file",
+    "roleShort": {
+      "collector": "Collector",
+      "mule": "Mule",
+      "exit": "Exit"
+    },
+    "show": {
+      "label": "Links to show",
+      "money": "Money",
+      "shared": "Shared phone/device/IP",
+      "both": "Both"
+    }
+  },
+  "rulebook": {
+    "readOnly": "Read-only access: you can review rules but not approve, reject or upload.",
+    "tab": {
+      "review": "Review",
+      "versions": "Versions",
+      "conflicts": "Conflicts",
+      "health": "Rule health"
+    },
+    "status": {
+      "APPROVED": "Approved",
+      "PENDING_APPROVAL": "Waiting for review",
+      "REJECTED": "Rejected",
+      "SUPERSEDED": "Replaced"
+    },
+    "severity": {
+      "HIGH": "High priority",
+      "MEDIUM": "Medium priority",
+      "LOW": "Low priority"
+    },
+    "filter": {
+      "label": "Show rules",
+      "upload": "Just uploaded",
+      "pending": "Waiting",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "all": "All"
+    },
+    "upload": {
+      "title": "Drop a circular PDF here",
+      "hint": "KAVACH reads it, finds each obligation and writes a check for it. You review every check before it goes live.",
+      "browse": "Choose a PDF",
+      "sending": "Uploading…",
+      "notPdf": "Please choose a PDF file.",
+      "tooBig": "The file is larger than 10 MB.",
+      "failed": "The upload didn't go through. Please try again.",
+      "working": "Turning the circular into checks",
+      "step": {
+        "reading": "Reading",
+        "obligations": "Finding obligations",
+        "checks": "Writing checks",
+        "review": "Ready for review"
+      },
+      "ready_one": "{{count}} check from {{circular}} is ready for review.",
+      "ready_other": "{{count}} checks from {{circular}} are ready for review.",
+      "review": "Review them",
+      "another": "Upload another circular"
+    },
+    "review": {
+      "listLabel": "Rules",
+      "empty": "Nothing here — every rule in this list has been reviewed.",
+      "pick": "Choose a rule to review.",
+      "source": "What the circular says",
+      "noSource": "The source paragraph isn't available.",
+      "check": "What the check does",
+      "approvedBy": "Approved by {{who}}",
+      "rejectedBecause": "Rejected:",
+      "editHint": "To change a limit, try it on past data in Time Machine first.",
+      "engineers": "For engineers: the SQL",
+      "history": "Version history"
+    },
+    "action": {
+      "approve": "Approve",
+      "edit": "Edit in Time Machine",
+      "reject": "Reject"
+    },
+    "reject": {
+      "title": "Why are you rejecting this rule?",
+      "hint": "Your reason is saved with the rule so the next reviewer can see it.",
+      "placeholder": "For example: the check tests ₹10 L but the paragraph is about PAN for ₹50,000 deposits.",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "approved": "Rule approved. It will run from the next check cycle.",
+      "rejected": "Rule rejected. Your reason is saved."
+    },
+    "versions": {
+      "sub": "Every version of this rule, newest first.",
+      "none": "No history for this rule yet.",
+      "version": "Version {{n}}"
+    },
+    "conflicts": {
+      "none": "No clashing rules.",
+      "checks": "The check:",
+      "open": "Open this rule",
+      "kind": {
+        "contradiction": "Contradiction",
+        "overlap": "Overlap"
+      },
+      "explain": {
+        "contradiction": "These rules check the same thing with different limits. Only one can be right.",
+        "overlap": "These rules cover the same ground, so the same customer may be flagged twice."
+      }
+    },
+    "health": {
+      "active": "Active rules",
+      "activeSentence_one": "of {{count}} rule in the library",
+      "activeSentence_other": "of {{count}} rules in the library",
+      "pending": "Waiting for review",
+      "pendingSentence": "Not running until someone approves them",
+      "rejected": "Rejected",
+      "rejectedSentence": "Kept with the reason, for audit",
+      "precision": "Confirmed fraud rate",
+      "precisionSentence": "Share of reviewed alerts that were real fraud",
+      "evalTitle": "How much planted fraud the rules catch",
+      "evalSub": "{{caught}} of {{total}} fraud accounts raised an alert: {{recall}}% caught. {{precision}}% of alerted accounts were fraud.",
+      "evalNote": "Measured against the fraud the synthetic data generator planted (RAW.GROUND_TRUTH). Bars show the share caught per pattern.",
+      "tableTitle": "Each rule over the last 30 days",
+      "tableSub": "Noisy rules flood the queue; quiet rules never fire.",
+      "col": {
+        "rule": "Rule",
+        "alerts": "Alerts",
+        "confirmed": "Confirmed fraud",
+        "precision": "Precision",
+        "verdict": "Verdict"
+      },
+      "verdict": {
+        "healthy": "Healthy",
+        "noisy": "Too noisy",
+        "quiet": "Silent"
+      },
+      "tryIt": "Try it in Time Machine"
+    }
+  },
+  "tm": {
+    "pick": "Rule",
+    "none": "No rule has a limit that can be replayed yet.",
+    "notTunable": "That rule has no numeric limit to replay, so here is the first one that does.",
+    "current": "Now: {{value}}",
+    "reset": "Back to the current limit",
+    "replay": "Replay last {{days}} days",
+    "running": "Running the check on {{days}} days of data…",
+    "failed": "The replay didn't finish. Please try again.",
+    "now": "Now",
+    "proposed": "Proposed",
+    "ofTotal": "out of {{total}} planted fraud accounts",
+    "metric": {
+      "alerts": "Alerts",
+      "fraudCaught": "Fraud caught",
+      "analystHours": "Review hours"
+    },
+    "move": {
+      "lower": "Lowering to {{value}}",
+      "raise": "Raising to {{value}}",
+      "keep": "Keeping the limit"
+    },
+    "verdict": {
+      "moreFraudMoreHours_one": "{{move}} catches {{fraud}} more fraud case for {{hours}} extra review hours.",
+      "moreFraudMoreHours_other": "{{move}} catches {{fraud}} more fraud cases for {{hours}} extra review hours.",
+      "moreFraudFewerHours_one": "{{move}} catches {{fraud}} more fraud case and saves {{hours}} review hours.",
+      "moreFraudFewerHours_other": "{{move}} catches {{fraud}} more fraud cases and saves {{hours}} review hours.",
+      "lessFraudFewerHours_one": "{{move}} saves {{hours}} review hours but misses {{fraud}} fraud case.",
+      "lessFraudFewerHours_other": "{{move}} saves {{hours}} review hours but misses {{fraud}} fraud cases.",
+      "lessFraudMoreHours_one": "{{move}} misses {{fraud}} fraud case and adds {{hours}} review hours.",
+      "lessFraudMoreHours_other": "{{move}} misses {{fraud}} fraud cases and adds {{hours}} review hours.",
+      "fewerHours": "{{move}} saves {{hours}} review hours and misses no fraud.",
+      "moreHours": "{{move}} adds {{hours}} review hours and catches no extra fraud.",
+      "same": "No difference over the last {{days}} days."
+    },
+    "method": "The replay runs the rule's real check on the last {{days}} days of data, at today's limit and at the new one. Fraud caught counts accounts that were planted as fraud in the synthetic data. Review hours assume 45 minutes per alert.",
+    "methodDemo": "Demo data: these numbers come from a built-in model of each check, not a replay on real data. Review hours assume 45 minutes per alert."
+  },
+  "tour": {
+    "start": "Take the tour",
+    "close": "End the tour",
+    "stepOf": "{{n}} of {{total}}",
+    "lost": "The tour couldn't find the next screen. You can start it again from the sidebar.",
+    "resetFailed": "The tour data couldn't be prepared. Please try again.",
+    "steps": {
+      "readiness": {
+        "title": "How ready are we for an audit?",
+        "body": "One number for today, and the reasons pulling it down, in plain words."
+      },
+      "attention": {
+        "title": "Start here",
+        "body": "The few things that need you now, most urgent first. Each has one button."
+      },
+      "case": {
+        "title": "Why this is suspicious",
+        "body": "Every alert explains itself: the strongest reasons first, and the exact paragraph of the circular it relies on."
+      },
+      "ring": {
+        "title": "Who is working together",
+        "body": "Accounts that pass money between themselves and share phones or devices, shown as one group."
+      },
+      "rule": {
+        "title": "From regulation to a working check",
+        "body": "Each check sits next to the sentence it comes from. Nothing runs until a person approves it."
+      },
+      "timeMachine": {
+        "title": "Try a change before making it",
+        "body": "Move the limit and replay the last 90 days to see the extra fraud caught and the extra work."
+      }
     }
   }
 }

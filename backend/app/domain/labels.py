@@ -10,6 +10,11 @@ TYPOLOGY_PHRASE = {
     "STRUCTURING": ("cash split under the reporting limit", "सीमा से बचने के लिए नकद बाँटना"),
     "DORMANT_REACTIVATION": ("sleeping accounts suddenly active", "निष्क्रिय खाते अचानक सक्रिय"),
     "INCOME_MISMATCH": ("money far above declared income", "घोषित आय से कहीं ज़्यादा लेनदेन"),
+    "CASH_REPORTING": ("large cash that must be reported", "बड़ा नकद लेनदेन जिसकी रिपोर्ट ज़रूरी है"),
+    "KYC_CDD": ("customer checks out of date", "ग्राहक जाँच (KYC) पुरानी"),
+    "WIRE_TRANSFER": ("wire transfer details missing", "वायर ट्रांसफ़र का विवरण अधूरा"),
+    "GENERAL_AML": ("activity that doesn't fit the customer's profile", "ग्राहक की प्रोफ़ाइल से मेल न खाने वाली गतिविधि"),
+    "SANCTIONS_SCREENING": ("possible match on a sanctions list", "प्रतिबंध सूची से संभावित मेल"),
 }
 
 

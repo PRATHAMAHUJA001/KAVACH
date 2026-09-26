@@ -117,6 +117,8 @@ def run(session):
                 text = parts[i + 1].strip()
                 # Clean markdown artifacts
                 text = re.sub(r'\n{3,}', '\n\n', text)
+                # The generator's page footer ("SYNTHETIC circular ...") lands in the last paragraph.
+                text = re.split(r'\s*SYNTHETIC circular', text, flags=re.I)[0]
                 text = text.strip()
                 if len(text) < 10:
                     continue
@@ -211,7 +213,9 @@ CREATE OR REPLACE TABLE RULES.RULE_CANDIDATES (
 
 -- Extract rules from each paragraph using AI_COMPLETE
 -- Uses plain text prompt with JSON instruction; parses response in Python
-CREATE OR REPLACE PROCEDURE RULES.EXTRACT_RULES_FROM_CHUNKS()
+-- CIRCULAR_FILTER limits extraction to one circular (used for uploads, so existing
+-- circulars aren't sent to the LLM again). NULL = every circular.
+CREATE OR REPLACE PROCEDURE RULES.EXTRACT_RULES_FROM_CHUNKS(CIRCULAR_FILTER STRING DEFAULT NULL)
 RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
@@ -222,16 +226,17 @@ AS
 $$
 import json
 
-def run(session):
+def run(session, circular_filter=None):
     chunks = session.sql("""
         SELECT CHUNK_ID, CIRCULAR_NO, PARA_NO, TEXT
         FROM KAVACH_DB.AI.REG_CHUNKS
-        WHERE TEXT ILIKE '%shall%'
+        WHERE (TEXT ILIKE '%shall%'
            OR TEXT ILIKE '%must%'
            OR TEXT ILIKE '%required%'
-           OR TEXT ILIKE '%mandatory%'
+           OR TEXT ILIKE '%mandatory%')
+          AND (? IS NULL OR CIRCULAR_NO = ?)
         ORDER BY CIRCULAR_NO, PARA_NO
-    """).collect()
+    """, params=[circular_filter, circular_filter]).collect()
 
     rule_count = 0
     errors = []
@@ -264,6 +269,15 @@ Return ONLY a valid JSON object (no markdown, no explanation) with these fields:
 
             if result and result[0]['RESULT']:
                 raw = str(result[0]['RESULT']).strip()
+                # NOTE: AI_COMPLETE returns a VARIANT; Snowpark's collect() stringifies
+                # it as its JSON representation (a quoted, escaped JSON string) rather
+                # than the raw text -- must json.loads() once to unwrap before
+                # fence-stripping, or json.loads() below always fails with
+                # "Expecting property name enclosed in double quotes: line 1 column 2".
+                try:
+                    raw = json.loads(raw)
+                except Exception:
+                    pass
                 # Try to extract JSON from the response
                 if raw.startswith('```'):
                     raw = raw.split('```')[1]
@@ -334,6 +348,14 @@ CREATE OR REPLACE TABLE RULES.RULE_LIBRARY (
     SOURCE_CITATION     STRING,
     COMPILED_BY         STRING DEFAULT 'AI',
     APPROVED_BY         STRING DEFAULT NULL,
+    -- NOTE: backend/app/infrastructure/repositories/rule_repository.py's
+    -- approve/reject endpoints write approved_at/rejected_by/rejected_at/
+    -- rejection_reason -- these columns were missing from the original DDL
+    -- (found via smoke test failure during the account rebuild).
+    APPROVED_AT         TIMESTAMP_NTZ,
+    REJECTED_BY         STRING,
+    REJECTED_AT         TIMESTAMP_NTZ,
+    REJECTION_REASON    STRING,
     STATUS              STRING DEFAULT 'PENDING_APPROVAL',
     CREATED_AT          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
@@ -355,8 +377,10 @@ def run(session):
     candidates = session.sql("""
         SELECT RULE_ID, CIRCULAR_NO, PARA_NO, TYPOLOGY, ENTITY,
                THRESHOLDS, TIME_WINDOW, ACTION_REQUIRED, OBLIGATION_SUMMARY, SOURCE_QUOTE
-        FROM KAVACH_DB.RULES.RULE_CANDIDATES
+        FROM KAVACH_DB.RULES.RULE_CANDIDATES c
         WHERE STATUS = 'DRAFT' AND TYPOLOGY != 'INFORMATIONAL'
+          -- idempotent: never compile a candidate that already has a rule
+          AND NOT EXISTS (SELECT 1 FROM KAVACH_DB.RULES.RULE_LIBRARY l WHERE l.RULE_CANDIDATE_ID = c.RULE_ID)
     """).collect()
 
     compiled = 0
@@ -417,7 +441,7 @@ FROM KAVACH_DB.CORE.TRANSACTIONS t
 WHERE t.CHANNEL = 'CASH'
   AND t.DIRECTION = 'CREDIT'
   AND t.AMOUNT_INR BETWEEN 900000 AND 999999
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
 GROUP BY t.ACCOUNT_ID
 HAVING COUNT(*) >= 3""",
 
@@ -427,7 +451,7 @@ SELECT t.ACCOUNT_ID, t.TXN_ID, t.AMOUNT_INR, t.TXN_TS, t.CHANNEL
 FROM KAVACH_DB.CORE.TRANSACTIONS t
 WHERE t.CHANNEL = 'CASH'
   AND t.AMOUNT_INR >= 1000000
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())""",
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))""",
 
         'MULE_RING': """
 -- Mule Ring: accounts sharing devices with rapid in→out pattern
@@ -447,7 +471,7 @@ rapid_flow AS (
         ON t1.ACCOUNT_ID = t2.ACCOUNT_ID
         AND t1.DIRECTION = 'CREDIT' AND t2.DIRECTION = 'DEBIT'
         AND DATEDIFF('minute', t1.TXN_TS, t2.TXN_TS) BETWEEN 1 AND 30
-        AND t1.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+        AND t1.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
 )
 SELECT sd.DEVICE_ID, rf.ACCOUNT_ID, rf.AMOUNT_INR, rf.MINUTES_GAP
 FROM rapid_flow rf
@@ -462,7 +486,7 @@ JOIN KAVACH_DB.CORE.TRANSACTIONS t ON a.ACCOUNT_ID = t.ACCOUNT_ID
 WHERE a.STATUS = 'DORMANT'
   AND t.DIRECTION = 'DEBIT'
   AND t.AMOUNT_INR >= 100000
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())""",
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))""",
 
         'RAPID_PASSTHROUGH': """
 -- Rapid pass-through: in ≈ out within 24h, near-zero balance
@@ -478,7 +502,7 @@ WITH flow AS (
         AND t1.DIRECTION = 'CREDIT' AND t2.DIRECTION = 'DEBIT'
         AND DATEDIFF('hour', t1.TXN_TS, t2.TXN_TS) BETWEEN 0 AND 24
         AND ABS(t1.AMOUNT_INR - t2.AMOUNT_INR) / NULLIF(t1.AMOUNT_INR, 0) < 0.05
-    WHERE t1.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+    WHERE t1.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
 )
 SELECT ACCOUNT_ID, COUNT(*) AS PASSTHROUGH_COUNT, SUM(CREDIT_AMT) AS TOTAL_FLOW
 FROM flow
@@ -493,7 +517,7 @@ SELECT c.CUSTOMER_ID, c.CUSTOMER_NAME, c.DECLARED_ANNUAL_INCOME,
 FROM KAVACH_DB.CORE.CUSTOMERS c
 JOIN KAVACH_DB.CORE.ACCOUNTS a ON c.CUSTOMER_ID = a.CUSTOMER_ID
 JOIN KAVACH_DB.CORE.TRANSACTIONS t ON a.ACCOUNT_ID = t.ACCOUNT_ID
-WHERE t.TXN_TS >= DATEADD('month', -6, CURRENT_TIMESTAMP())
+WHERE t.TXN_TS >= DATEADD('month', -6, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
   AND c.DECLARED_ANNUAL_INCOME < 500000
 GROUP BY c.CUSTOMER_ID, c.CUSTOMER_NAME, c.DECLARED_ANNUAL_INCOME
 HAVING SUM(t.AMOUNT_INR) / NULLIF(c.DECLARED_ANNUAL_INCOME, 0) > 10""",
@@ -514,7 +538,7 @@ WITH hops AS (
         AND DATEDIFF('day', t2.TXN_TS, t3.TXN_TS) BETWEEN 0 AND 3
     WHERE t1.DIRECTION = 'DEBIT'
       AND t3.COUNTERPARTY = t1.ACCOUNT_ID
-      AND t1.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+      AND t1.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
 )
 SELECT ORIGIN, HOP1, HOP2, HOP3, AMOUNT_INR, DAYS_SPAN
 FROM hops""",
@@ -527,7 +551,7 @@ FROM KAVACH_DB.CORE.TRANSACTIONS t
 JOIN KAVACH_DB.REF.COUNTRY_RISK cr ON t.COUNTRY = cr.COUNTRY_CODE
 WHERE t.CHANNEL = 'SWIFT'
   AND cr.RISK_LEVEL IN ('HIGH', 'PROHIBITED')
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())""",
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))""",
 
         'ACCOUNT_TAKEOVER': """
 -- Account takeover: new device + high-value transfer within 1 hour
@@ -540,7 +564,7 @@ WITH new_device_logins AS (
         GROUP BY ACCOUNT_ID, DEVICE_ID
     ) hist ON l.ACCOUNT_ID = hist.ACCOUNT_ID AND l.DEVICE_ID = hist.DEVICE_ID
     WHERE l.LOGIN_TS = hist.FIRST_SEEN
-      AND l.LOGIN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+      AND l.LOGIN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
 )
 SELECT ndl.ACCOUNT_ID, ndl.DEVICE_ID, ndl.LOGIN_TS AS NEW_DEVICE_LOGIN,
        t.TXN_ID, t.AMOUNT_INR, t.TXN_TS,
@@ -562,7 +586,7 @@ JOIN KAVACH_DB.CORE.TRANSACTIONS t ON a.ACCOUNT_ID = t.ACCOUNT_ID
 WHERE c.IS_PEP = TRUE
   AND t.CHANNEL = 'CASH'
   AND t.AMOUNT_INR >= 500000
-  AND t.TXN_TS >= DATEADD('day', -90, CURRENT_TIMESTAMP())""",
+  AND t.TXN_TS >= DATEADD('day', -90, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))""",
 
         'KYC_CDD': """
 -- KYC re-verification overdue or income mismatch requiring EDD
@@ -581,7 +605,7 @@ FROM KAVACH_DB.CORE.TRANSACTIONS t
 JOIN KAVACH_DB.REF.WATCHLIST w
     ON JAROWINKLER_SIMILARITY(UPPER(t.COUNTERPARTY), UPPER(w.FULL_NAME)) >= 85
 WHERE t.CHANNEL = 'SWIFT'
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())""",
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))""",
 
         'WIRE_TRANSFER': """
 -- Wire transfer monitoring: SWIFT transfers exceeding USD 10000 equivalent
@@ -590,17 +614,66 @@ SELECT t.TXN_ID, t.ACCOUNT_ID, t.AMOUNT_INR, t.COUNTRY, t.TXN_TS,
 FROM KAVACH_DB.CORE.TRANSACTIONS t
 WHERE t.CHANNEL = 'SWIFT'
   AND t.AMOUNT_INR >= 850000
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())""",
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))""",
 
         'GENERAL_AML': """
 -- General AML monitoring catch-all
 SELECT t.TXN_ID, t.ACCOUNT_ID, t.AMOUNT_INR, t.CHANNEL, t.TXN_TS
 FROM KAVACH_DB.CORE.TRANSACTIONS t
 WHERE t.AMOUNT_INR >= 1000000
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())"""
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))"""
     }
 
-    return templates.get(typology, '')
+    return apply_thresholds(templates.get(typology, ''), typology, thresholds or {}, time_window)
+
+
+def _num(v):
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if f > 0 else None
+
+
+def _window_days(time_window):
+    """'30 days' -> 30, '24 hours' -> 1, 'calendar month' -> 30, '6 months' -> 180; None if unclear."""
+    import re
+    tw = (time_window or '').lower()
+    m = re.search(r'(\d+)\s*(day|week|month|hour|year)', tw)
+    if m:
+        n, unit = int(m.group(1)), m.group(2)
+        return max(1, {'day': n, 'week': n * 7, 'month': n * 30, 'hour': -(-n // 24), 'year': n * 365}[unit])
+    if 'month' in tw:
+        return 30
+    if 'week' in tw:
+        return 7
+    return None
+
+
+def apply_thresholds(sql, typology, thresholds, time_window):
+    """Put the paragraph's own limits into the template, so the check tests what the
+    circular says. Only values the extractor actually found are substituted; anything
+    missing keeps the template default."""
+    import re
+    if not sql:
+        return sql
+    th = {str(k).lower(): _num(v) for k, v in thresholds.items()}
+    amount_keys = [k for k, v in th.items() if v and v >= 1000 and any(w in k for w in ('amount', 'threshold', 'limit', 'value'))]
+    lo = th.get('min_amount') or th.get('lower_limit') or th.get('min_threshold')
+    hi = th.get('max_amount') or th.get('upper_limit') or th.get('max_threshold')
+    count = next((th[k] for k in ('min_count', 'count', 'max_frequency', 'frequency', 'min_frequency', 'times') if th.get(k)), None)
+
+    if typology == 'STRUCTURING' and lo and hi and lo < hi:
+        sql = re.sub(r'AMOUNT_INR BETWEEN \d+ AND \d+', f'AMOUNT_INR BETWEEN {int(lo)} AND {int(hi)}', sql, count=1)
+    elif amount_keys:
+        single = th.get('amount') or th[amount_keys[0]]
+        sql = re.sub(r'AMOUNT_INR >= \d+', f'AMOUNT_INR >= {int(single)}', sql, count=1)
+    if count and count < 1000 and 'HAVING COUNT(*) >=' in sql:
+        sql = re.sub(r'HAVING COUNT\(\*\) >= \d+', f'HAVING COUNT(*) >= {int(count)}', sql, count=1)
+    days = _window_days(time_window)
+    if days:
+        sql = re.sub(r"DATEADD\('day', -\d+,", f"DATEADD('day', -{days},", sql)
+    return sql
 $$;
 
 CALL RULES.COMPILE_RULES();
@@ -654,6 +727,9 @@ def run(session):
             UPDATE KAVACH_DB.RULES.RULE_LIBRARY
             SET EFFECTIVE_TO = CURRENT_DATE(), STATUS = 'SUPERSEDED'
             WHERE SOURCE_CITATION ILIKE '%{original}%'
+              -- only the original circular's own rules, never an amendment's versions
+              AND SOURCE_CITATION NOT ILIKE '%(amends%'
+              AND VERSION = 1
               AND EFFECTIVE_TO = '9999-12-31'::DATE
               AND TYPOLOGY IN ({','.join([f"'{t}'" for t in typ_list])})
         """).collect()
@@ -671,6 +747,9 @@ def run(session):
             typ = c['TYPOLOGY']
             ent = c['ENTITY'] or 'TXN'
             rid = c['RULE_ID']
+            # idempotent: one v2 per amending candidate, however often this runs
+            if session.sql(f"SELECT 1 FROM KAVACH_DB.RULES.RULE_LIBRARY WHERE RULE_CANDIDATE_ID = '{rid}' AND VERSION = 2").collect():
+                continue
             rname = f"v2_{typ}_{amending.replace('/', '_')}".replace("'", "''")
             citation = f"{amending} (amends {original})".replace("'", "''")
 
@@ -680,14 +759,14 @@ SELECT t.ACCOUNT_ID, COUNT(*) AS DEPOSIT_COUNT, SUM(t.AMOUNT_INR) AS TOTAL_AMOUN
 FROM KAVACH_DB.CORE.TRANSACTIONS t
 WHERE t.CHANNEL = 'CASH' AND t.DIRECTION = 'CREDIT'
   AND t.AMOUNT_INR BETWEEN 1300000 AND 1499999
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))
 GROUP BY t.ACCOUNT_ID HAVING COUNT(*) >= 3"""
             elif typ == 'CASH_REPORTING':
                 sql_v2 = """-- CTR v2: revised threshold Rs.15L
 SELECT t.ACCOUNT_ID, t.TXN_ID, t.AMOUNT_INR, t.TXN_TS
 FROM KAVACH_DB.CORE.TRANSACTIONS t
 WHERE t.CHANNEL = 'CASH' AND t.AMOUNT_INR >= 1500000
-  AND t.TXN_TS >= DATEADD('day', -30, CURRENT_TIMESTAMP())"""
+  AND t.TXN_TS >= DATEADD('day', -30, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS))"""
             else:
                 sql_v2 = "SELECT 1 -- No SQL change for this typology"
 
@@ -740,6 +819,8 @@ HANDLER = 'run'
 EXECUTE AS CALLER
 AS
 $$
+import json
+
 def run(session):
     session.sql("TRUNCATE TABLE KAVACH_DB.RULES.RULE_CONFLICTS").collect()
 
@@ -857,7 +938,14 @@ Explain the conflict concisely.'
                     ) AS explanation
                 """).collect()
                 if explanation:
-                    exp_text = explanation[0]['EXPLANATION'][:500].replace("'", "''")
+                    exp_text = explanation[0]['EXPLANATION']
+                    # NOTE: same VARIANT-stringification gotcha as AI_COMPLETE above —
+                    # unwrap one level of JSON encoding before truncating/storing.
+                    try:
+                        exp_text = json.loads(exp_text)
+                    except Exception:
+                        pass
+                    exp_text = str(exp_text)[:500].replace("'", "''")
                     session.sql(f"""
                         UPDATE KAVACH_DB.RULES.RULE_CONFLICTS
                         SET DESCRIPTION = '{exp_text}'
@@ -903,13 +991,31 @@ def run(session, stage_path):
     """).collect()
 
     r1 = session.sql("CALL KAVACH_DB.AI.CHUNK_PARSED_DOCS()").collect()[0][0]
-    r2 = session.sql("CALL KAVACH_DB.RULES.EXTRACT_RULES_FROM_CHUNKS()").collect()[0][0]
+    r2 = session.sql("CALL KAVACH_DB.RULES.EXTRACT_RULES_FROM_CHUNKS(NULL)").collect()[0][0]
     r3 = session.sql("CALL KAVACH_DB.RULES.COMPILE_RULES()").collect()[0][0]
     session.sql("CALL KAVACH_DB.RULES.APPLY_AMENDMENTS()").collect()
     r4 = session.sql("CALL KAVACH_DB.RULES.DETECT_CONFLICTS()").collect()[0][0]
 
     return f"{r1} | {r2} | {r3} | {r4}"
 $$;
+
+-- Circular uploads from the Rulebook screen: the backend stores the PDF under
+-- @RAW.REG_STAGE/uploads/ and runs parse → chunk → extract (that circular only) →
+-- compile → amendments → conflicts, recording progress here.
+-- STEP: 0 reading · 1 finding obligations · 2 writing checks · 3 ready for review
+CREATE TABLE IF NOT EXISTS KAVACH_DB.APP.UPLOAD_JOBS (
+    JOB_ID       STRING PRIMARY KEY,
+    FILENAME     STRING,
+    STATUS       STRING,          -- RUNNING | COMPLETED | FAILED
+    STEP         INT,
+    PROGRESS     INT,
+    MESSAGE      STRING,
+    CIRCULAR_NO  STRING,
+    RULE_IDS     VARIANT,
+    CREATED_BY   STRING DEFAULT CURRENT_USER(),
+    CREATED_AT   TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    UPDATED_AT   TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
 
 -- Grant execute on orchestrator
 GRANT USAGE ON PROCEDURE RULES.COMPILE_CIRCULAR(STRING) TO ROLE KAVACH_ADMIN;
