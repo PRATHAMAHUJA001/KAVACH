@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Eye, Moon, Presentation, Search, Sun, UserRound } from "lucide-react";
+import { Check, Eye, LogOut, Moon, Presentation, Search, Sun, UserRound } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import { useTheme } from "@/shared/lib/theme";
 import { usePresentation } from "@/shared/lib/presentation";
@@ -17,7 +18,7 @@ import {
   Skeleton,
   Tooltip,
 } from "@/shared/ui";
-import { USE_MOCKS } from "@/services/api";
+import { api, USE_MOCKS } from "@/services/api";
 import { useSession } from "@/features/session";
 
 const DEMO_ROLES = [
@@ -29,8 +30,24 @@ const DEMO_ROLES = [
 function RoleChip() {
   const { t } = useTranslation();
   const { me, readOnly } = useSession();
+  const [signingOut, setSigningOut] = useState(false);
   if (!me) return <Skeleton className="h-8 w-28 rounded-full" />;
   const Icon = readOnly ? Eye : UserRound;
+
+  // Closing the session server-side drops the Snowflake session behind it, so the
+  // next visitor has to sign in again rather than inheriting this role.
+  const signOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await api.logout();
+    } catch {
+      // Even if the call fails, send them to the sign-in page rather than
+      // leaving them in a half-signed-out state.
+    }
+    window.location.assign("/login");
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -66,6 +83,17 @@ function RoleChip() {
             ))}
           </>
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={(e) => {
+            // Keep the menu mounted while the request is in flight.
+            e.preventDefault();
+            void signOut();
+          }}
+        >
+          <LogOut aria-hidden />
+          <span className="flex-1">{signingOut ? t("shell.signingOut") : t("shell.signOut")}</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

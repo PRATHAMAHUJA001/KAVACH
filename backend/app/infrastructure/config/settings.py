@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     snowflake_token: str = ""  # Optional: PAT for Cortex Analyst / Agents REST APIs
 
     # Password for the demo persona sign-ins (admin / analyst / auditor / reviewer).
-    demo_password: str = "password"
+    demo_password: str = "Admin@123"
 
     # Cortex Agent
     agent_database: str = "KAVACH_DB"

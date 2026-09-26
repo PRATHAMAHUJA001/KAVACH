@@ -75,23 +75,29 @@ def login(username: str, password: str, role: Optional[str] = None) -> tuple[str
     """
     Open a Snowflake session for this sign-in.
 
-    A persona short name ("analyst") with the demo password opens a session that
-    assumes that Snowflake role. Anything else is treated as a real Snowflake
-    username and password, and a wrong password fails here.
+    A persona short name ("analyst") with the demo password signs in as that
+    Snowflake role. Anything else is treated as a real Snowflake username and
+    password, and a wrong password fails here.
     """
+    from app.infrastructure.snowflake.connection import (
+        base_connection_parameters,
+        running_in_spcs,
+    )
+
     alias = PERSONA_ALIASES.get(username.strip().lower())
+
     if alias and password == settings.demo_password:
-        params = {
-            "account": settings.snowflake_account,
-            "user": settings.snowflake_user,
-            "password": settings.snowflake_password,
-            "role": alias,
-            "database": settings.snowflake_database,
-            "warehouse": settings.snowflake_warehouse,
-            "schema": settings.snowflake_schema,
-            "client_session_keep_alive": True,
-        }
+        # Under SPCS the container authenticates with its mounted OAuth token, so
+        # a role cannot be requested when the session is built; switch afterwards.
+        params = base_connection_parameters(role=alias)
+        assume_role = alias if running_in_spcs() else None
         label = username.strip().lower()
+    elif running_in_spcs():
+        # Real username/password sign-in needs to reach the account endpoint,
+        # which a container cannot do. Fall back to the persona path only.
+        raise PermissionError(
+            "Only the persona sign-ins are available on this deployment"
+        )
     else:
         params = {
             "account": settings.snowflake_account,
@@ -104,13 +110,18 @@ def login(username: str, password: str, role: Optional[str] = None) -> tuple[str
         }
         if role:
             params["role"] = role
+        assume_role = None
         label = None
 
     session = Session.builder.configs(params).create()
 
     try:
+        if assume_role:
+            session.sql(f"USE ROLE {assume_role}").collect()
+            session.sql(f"USE WAREHOUSE {settings.snowflake_warehouse}").collect()
+            session.sql(f"USE SCHEMA {settings.snowflake_database}.{settings.snowflake_schema}").collect()
         row = session.sql("SELECT CURRENT_ROLE() AS r, CURRENT_USER() AS u").collect()[0]
-        actual_role = row["R"] if row["R"] in KNOWN_ROLES else "KAVACH_ANALYST"
+        actual_role = row["R"] if row["R"] in KNOWN_ROLES else (alias or "KAVACH_ANALYST")
         actual_user = label or (row["U"] or username).lower()
     except Exception:
         session.close()

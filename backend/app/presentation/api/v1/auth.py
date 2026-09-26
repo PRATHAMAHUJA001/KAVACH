@@ -11,6 +11,7 @@ Snowflake has already signed the user in at the ingress and tells us who they ar
 in the `Sf-Context-Current-User` header. In that case the login page offers a
 one-click "continue as <user>" instead of asking for a password again.
 """
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -19,6 +20,8 @@ from pydantic import BaseModel
 from app.infrastructure.repositories.dashboard_repository import SnowflakeDashboardRepository
 from app.infrastructure.snowflake import user_sessions
 from app.infrastructure.snowflake.connection import get_service_session
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -113,7 +116,9 @@ async def login(body: LoginRequest, request: Request, response: Response):
     try:
         token, entry = user_sessions.login(body.username, body.password, body.role)
     except Exception as exc:
-        # Deliberately vague: do not confirm whether the user exists.
+        # Log the real cause: a 401 here is almost always a connection problem
+        # rather than a bad password, and the client must not be told which.
+        log.warning("sign-in failed for %r: %s: %s", body.username, type(exc).__name__, exc)
         raise HTTPException(status_code=401, detail="Could not sign in with those details") from exc
 
     response.set_cookie(

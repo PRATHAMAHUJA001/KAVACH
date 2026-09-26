@@ -225,7 +225,7 @@
     "username": "Username",
     "usernamePlaceholder": "analyst",
     "password": "Password",
-    "passwordPlaceholder": "password",
+    "passwordPlaceholder": "Admin@123",
     "submit": "Sign in",
     "submitting": "Signing in…",
     "readOnly": "Read-only",
@@ -237,7 +237,7 @@
     "personas": {
       "title": "Choose a persona",
       "subtitle": "Four roles ship with this deployment. Pick one to fill in its sign-in name.",
-      "note": "For this demo every persona uses the password “password”.",
+      "note": "For this demo every persona uses the password “Admin@123”.",
       "unavailable": "The persona list couldn't be loaded. You can still sign in with your username and password."
     }
   },
@@ -300,7 +300,9 @@
     "reload": "Reload page",
     "home": "Go to Today",
     "demoSignIn": "Demo: sign in as",
-    "tagline": "Compliance copilot"
+    "tagline": "Compliance copilot",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…"
   },
   "today": {
     "greeting": {

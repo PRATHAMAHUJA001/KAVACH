@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.infrastructure.repositories.dashboard_repository import SnowflakeDashboardRepository
+from app.infrastructure.snowflake import user_sessions
 from app.infrastructure.snowflake.connection import get_session
 
 router = APIRouter()
@@ -45,6 +46,11 @@ async def get_current_user(session=Depends(_session)):
         user = (row["U"] or user).lower()
     except Exception:
         pass
+    # Persona sign-ins share one Snowflake account, so CURRENT_USER() is the service
+    # identity rather than who signed in. Show the name they typed instead.
+    signed_in = user_sessions.current()
+    if signed_in is not None:
+        user = signed_in.username
     try:
         as_of = SnowflakeDashboardRepository(session).as_of().isoformat()
     except Exception:
