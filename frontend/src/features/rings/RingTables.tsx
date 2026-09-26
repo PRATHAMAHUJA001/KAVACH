@@ -50,9 +50,9 @@ export function RingTables({ detail }: { detail: RingDetail }) {
           </TBody>
         </Table>
       </Card>
-      <Card className="col-span-12 overflow-hidden p-0 xl:col-span-5">
+      <Card className="col-span-12 min-h-0 overflow-hidden p-0 xl:col-span-5">
         <CardHeader title={t("rings.transfersTitle")} subtitle={t("rings.transfersSub")} className="p-5 pb-3" />
-        <div className="max-h-[28rem] overflow-auto">
+        <div className="max-h-[28rem] min-h-0 overflow-y-auto overflow-x-hidden">
           <Table>
             <THead>
               <TR>
