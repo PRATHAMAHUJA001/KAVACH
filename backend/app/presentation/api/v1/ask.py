@@ -38,6 +38,11 @@ class ToolCall(BaseModel):
     summary: Optional[str] = None
 
 
+class ResultSet(BaseModel):
+    columns: list[str]
+    rows: list[list]
+
+
 class AskResponse(BaseModel):
     """Ask response model (for non-streaming)"""
     question: str
@@ -47,6 +52,35 @@ class AskResponse(BaseModel):
     citations: list[Citation]
     tool_calls: list[ToolCall]
     warnings: list[str]
+    result_set: Optional[ResultSet] = None
+
+
+MAX_RESULT_ROWS = 200
+_NUMERIC_TYPES = {"fixed", "real", "number", "float", "decimal", "integer"}
+
+
+def _to_result_set(rs: dict) -> Optional[dict]:
+    """The SQL API's result_set ({resultSetMetaData.rowType, data}) as {columns, rows},
+    numbers as numbers, capped at MAX_RESULT_ROWS rows for the "Show the data" table."""
+    if not isinstance(rs, dict):
+        return None
+    row_type = (rs.get("resultSetMetaData") or {}).get("rowType") or []
+    columns = [str(c.get("name", "")) for c in row_type]
+    if not columns:
+        return None
+    numeric = [str(c.get("type", "")).lower() in _NUMERIC_TYPES for c in row_type]
+
+    def cell(v, is_num):
+        if v is None or not is_num:
+            return v
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return v
+        return int(f) if f.is_integer() else f
+
+    rows = [[cell(v, numeric[i] if i < len(numeric) else False) for i, v in enumerate(r)] for r in (rs.get("data") or [])[:MAX_RESULT_ROWS]]
+    return {"columns": columns, "rows": rows}
 
 
 def _agent_url() -> str:
@@ -82,9 +116,8 @@ def _lookup_circular_citation(search_result_text: str) -> tuple[Optional[str], O
     text back to AI.REG_CHUNKS (the source of the search index)."""
     try:
         session = get_session()
-        escaped = search_result_text.replace("'", "''")
         rows = session.sql(
-            f"SELECT circular_no, para_no FROM AI.REG_CHUNKS WHERE text = '{escaped}' LIMIT 1"
+            "SELECT circular_no, para_no FROM AI.REG_CHUNKS WHERE text = ? LIMIT 1", params=[search_result_text]
         ).collect()
         if rows:
             return rows[0]["CIRCULAR_NO"], str(rows[0]["PARA_NO"])
@@ -101,6 +134,7 @@ def _extract_from_content_items(content_items: list[dict]) -> dict:
     citations: list[dict] = []
     verified = False
     primary_sql: Optional[str] = None
+    result_set: Optional[dict] = None
 
     # types that are internal orchestration plumbing, not meaningful to surface
     NOISE_TOOL_TYPES = {"system_agentic_semantic_context", "server_skill", "data_to_chart"}
@@ -163,6 +197,8 @@ def _extract_from_content_items(content_items: list[dict]) -> dict:
                     elif "result_set" in j:
                         n = j["result_set"].get("resultSetMetaData", {}).get("numRows", 0)
                         summary = f"SQL executed, {n} row(s)"
+                        # Keep the latest successful result: it's the one the answer is based on.
+                        result_set = _to_result_set(j["result_set"]) or result_set
 
                 elif j.get("execution_type") == "procedure":
                     summary = str(j.get("result", ""))[:500]
@@ -200,6 +236,7 @@ def _extract_from_content_items(content_items: list[dict]) -> dict:
         "citations": deduped_citations,
         "verified_query": verified,
         "sql": primary_sql,
+        "result_set": result_set,
     }
 
 
@@ -243,7 +280,7 @@ async def _stream_agent(question: str) -> AsyncIterator[str]:
                             yield f"event: tool_call\ndata: {json.dumps({'name': tu.get('name'), 'type': tu.get('type'), 'input': tu.get('input')})}\n\n"
                         elif current_event == "response.tool_result":
                             extracted = _extract_from_content_items([{"type": "tool_result", "tool_result": payload_json}])
-                            yield f"event: tool_result\ndata: {json.dumps({'name': payload_json.get('name'), 'type': payload_json.get('type'), 'status': payload_json.get('status'), 'citations': extracted['citations'], 'verified_query': extracted['verified_query'], 'sql': extracted['sql']})}\n\n"
+                            yield f"event: tool_result\ndata: {json.dumps({'name': payload_json.get('name'), 'type': payload_json.get('type'), 'status': payload_json.get('status'), 'citations': extracted['citations'], 'verified_query': extracted['verified_query'], 'sql': extracted['sql'], 'result_set': extracted['result_set']})}\n\n"
                         elif current_event == "response":
                             final = _extract_from_content_items(payload_json.get("content", []))
                             final["question"] = question
@@ -297,6 +334,7 @@ async def ask_question(request: AskRequest, stream: bool = False):
             citations=[Citation(**c) for c in extracted["citations"]],
             tool_calls=[ToolCall(**tc) for tc in extracted["tool_calls"]],
             warnings=warnings,
+            result_set=ResultSet(**extracted["result_set"]) if extracted["result_set"] else None,
         )
     except HTTPException:
         raise
