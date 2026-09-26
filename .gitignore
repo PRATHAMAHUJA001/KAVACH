@@ -9,3 +9,6 @@ __pycache__/
 .venv/
 venv/
 node_modules/
+
+# Local brag/demo render output (550MB of video frames and audio)
+brag-output/
