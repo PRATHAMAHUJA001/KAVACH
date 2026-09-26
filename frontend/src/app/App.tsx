@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -14,6 +14,10 @@ import { ROUTES, routeFor } from "./routes";
 
 const StyleguidePage = lazy(() => import("@/pages/StyleguidePage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+// Public pages: no sidebar/topbar chrome, and no health gate — the landing page is
+// static copy, so a visitor should never wait on /healthz to read it.
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
 
 const queryClient = createQueryClient();
 
@@ -44,6 +48,22 @@ export function App() {
                 <DocumentTitle />
                 <Routes>
                   <Route
+                    path="/"
+                    element={
+                      <Suspense fallback={null}>
+                        <LandingPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/login"
+                    element={
+                      <Suspense fallback={null}>
+                        <LoginPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
                     path="/styleguide"
                     element={
                       <Suspense fallback={null}>
@@ -58,7 +78,6 @@ export function App() {
                       </ColdStartGate>
                     }
                   >
-                    <Route index element={<Navigate to="/today" replace />} />
                     {ROUTES.map((r) => (
                       <Route key={r.key} path={r.path} element={<r.element />} />
                     ))}

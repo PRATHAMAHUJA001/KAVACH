@@ -422,3 +422,28 @@ export interface TourResetDTO {
   rule_id: string;
   circular_no: string;
 }
+
+/* ───────────── Auth ───────────── */
+export interface AuthProfileDTO {
+  user_id: string;
+  name: string;
+  role: string;
+  email: string;
+  read_only: boolean;
+  as_of?: string | null;
+}
+export interface AuthRoleDTO {
+  role: string;
+  name: string;
+  blurb: string;
+  readOnly: boolean;
+  /** The short name the viewer types, e.g. "analyst". */
+  username: string;
+}
+export interface AuthContextDTO {
+  authenticated: boolean;
+  /** Set when Snowflake already signed the visitor in at the SPCS ingress. */
+  ingress_user: string | null;
+  profile: AuthProfileDTO | null;
+  roles: AuthRoleDTO[];
+}

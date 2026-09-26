@@ -78,6 +78,7 @@ export default function AskPage() {
       )}
 
       <form
+        data-tour="ask-composer"
         className="sticky bottom-4 mt-4 flex items-end gap-2 rounded-card border border-border bg-surface p-2 shadow-overlay"
         onSubmit={(e) => {
           e.preventDefault();

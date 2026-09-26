@@ -36,7 +36,23 @@ _session = None
 
 
 def get_session() -> Session:
-    """Get or create a singleton Snowflake session"""
+    """
+    The session to run this request's queries on.
+
+    If someone is signed in, that is their own Snowflake session, so the masking
+    and row access policies apply to their role. Otherwise it is the shared
+    service session.
+    """
+    from app.infrastructure.snowflake import user_sessions
+
+    user = user_sessions.current()
+    if user is not None:
+        return user.session
+    return get_service_session()
+
+
+def get_service_session() -> Session:
+    """Get or create the singleton session for the service's own identity."""
     global _session
     if _session is None or _session._conn._conn.is_closed():
         _session = get_snowflake_session()

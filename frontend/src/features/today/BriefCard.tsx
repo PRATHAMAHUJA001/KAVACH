@@ -9,7 +9,7 @@ export function BriefCard({ home }: { home: Home | undefined }) {
   const f = useFormat();
   if (home && !home.brief) return null;
   return (
-    <Card className="flex h-full flex-col p-6">
+    <Card className="flex h-full flex-col p-6" data-tour="brief">
       <CardHeader
         title={t("today.brief.title")}
         action={

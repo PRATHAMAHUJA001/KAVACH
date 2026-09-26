@@ -48,7 +48,7 @@ export function UploadCard({
   if (jobId && (job.data || job.isLoading)) {
     const step = job.data?.step ?? 0;
     return (
-      <Card className="space-y-5 p-6" data-tour="upload">
+      <Card className="space-y-5 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-h2 font-semibold text-fg">{t("rulebook.upload.working")}</h2>

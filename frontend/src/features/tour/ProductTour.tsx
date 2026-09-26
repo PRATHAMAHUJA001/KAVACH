@@ -10,21 +10,34 @@ import { stopTour, useTourRunning } from "./tourStore";
 
 interface TourStep {
   key: string;
-  route: (ids: TourResetDTO) => string;
+  /** `ids` is null when AI.RESET_TOUR_DATA didn't run: fall back to the plain screen. */
+  route: (ids: TourResetDTO | null) => string;
   target: string;
 }
 
-/** Six steps across the product, always on the same seeded records (AI.RESET_TOUR_DATA). */
+/** The whole product, screen by screen, on the seeded records where there are any
+    (AI.RESET_TOUR_DATA). A step whose target never shows up is skipped, not fatal. */
 const STEPS: TourStep[] = [
   { key: "readiness", route: () => "/today", target: '[data-tour="readiness"]' },
+  { key: "kpis", route: () => "/today", target: '[data-tour="kpis"]' },
   { key: "attention", route: () => "/today", target: '[data-tour="attention"]' },
-  { key: "case", route: (ids) => `/alerts?case=${encodeURIComponent(ids.alert_id)}`, target: '[data-tour="case-why"]' },
-  { key: "ring", route: (ids) => `/rings?ring=${encodeURIComponent(ids.ring_id)}`, target: '[data-tour="ring-graph"]' },
-  { key: "rule", route: (ids) => `/rulebook?filter=all&rule=${encodeURIComponent(ids.rule_id)}`, target: '[data-tour="rule-review"]' },
-  { key: "timeMachine", route: (ids) => `/time-machine?rule=${encodeURIComponent(ids.rule_id)}`, target: '[data-tour="tm-slider"]' },
+  { key: "brief", route: () => "/today", target: '[data-tour="brief"]' },
+  { key: "alertList", route: () => "/alerts", target: '[data-tour="alert-list"]' },
+  { key: "case", route: (ids) => (ids ? `/alerts?case=${encodeURIComponent(ids.alert_id)}` : "/alerts"), target: '[data-tour="case-why"]' },
+  // The suggestion chips only exist on an empty conversation, so fall back to the composer.
+  { key: "ask", route: () => "/ask", target: '[data-tour="ask-suggestions"], [data-tour="ask-composer"]' },
+  { key: "ring", route: (ids) => (ids ? `/rings?ring=${encodeURIComponent(ids.ring_id)}` : "/rings"), target: '[data-tour="ring-graph"]' },
+  { key: "rule", route: (ids) => (ids ? `/rulebook?filter=all&rule=${encodeURIComponent(ids.rule_id)}` : "/rulebook?filter=all"), target: '[data-tour="rule-review"]' },
+  { key: "upload", route: () => "/rulebook", target: '[data-tour="upload"]' },
+  { key: "ruleHealth", route: () => "/rulebook?tab=health", target: '[data-tour="rule-health"]' },
+  { key: "timeMachine", route: (ids) => (ids ? `/time-machine?rule=${encodeURIComponent(ids.rule_id)}` : "/time-machine"), target: '[data-tour="tm-slider"]' },
 ];
 
-function waitFor(selector: string, ms = 8000): Promise<boolean> {
+/** How long one step gets to appear, and how many may miss in a row before we give up. */
+const WAIT_MS = 6000;
+const MAX_MISSES = 3;
+
+function waitFor(selector: string, ms = WAIT_MS): Promise<boolean> {
   return new Promise((resolve) => {
     const t0 = performance.now();
     const tick = () => {
@@ -41,6 +54,7 @@ function Tooltip({ index, size, step, backProps, primaryProps, skipProps, toolti
   return (
     <div {...tooltipProps} className="w-[min(380px,90vw)] rounded-card border border-border bg-surface p-5 shadow-overlay">
       <div className="mb-2 flex items-center justify-between gap-3">
+        {/* Position in the planned tour, so the total never moves under the reader. */}
         <span className="label-caps text-brand">{t("tour.stepOf", { n: index + 1, total: size })}</span>
         <button {...skipProps} title={undefined} aria-label={t("tour.close")} className="-mr-2 inline-flex size-8 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-fg">
           <X className="size-4" />
@@ -72,6 +86,7 @@ export function ProductTour() {
   const navigate = useNavigate();
   const running = useTourRunning();
   const [ids, setIds] = useState<TourResetDTO | null>(null);
+  const [ready, setReady] = useState(false);
   const [index, setIndex] = useState(0);
   const [show, setShow] = useState(false);
   const busy = useRef(false);
@@ -81,27 +96,31 @@ export function ProductTour() {
   const tr = useRef(t);
   tr.current = t;
 
+  /** Walk from `from` in direction `dir` until a step's target is on screen. A screen that
+      never shows up (a deep link that didn't resolve, a card with no data) is skipped, so one
+      gap can't end the tour; only running out of steps — or MAX_MISSES in a row — does. */
   const go = useCallback(
-    async (i: number, tourIds: TourResetDTO) => {
+    async (from: number, dir: 1 | -1, tourIds: TourResetDTO | null) => {
       if (busy.current) return;
-      const s = STEPS[i];
-      if (!s) {
-        setShow(false);
-        stopTour();
-        return;
-      }
       busy.current = true;
-      setShow(false);
-      nav.current(s.route(tourIds));
-      const ok = await waitFor(s.target);
-      busy.current = false;
-      if (!ok) {
-        toast.error(tr.current("tour.lost"));
-        stopTour();
-        return;
+      let misses = 0;
+      for (let i = from; i >= 0 && i < STEPS.length && misses < MAX_MISSES; i += dir) {
+        const s = STEPS[i]!;
+        setShow(false);
+        nav.current(s.route(tourIds));
+        if (await waitFor(s.target)) {
+          busy.current = false;
+          setIndex(i);
+          setShow(true);
+          return;
+        }
+        misses += 1;
       }
-      setIndex(i);
-      setShow(true);
+      busy.current = false;
+      setShow(false);
+      // Out of steps is just the end; too many misses in a row means we lost the product.
+      if (misses >= MAX_MISSES) toast.error(tr.current("tour.lost"));
+      stopTour();
     },
     [],
   );
@@ -112,17 +131,16 @@ export function ProductTour() {
       return;
     }
     let cancelled = false;
-    // Always start from the same seeded records, so the tour can't hit an empty screen.
+    // Put the seeded records back so the deep-linked steps land on known data. If that
+    // fails we still tour what is on screen — those steps just skip themselves.
     api
       .resetTour()
+      .catch(() => null)
       .then((r) => {
         if (cancelled) return;
         setIds(r);
-        void go(0, r);
-      })
-      .catch(() => {
-        toast.error(tr.current("tour.resetFailed"));
-        stopTour();
+        setReady(true);
+        void go(0, 1, r);
       });
     return () => {
       cancelled = true;
@@ -130,18 +148,18 @@ export function ProductTour() {
   }, [running, go]);
 
   useEffect(() => {
-    if (!show || !ids) return;
+    if (!show || !ready) return;
     const onKey = (e: KeyboardEvent) => {
       const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName));
       if (typing) return;
-      if (e.key === "ArrowRight") void go(index + 1, ids);
-      else if (e.key === "ArrowLeft" && index > 0) void go(index - 1, ids);
+      if (e.key === "ArrowRight") void go(index + 1, 1, ids);
+      else if (e.key === "ArrowLeft" && index > 0) void go(index - 1, -1, ids);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [show, ids, index, go]);
+  }, [show, ready, ids, index, go]);
 
-  if (!running || !ids) return null;
+  if (!running || !ready) return null;
   const steps: Step[] = STEPS.map((s) => ({
     target: s.target,
     title: t(`tour.steps.${s.key}.title`),
@@ -172,7 +190,7 @@ export function ProductTour() {
           }
           return;
         }
-        if (d.type === "step:after") void go(d.action === "prev" ? d.index - 1 : d.index + 1, ids);
+        if (d.type === "step:after") void go(d.action === "prev" ? d.index - 1 : d.index + 1, d.action === "prev" ? -1 : 1, ids);
       }}
     />
   );

@@ -1,0 +1,32 @@
+spec:
+  containers:
+    - name: kavach-web
+      image: /kavach_db/app/kavach_repo/kavach-web:latest
+      env:
+        SNOWFLAKE_ACCOUNT: ONFHCCI-TV84204
+        SNOWFLAKE_USER: PRATHAMAHUJA001
+        SNOWFLAKE_DATABASE: KAVACH_DB
+        SNOWFLAKE_SCHEMA: CORE
+        SNOWFLAKE_WAREHOUSE: KAVACH_WH
+        SNOWFLAKE_ROLE: KAVACH_ADMIN
+        AGENT_DATABASE: KAVACH_DB
+        AGENT_SCHEMA: AI
+        AGENT_NAME: KAVACH_AGENT
+      secrets:
+        - snowflakeSecret: KAVACH_DB.APP.SVC_PASSWORD
+          secretKeyRef: secret_string
+          envVarName: SNOWFLAKE_PASSWORD
+      readinessProbe:
+        port: 8080
+        path: /healthz
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+  endpoints:
+    - name: ui
+      port: 8080
+      public: true

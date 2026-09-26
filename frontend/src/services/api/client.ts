@@ -44,7 +44,9 @@ async function errorFrom(res: Response): Promise<ApiError> {
   return new ApiError(detail || `Request failed (${res.status})`, res.status, kindFor(res.status));
 }
 
-const api = createClient<paths>({ baseUrl: API_BASE });
+// The sign-in cookie is HttpOnly and set by the server, so every request has to
+// carry it — including the cross-origin case where VITE_API_BASE points elsewhere.
+const api = createClient<paths>({ baseUrl: API_BASE, credentials: "include" });
 
 /** Unwraps an openapi-fetch result, turning failures into ApiError. */
 async function call<T>(p: Promise<{ data?: unknown; error?: unknown; response: Response }>): Promise<T> {
@@ -63,7 +65,11 @@ async function ext<T>(path: string, init?: RequestInit & { query?: Record<string
   for (const [k, v] of Object.entries(init?.query ?? {})) if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
   let res: Response;
   try {
-    res = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
+    res = await fetch(url, {
+      credentials: "include",
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    });
   } catch (e) {
     throw new ApiError((e as Error).message || "Network error", 0, "network");
   }
@@ -77,6 +83,23 @@ export async function getHealth(signal?: AbortSignal): Promise<D.HealthDTO> {
 }
 export async function getMe(): Promise<M.Me> {
   return A.toMe(await call<D.MeDTO>(api.GET("/api/me")));
+}
+
+/* ───────────── sign-in ───────────── */
+/** What the login screen needs: existing session, SPCS ingress identity, personas. */
+export async function getAuthContext(): Promise<D.AuthContextDTO> {
+  return ext("/api/auth/context");
+}
+/**
+ * Real authentication: the server opens a Snowflake session with these credentials,
+ * so a wrong password fails with 401 and `detail` explains it. The session cookie
+ * is HttpOnly and set on the response.
+ */
+export async function login(body: { username: string; password: string; role?: string }): Promise<D.AuthProfileDTO> {
+  return ext("/api/auth/login", { method: "POST", body: JSON.stringify(body) });
+}
+export async function logout(): Promise<void> {
+  await ext("/api/auth/logout", { method: "POST" });
 }
 
 /* ───────────── home ───────────── */
@@ -226,7 +249,7 @@ export async function uploadCircular(file: File): Promise<D.UploadDTO> {
   fd.append("file", file);
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/api/rules/upload`, { method: "POST", body: fd });
+    res = await fetch(`${API_BASE}/api/rules/upload`, { method: "POST", body: fd, credentials: "include" });
   } catch (e) {
     throw new ApiError((e as Error).message, 0, "network");
   }
@@ -259,6 +282,7 @@ export async function askStream(question: string, onEvent: (e: M.AskStreamEvent)
   try {
     res = await fetch(`${API_BASE}/api/ask?stream=true`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify({ question }),
       signal,

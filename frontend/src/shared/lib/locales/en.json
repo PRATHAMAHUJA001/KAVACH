@@ -169,6 +169,78 @@
     },
     "building": "This screen is next on the build list."
   },
+  "landing": {
+    "eyebrow": "Risk, fraud and regulatory intelligence for Indian banking",
+    "headline": "Turn regulatory circulars into checks that",
+    "headlineAccent": "actually run.",
+    "subhead": "KAVACH reads RBI-style circulars and compiles them into monitoring rules your team approves, finds mule rings and financial-crime typologies in the transaction data, and hands you an audit-ready evidence pack for every case.",
+    "signIn": "Sign in",
+    "ctaPrimary": "Enter console",
+    "ctaSecondary": "Take the tour",
+    "stats": {
+      "title": "What is running in this deployment",
+      "alerts": "Alerts triaged",
+      "rules": "Compiled rules",
+      "rings": "Mule rings detected",
+      "txns": "Transactions monitored"
+    },
+    "features": {
+      "title": "Six screens, one thread from regulation to evidence",
+      "subtitle": "Every number explains itself, and every claim links back to the paragraph it came from.",
+      "today": {
+        "title": "Today",
+        "desc": "One readiness score for the day, with the overdue reports and pending approvals that are pulling it down."
+      },
+      "alerts": {
+        "title": "Alerts and case files",
+        "desc": "Each alert states its strongest reasons and the circular paragraph behind it, then builds a sealed evidence pack."
+      },
+      "ask": {
+        "title": "Ask Kavach",
+        "desc": "Ask in plain English or Hindi. Verified queries answer straight from the data, with citations and the SQL on show."
+      },
+      "rings": {
+        "title": "Mule rings",
+        "desc": "Accounts that pass money between themselves and share devices or phone numbers, drawn as one group."
+      },
+      "rulebook": {
+        "title": "Rulebook",
+        "desc": "Circulars compiled into obligations and executable checks. Nothing runs until a person approves it."
+      },
+      "timeMachine": {
+        "title": "Time Machine",
+        "desc": "Move a threshold and replay 90 days to see the extra fraud caught and the extra work created."
+      }
+    },
+    "closing": {
+      "title": "See it on a full dataset.",
+      "body": "Sign in as a compliance administrator, an analyst, an internal auditor or an external reviewer. Each role sees exactly what its masking policies allow — no more."
+    },
+    "footerNote": "The circulars are regulator-style documents written for this demo. They follow the style of real regulator circulars but are not actual RBI circulars."
+  },
+  "login": {
+    "title": "Sign in to KAVACH",
+    "subtitle": "Your Snowflake credentials open the session this console runs on.",
+    "subtitleTour": "Sign in and the guided tour starts on the Today screen.",
+    "username": "Username",
+    "usernamePlaceholder": "analyst",
+    "password": "Password",
+    "passwordPlaceholder": "password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "readOnly": "Read-only",
+    "masking": "Sign-in is real: the server opens a Snowflake session with these details, so the masking and row-access policies for your role apply to everything you see.",
+    "ingress": {
+      "title": "Snowflake has already verified you as {{user}}",
+      "body": "You reached this app through the Snowflake endpoint, so we know who you are. Confirm your password once so the session runs as you and your role's data masking applies."
+    },
+    "personas": {
+      "title": "Choose a persona",
+      "subtitle": "Four roles ship with this deployment. Pick one to fill in its sign-in name.",
+      "note": "For this demo every persona uses the password “password”.",
+      "unavailable": "The persona list couldn't be loaded. You can still sign in with your username and password."
+    }
+  },
   "shell": {
     "search": "Search alerts, customers, accounts or transactions",
     "searchShort": "Search",
@@ -674,19 +746,34 @@
     "close": "End the tour",
     "stepOf": "{{n}} of {{total}}",
     "lost": "The tour couldn't find the next screen. You can start it again from the sidebar.",
-    "resetFailed": "The tour data couldn't be prepared. Please try again.",
     "steps": {
       "readiness": {
         "title": "How ready are we for an audit?",
         "body": "One number for today, and the reasons pulling it down, in plain words."
       },
+      "kpis": {
+        "title": "Today in four numbers",
+        "body": "New alerts, money at risk, reports due, and active mule groups. Each tile opens the list behind it."
+      },
       "attention": {
         "title": "Start here",
         "body": "The few things that need you now, most urgent first. Each has one button."
       },
+      "brief": {
+        "title": "The day in a paragraph",
+        "body": "A written summary of what changed overnight, ready for your morning note."
+      },
+      "alertList": {
+        "title": "Every open alert in one queue",
+        "body": "Filter by what is overdue, what is new, or a single pattern, and sort by the money involved."
+      },
       "case": {
         "title": "Why this is suspicious",
         "body": "Every alert explains itself: the strongest reasons first, and the exact paragraph of the circular it relies on."
+      },
+      "ask": {
+        "title": "Ask in plain English",
+        "body": "Ask about accounts, alerts or rules. Every answer shows the query it ran, so you can check it before you rely on it."
       },
       "ring": {
         "title": "Who is working together",
@@ -695,6 +782,14 @@
       "rule": {
         "title": "From regulation to a working check",
         "body": "Each check sits next to the sentence it comes from. Nothing runs until a person approves it."
+      },
+      "upload": {
+        "title": "Drop in a new circular",
+        "body": "Leave the PDF here. KAVACH reads every obligation and drafts the check for it, for you to review."
+      },
+      "ruleHealth": {
+        "title": "Are the checks earning their place?",
+        "body": "Which rules are too noisy, which never fire, and how much of the known fraud they catch."
       },
       "timeMachine": {
         "title": "Try a change before making it",

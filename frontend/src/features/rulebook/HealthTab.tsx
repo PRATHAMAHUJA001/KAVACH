@@ -16,7 +16,7 @@ export function HealthTab() {
   const h = q.data;
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4" data-tour="rule-health">
         {h ? (
           <>
             <KpiTile label={t("rulebook.health.active")} value={h.active} sentence={t("rulebook.health.activeSentence", { count: h.total })} />
