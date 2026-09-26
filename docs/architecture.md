@@ -63,8 +63,9 @@ This was proven empirically: calling `/api/ask` with `SNOWFLAKE_TOKEN`/`SNOWFLAK
 swapped to a PAT restricted to `KAVACH_REVIEWER` (which is *not* exempt from
 `MASK_CUSTOMER_NAME`) and asking the agent to explain an alert returns
 `Customer: La************` from the `EXPLAIN_ALERT` tool's raw output, versus
-`Customer: Lakshmi Pillai` when the same question is asked as `KAVACH_ADMIN`. See
-`docs/PROGRESS.md` "CHECKPOINT 4" for the full transcript.
+`Customer: Lakshmi Pillai` when the same question is asked as `KAVACH_ADMIN`. The
+full transcript is kept in the project's internal build log, which is not part of
+this repository.
 
 ## 5. Production (SPCS) identity — what will change
 

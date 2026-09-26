@@ -3,7 +3,7 @@ import { ErrorState } from "@/shared/ui";
 import { useFormat } from "@/shared/lib/i18n";
 import { useHome } from "@/services/api";
 import { useSession } from "@/features/session";
-import { AttentionList, BriefCard, KpiRow, ReadinessCard, TrendCard } from "@/features/today";
+import { AttentionList, BriefCard, KpiRow, ReadinessCard, RiskPanel, TrendCard } from "@/features/today";
 
 function greetingKey(d: Date) {
   const h = d.getHours();
@@ -44,6 +44,9 @@ export default function TodayPage() {
         </div>
         <div className="col-span-12 2xl:col-span-9">
           <AttentionList home={data} />
+        </div>
+        <div className="col-span-12">
+          <RiskPanel />
         </div>
         <div className="col-span-12 xl:col-span-7 2xl:col-span-8">
           <TrendCard home={data} />

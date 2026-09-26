@@ -1,4 +1,9 @@
-# deadline_watch
+---
+name: deadline-watch
+description: Surface KAVACH alerts approaching or past their regulatory filing deadline using AI.DEADLINE_CLOCK, so nothing is filed late. Triggers: deadline watch, reports due, overdue reports, filing deadline, what is due, STR deadline, RED AMBER GREEN status.
+---
+
+# deadline-watch
 
 Monitor alerts approaching their regulatory filing deadlines.
 

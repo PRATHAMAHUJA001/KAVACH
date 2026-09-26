@@ -12,3 +12,18 @@ node_modules/
 
 # Local brag/demo render output (550MB of video frames and audio)
 brag-output/
+
+# Internal build logs, specs and postmortems — kept local, not part of the submission.
+# Judge-facing docs stay tracked: README.md, docs/COCO_USAGE.md, docs/EVALUATION.md,
+# docs/architecture.md, skills/*.md and the CoCo plan/memory artifacts under .snowflake/.
+/FINAL_REPORT.md
+/PROJECT_BRIEF.md
+/docs/API_EXTENSIONS.md
+/docs/API_TESTING.md
+/docs/BLOCKERS.md
+/docs/BUILD_SPEC_6-8.md
+/docs/COST_POSTMORTEM.md
+/docs/DATASETS.md
+/docs/DESIGN_SPEC.md
+/docs/PROGRESS.md
+/docs/REBUILD_NOTES.md

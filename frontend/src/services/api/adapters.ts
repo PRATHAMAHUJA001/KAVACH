@@ -211,6 +211,35 @@ export function toHome(d: D.HomeDTO): M.Home {
   };
 }
 
+function toExposureRow(r: D.ExposureRowDTO): M.ExposureRow {
+  return {
+    label: r.label,
+    accounts: r.accounts,
+    exposure: r.exposure_inr,
+    flaggedAccounts: r.flagged_accounts,
+    exposureAtRisk: r.exposure_at_risk_inr,
+    pctAtRisk: r.pct_at_risk,
+  };
+}
+
+export function toPortfolioRisk(d: D.RiskDTO): M.PortfolioRisk {
+  return {
+    bySegment: (d.by_segment ?? []).map(toExposureRow),
+    byBranch: (d.by_branch ?? []).map(toExposureRow),
+    liquidity: {
+      inflow: d.liquidity.inflow_inr,
+      outflow: d.liquidity.outflow_inr,
+      net: d.liquidity.net_inr,
+      coverageRatio: d.liquidity.coverage_ratio,
+      txnCount: d.liquidity.txn_count,
+      windowDays: d.liquidity.window_days,
+    },
+    totalExposure: d.total_exposure_inr,
+    totalAtRisk: d.total_at_risk_inr,
+    pctAtRisk: d.pct_at_risk,
+  };
+}
+
 export function toParagraph(d: D.ParagraphDTO): M.Paragraph {
   return {
     circularNo: d.circular_no,

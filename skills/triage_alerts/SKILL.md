@@ -1,4 +1,9 @@
-# triage_alerts
+---
+name: triage-alerts
+description: Prioritise and work the KAVACH alert queue: rank open alerts by severity, score and filing deadline, assign them across analyst capacity, and surface the cases worth acting on first. Triggers: triage alerts, work the queue, prioritise alerts, assign alerts, alert backlog, which alerts first, analyst workload.
+---
+
+# triage-alerts
 
 Automatically prioritize and assign new alerts based on severity and analyst capacity.
 

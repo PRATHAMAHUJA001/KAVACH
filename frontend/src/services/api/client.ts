@@ -107,6 +107,11 @@ export async function getHome(): Promise<M.Home> {
   return A.toHome(await call<D.HomeDTO>(api.GET("/api/home")));
 }
 
+/* ───────────── portfolio risk ───────────── */
+export async function getRisk(): Promise<M.PortfolioRisk> {
+  return A.toPortfolioRisk(await ext<D.RiskDTO>("/api/risk"));
+}
+
 /* ───────────── alerts ───────────── */
 export async function listAlerts(params: D.AlertListParams = {}): Promise<M.AlertPage> {
   const { typology, due, q, sort, ...base } = params;

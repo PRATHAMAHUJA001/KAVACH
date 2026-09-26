@@ -365,6 +365,36 @@
         "see_conflicts": "See conflicts"
       }
     },
+    "risk": {
+      "title": "Portfolio risk",
+      "totals": "{{amount}} of {{total}} loan exposure sits on flagged accounts · {{pct}} of the book",
+      "group": {
+        "label": "Group exposure by",
+        "segment": "By segment",
+        "branch": "By branch"
+      },
+      "liquidity": {
+        "title": "Money in vs money out",
+        "window": "Last {{days}} days · {{txns}} transactions",
+        "inflow": "Money in",
+        "outflow": "Money out",
+        "net": "Net",
+        "coverage": "Cover",
+        "coverageValue": "{{ratio}}×",
+        "netPositive": "More money came in than went out, so cover is comfortable.",
+        "netNegative": "More money went out than came in — worth watching."
+      },
+      "accounts_one": "{{n}} account",
+      "accounts_other": "{{n}} accounts",
+      "ofExposure": "of {{amount}}",
+      "ask": "Ask about this",
+      "askAria": "Ask KAVACH about {{label}}",
+      "askQuestion": {
+        "segment": "Why is loan exposure in the {{label}} segment {{pct}} at risk?",
+        "branch": "Why is loan exposure in branch {{label}} {{pct}} at risk?"
+      },
+      "empty": "There is no loan exposure to report."
+    },
     "trend": {
       "title": "Alerts vs confirmed fraud",
       "subtitle": "Last 30 days",

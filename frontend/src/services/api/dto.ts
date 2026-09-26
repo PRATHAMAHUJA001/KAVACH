@@ -223,6 +223,34 @@ export type HomeDTO = Omit<S["HomeResponse"], "trend" | "readiness_score" | "kpi
   as_of?: string;
 };
 
+/* ───────────── Portfolio risk ───────────── */
+export interface ExposureRowDTO {
+  /** Segment name (HNI, RETAIL, …) or branch code (BR0199). */
+  label: string;
+  accounts: number;
+  exposure_inr: number;
+  flagged_accounts: number;
+  exposure_at_risk_inr: number;
+  /** Already a percentage, 0–100 — not a fraction. */
+  pct_at_risk: number;
+}
+export interface LiquidityDTO {
+  inflow_inr: number;
+  outflow_inr: number;
+  net_inr: number;
+  coverage_ratio: number;
+  txn_count: number;
+  window_days: number;
+}
+export interface RiskDTO {
+  by_segment: ExposureRowDTO[];
+  by_branch: ExposureRowDTO[];
+  liquidity: LiquidityDTO;
+  total_exposure_inr: number;
+  total_at_risk_inr: number;
+  pct_at_risk: number;
+}
+
 /* ───────────── Circulars (EXT) ───────────── */
 export interface ParagraphDTO {
   circular_no: string;

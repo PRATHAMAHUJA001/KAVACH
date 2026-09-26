@@ -11,6 +11,7 @@ import type { AlertDetail } from "./models";
 export const qk = {
   me: ["me"] as const,
   home: ["home"] as const,
+  risk: ["risk"] as const,
   alerts: (p: AlertListParams) => ["alerts", p] as const,
   alert: (id: string) => ["alert", id] as const,
   evidence: (id: string) => ["evidence", id] as const,
@@ -48,6 +49,7 @@ export function createQueryClient() {
 
 export const useMe = () => useQuery({ queryKey: qk.me, queryFn: api.getMe, staleTime: Infinity });
 export const useHome = () => useQuery({ queryKey: qk.home, queryFn: api.getHome });
+export const useRisk = () => useQuery({ queryKey: qk.risk, queryFn: api.getRisk });
 export const useAlerts = (p: AlertListParams) => useQuery({ queryKey: qk.alerts(p), queryFn: () => api.listAlerts(p) });
 export const useAlert = (id: string | null) =>
   useQuery({ queryKey: qk.alert(id ?? ""), queryFn: () => api.getAlert(id!), enabled: !!id, placeholderData: undefined });

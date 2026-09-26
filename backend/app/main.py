@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from app.presentation.api.v1 import health, home, me, alerts, evidence, ask, whynot, timemachine, rings, rules, reference, auth
+from app.presentation.api.v1 import health, home, me, alerts, evidence, ask, whynot, timemachine, rings, rules, reference, auth, risk
 from app.infrastructure.snowflake import user_sessions
 
 app = FastAPI(
@@ -60,6 +60,7 @@ app.include_router(auth.router, prefix="/api", tags=["Auth"])
 
 # Core
 app.include_router(home.router, prefix="/api", tags=["Home"])
+app.include_router(risk.router, prefix="/api", tags=["Risk"])
 app.include_router(me.router, prefix="/api", tags=["User"])
 
 # Alerts

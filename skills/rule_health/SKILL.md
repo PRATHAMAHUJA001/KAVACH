@@ -1,4 +1,9 @@
-# rule_health
+---
+name: rule-health
+description: Review per-rule precision in KAVACH and identify noisy rules that should be tuned or retired, using AI.RULE_HEALTH and the Time Machine threshold replay. Triggers: rule health, rule precision, noisy rules, false positive rate, tune threshold, retire a rule, which rules are firing too much.
+---
+
+# rule-health
 
 Check rule precision and identify noisy rules that need tuning.
 

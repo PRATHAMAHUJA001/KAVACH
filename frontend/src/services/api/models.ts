@@ -182,6 +182,32 @@ export interface Home {
   asOf: string | null;
 }
 
+export interface ExposureRow {
+  label: string;
+  accounts: number;
+  exposure: number;
+  flaggedAccounts: number;
+  exposureAtRisk: number;
+  /** Percentage, 0–100. */
+  pctAtRisk: number;
+}
+export interface Liquidity {
+  inflow: number;
+  outflow: number;
+  net: number;
+  coverageRatio: number;
+  txnCount: number;
+  windowDays: number;
+}
+export interface PortfolioRisk {
+  bySegment: ExposureRow[];
+  byBranch: ExposureRow[];
+  liquidity: Liquidity;
+  totalExposure: number;
+  totalAtRisk: number;
+  pctAtRisk: number;
+}
+
 export interface Paragraph {
   circularNo: string;
   paraNo: string;

@@ -1,4 +1,9 @@
-# Skill: compile_circular
+---
+name: compile-circular
+description: Compile a regulatory circular into executable AML/fraud rules for KAVACH. Use when a new or amended circular PDF lands in @KAVACH_DB.RAW.REG_STAGE and needs parsing, chunking by paragraph, rule extraction, conflict detection and queuing for human approval. Triggers: compile circular, new circular, parse circular, extract rules, regulation compiler, rule candidates, circular amendment.
+---
+
+# compile-circular
 
 Compile a new regulatory circular into executable fraud/AML rules for KAVACH.
 
