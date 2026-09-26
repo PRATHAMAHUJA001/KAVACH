@@ -264,7 +264,7 @@ Return ONLY a valid JSON object (no markdown, no explanation) with these fields:
         esc_prompt = prompt_text.replace("\\", "\\\\").replace("'", "''")
         try:
             result = session.sql(f"""
-                SELECT AI_COMPLETE('llama3.1-8b', '{esc_prompt}') AS RESULT
+                SELECT AI_COMPLETE('claude-haiku-4-5', '{esc_prompt}') AS RESULT
             """).collect()
 
             if result and result[0]['RESULT']:
@@ -927,7 +927,7 @@ def run(session):
             try:
                 explanation = session.sql(f"""
                     SELECT SNOWFLAKE.CORTEX.COMPLETE(
-                        'llama3.1-8b',
+                        'claude-haiku-4-5',
                         'Compare these two regulatory provisions and explain the specific conflict or inconsistency in 2-3 sentences.
 
 Provision A ({kc['CITATION_A']}): {text_a.replace("'", "''")}

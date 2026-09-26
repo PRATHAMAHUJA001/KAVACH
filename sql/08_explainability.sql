@@ -75,8 +75,8 @@ BEGIN
 
     INSERT INTO AI.ALERT_STORIES (alert_id, story_en, model_used)
     SELECT alert_id,
-           TRIM(REGEXP_REPLACE(AI_COMPLETE('llama3.1-70b', prompt_en)::STRING, '^\\s*(here is|here''s|sure)[^:\\n]*:\\s*', '', 1, 1, 'i'), ' "\n'),
-           'llama3.1-70b'
+           TRIM(REGEXP_REPLACE(AI_COMPLETE('claude-haiku-4-5', prompt_en)::STRING, '^\\s*(here is|here''s|sure)[^:\\n]*:\\s*', '', 1, 1, 'i'), ' "\n'),
+           'claude-haiku-4-5'
     FROM story_prompts;
 
     UPDATE AI.ALERT_STORIES SET story_hi = AI_TRANSLATE(story_en, 'en', 'hi') WHERE story_hi IS NULL;

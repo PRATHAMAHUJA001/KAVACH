@@ -465,31 +465,97 @@ def run(session, scale_factor, seed):
         shared_devs = random.sample(dev_list, min(2, len(dev_list)))
         shared_ip = dev_ips.get(shared_devs[0], '104.238.45.67')
         ring_txn_ids = []
+
+        # A real mule ring is directional: victim money lands on a collector,
+        # the collector fans it out to mules, each mule keeps a cut and forwards
+        # the rest to the exit, and the exit takes it out of the bank. Every
+        # internal hop is written as a matching pair (DEBIT on the sender and
+        # CREDIT on the receiver, same amount and timestamp) so both sides of
+        # the transfer exist in the ledger, as they would in a real bank.
+        collector = ring_accts[0]
+        exit_acct = ring_accts[-1]
+        mules = ring_accts[1:-1] or [ring_accts[0]]
+        ring_start = START + timedelta(days=random.randint(30, 150), hours=random.randint(9, 15))
+
+        def ring_txn(aid, ts, amt, direction, counterparty, cp_bank, category, narration, channel='IMPS'):
+            """Append one leg and return its id."""
+            nonlocal txn_counter
+            txn_counter += 1
+            tid = f'TXN{txn_counter:08d}'
+            fraud_txns.append({
+                'TXN_ID': tid, 'ACCOUNT_ID': aid, 'TXN_TS': ts.strftime('%Y-%m-%d %H:%M:%S'),
+                'AMOUNT_INR': round(amt, 2), 'CHANNEL': channel, 'DIRECTION': direction,
+                'COUNTERPARTY': counterparty, 'COUNTERPARTY_BANK': cp_bank,
+                'COUNTRY': 'IN', 'MERCHANT_CATEGORY': category,
+                'NARRATION': narration,
+                'DEVICE_ID': random.choice(shared_devs), 'IP_ADDRESS': shared_ip
+            })
+            ring_txn_ids.append(tid)
+            return tid
+
+        def internal_transfer(src, dst, ts, amt):
+            """One hop inside the ring, written as a matching sent/received pair."""
+            ring_txn(src, ts, amt, 'DEBIT', dst, 'KAVACH', 'TRANSFER', 'IMPS payment')
+            ring_txn(dst, ts, amt, 'CREDIT', src, 'KAVACH', 'TRANSFER', 'IMPS transfer')
+
+        # Victims outside the bank pay into the collector. No matching internal
+        # row: the far side of these is an account at another bank.
+        collected = 0.0
+        ts = ring_start
+        for v in range(random.randint(3, 6)):
+            amt = round(random.uniform(150000, 900000), 2)
+            collected += amt
+            ring_txn(collector, ts, amt, 'CREDIT', f'VICTIM{random.randint(1000, 9999)}',
+                     random.choice(['HDFC', 'ICICI', 'SBI', 'AXIS']), 'TRANSFER',
+                     'IMPS inward credit')
+            ts += timedelta(minutes=random.randint(3, 20))
+
+        # Collector fans the money out across the mules, keeping a small cut.
+        collector_keeps = round(collected * random.uniform(0.01, 0.03), 2)
+        to_fan_out = collected - collector_keeps
+        shares = [random.uniform(0.6, 1.4) for _ in mules]
+        total_share = sum(shares)
+        reached_exit = 0.0
+        for mule, share in zip(mules, shares):
+            leg = round(to_fan_out * share / total_share, 2)
+            if leg < 1000:
+                continue
+            ts += timedelta(minutes=random.randint(2, 15))
+            internal_transfer(collector, mule, ts, leg)
+            # The mule keeps 2-5% and forwards the rest to the exit account,
+            # usually within the hour - this is the rapid pass-through signal.
+            forwarded = round(leg * random.uniform(0.95, 0.98), 2)
+            fwd_ts = ts + timedelta(minutes=random.randint(5, 45))
+            internal_transfer(mule, exit_acct, fwd_ts, forwarded)
+            reached_exit += forwarded
+
+        # The exit account drains the money out of the bank and sends nothing
+        # to other ring members.
+        out_ts = ts + timedelta(hours=random.randint(1, 6))
+        remaining = reached_exit
+        while remaining > 50000:
+            cut = round(min(remaining, random.uniform(200000, 800000)), 2)
+            method = random.choice(['CASH', 'SWIFT', 'CRYPTO'])
+            if method == 'CASH':
+                ring_txn(exit_acct, out_ts, cut, 'DEBIT', 'SELF', 'SELF',
+                         'CASH_WITHDRAWAL', 'cash withdrawal at ATM', channel='ATM')
+            elif method == 'SWIFT':
+                ring_txn(exit_acct, out_ts, cut, 'DEBIT', f'OFFSHORE{random.randint(100, 999)}',
+                         'FOREIGN', 'TRANSFER', 'SWIFT outward remittance', channel='SWIFT')
+            else:
+                ring_txn(exit_acct, out_ts, cut, 'DEBIT', f'CRYPTOEX{random.randint(10, 99)}',
+                         'OTHER', 'CRYPTO', 'transfer to crypto exchange', channel='IMPS')
+            remaining -= cut
+            out_ts += timedelta(minutes=random.randint(20, 180))
+
+        role_of = {collector: 'collector', exit_acct: 'exit'}
         for aid in ring_accts:
-            for _ in range(random.randint(3, 8)):
-                txn_counter += 1
-                tid = f'TXN{txn_counter:08d}'
-                base_ts = START + timedelta(days=random.randint(30, 150))
-                amt = round(random.uniform(50000, 500000), 2)
-                # Credit then debit within 30 min
-                for direction in ['CREDIT', 'DEBIT']:
-                    txn_counter += 1
-                    tid = f'TXN{txn_counter:08d}'
-                    ts = base_ts + timedelta(minutes=random.randint(5, 30) if direction == 'DEBIT' else 0)
-                    fraud_txns.append({
-                        'TXN_ID': tid, 'ACCOUNT_ID': aid, 'TXN_TS': ts.strftime('%Y-%m-%d %H:%M:%S'),
-                        'AMOUNT_INR': amt, 'CHANNEL': 'IMPS', 'DIRECTION': direction,
-                        'COUNTERPARTY': random.choice(ring_accts), 'COUNTERPARTY_BANK': 'KAVACH',
-                        'COUNTRY': 'IN', 'MERCHANT_CATEGORY': 'TRANSFER',
-                        'NARRATION': 'IMPS transfer' if direction == 'CREDIT' else 'IMPS payment',
-                        'DEVICE_ID': random.choice(shared_devs), 'IP_ADDRESS': shared_ip
-                    })
-                    ring_txn_ids.append(tid)
-        for aid in ring_accts:
+            role = role_of.get(aid, 'mule')
             gt_rows.append({
                 'RECORD_ID': f'GT-MULE-R{ring_idx}-{aid}', 'ENTITY_TYPE': 'ACCOUNT', 'ENTITY_ID': aid,
                 'TXN_IDS': str([t for t in ring_txn_ids]), 'TYPOLOGY': 'MULE_RING',
-                'DESCRIPTION': f'Ring {ring_idx+1}: {ring_size} accounts sharing {len(shared_devs)} devices'
+                'DESCRIPTION': f'Ring {ring_idx+1} {role}: {ring_size} accounts sharing '
+                               f'{len(shared_devs)} devices, ~{round(collected/100000, 1)}L collected from victims'
             })
 
     # ---- 3. DORMANT REACTIVATION ----
@@ -591,18 +657,27 @@ def run(session, scale_factor, seed):
         txn_ids = []
         base_ts = START + timedelta(days=random.randint(20, 150))
         for hop in range(len(chain_accts) - 1):
-            txn_counter += 1
-            tid = f'TXN{txn_counter:08d}'
             ts = base_ts + timedelta(hours=hop * random.randint(2, 8))
-            fraud_txns.append({
-                'TXN_ID': tid, 'ACCOUNT_ID': chain_accts[hop], 'TXN_TS': ts.strftime('%Y-%m-%d %H:%M:%S'),
-                'AMOUNT_INR': round(amt * (1 - hop * 0.01), 2),
-                'CHANNEL': 'NEFT', 'DIRECTION': 'DEBIT',
-                'COUNTERPARTY': chain_accts[hop + 1], 'COUNTERPARTY_BANK': 'KAVACH',
-                'COUNTRY': 'IN', 'MERCHANT_CATEGORY': 'TRANSFER',
-                'NARRATION': 'NEFT payment', 'DEVICE_ID': None, 'IP_ADDRESS': None
-            })
-            txn_ids.append(tid)
+            hop_amt = round(amt * (1 - hop * 0.01), 2)
+            # Both sides of the hop: the sender's payment and the receiver's
+            # credit. Writing only the debit leg left every account in the
+            # chain showing nothing received.
+            for direction, counterparty, narration in (
+                ('DEBIT', chain_accts[hop + 1], 'NEFT payment'),
+                ('CREDIT', chain_accts[hop], 'NEFT inward credit'),
+            ):
+                txn_counter += 1
+                tid = f'TXN{txn_counter:08d}'
+                holder = chain_accts[hop] if direction == 'DEBIT' else chain_accts[hop + 1]
+                fraud_txns.append({
+                    'TXN_ID': tid, 'ACCOUNT_ID': holder, 'TXN_TS': ts.strftime('%Y-%m-%d %H:%M:%S'),
+                    'AMOUNT_INR': hop_amt,
+                    'CHANNEL': 'NEFT', 'DIRECTION': direction,
+                    'COUNTERPARTY': counterparty, 'COUNTERPARTY_BANK': 'KAVACH',
+                    'COUNTRY': 'IN', 'MERCHANT_CATEGORY': 'TRANSFER',
+                    'NARRATION': narration, 'DEVICE_ID': None, 'IP_ADDRESS': None
+                })
+                txn_ids.append(tid)
         for aid in set(chain_accts):
             gt_rows.append({
                 'RECORD_ID': f'GT-RT-{rt_idx}-{aid}', 'ENTITY_TYPE': 'ACCOUNT', 'ENTITY_ID': aid,

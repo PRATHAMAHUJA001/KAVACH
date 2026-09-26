@@ -475,7 +475,8 @@
     "graphLabel": "Network of {{count}} linked accounts",
     "graphHint": "Hover an account or a line for details. Click an account with an open alert to open its case file. Drag to pan, scroll to zoom.",
     "edge": {
-      "sentAmount": "sent {{amount}}"
+      "sentAmount": "sent {{amount}}",
+      "transfer": "{{from}} sent {{amount}} to {{to}}"
     },
     "legend": {
       "money": "Sent money",

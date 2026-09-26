@@ -110,10 +110,22 @@ class SnowflakeRingRepository(RingRepository):
         members = self.session.sql(
             f"""
             WITH rt AS ({_RING_TXNS} WHERE m.ring_id = ?),
-            flows AS (
-                SELECT account_id, SUM(IFF(direction = 'CREDIT', amount_inr, 0)) AS money_in,
+            out_legs AS (
+                SELECT account_id, SUM(IFF(direction = 'CREDIT', amount_inr, 0)) AS credits,
                        SUM(IFF(direction = 'DEBIT', amount_inr, 0)) AS money_out
                 FROM rt GROUP BY account_id
+            ),
+            -- what other members sent to this account, from the sender's DEBIT row
+            in_legs AS (
+                SELECT counterparty AS account_id, SUM(amount_inr) AS received
+                FROM rt WHERE direction = 'DEBIT' GROUP BY counterparty
+            ),
+            -- Some rings only book the sender's leg; then the receiver's side is the sender's DEBIT.
+            flows AS (
+                SELECT COALESCE(o.account_id, i.account_id) AS account_id,
+                       COALESCE(NULLIF(o.credits, 0), i.received, 0) AS money_in,
+                       COALESCE(o.money_out, 0) AS money_out
+                FROM out_legs o FULL OUTER JOIN in_legs i ON i.account_id = o.account_id
             )
             SELECT m.account_id, MAX(c.customer_name) AS customer_name, MAX(c.city) AS city,
                    MAX({_SEVERITY_RANK}) AS risk, MAX(a.alert_id) AS alert_id,

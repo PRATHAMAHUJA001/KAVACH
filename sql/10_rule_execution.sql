@@ -151,7 +151,7 @@ Paragraph from {circ} para {para}:
         esc = prompt.replace("''", "''''")
 
         r = session.sql(
-            f"SELECT AI_COMPLETE(''llama3.1-8b'', ''{esc}'') AS R"
+            f"SELECT AI_COMPLETE(''claude-haiku-4-5'', ''{esc}'') AS R"
         ).collect()
 
         raw = str(r[0][''R'']).strip()
@@ -203,7 +203,7 @@ Paragraph:
         esc = prompt.replace("''", "''''")
 
         sql = f"""
-            SELECT AI_COMPLETE(''llama3.1-8b'', ''{esc}'') AS R
+            SELECT AI_COMPLETE(''claude-haiku-4-5'', ''{esc}'') AS R
         """
 
         r = session.sql(sql).collect()
