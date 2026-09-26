@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo} from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, MessagesSquare, ShieldAlert, UserX } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -38,6 +38,28 @@ export function CustomerFile({ customerId, onClose }: { customerId: string | nul
   useEffect(() => setAskOpen(false), [customerId]);
 
   const name = d?.customer.name ?? "";
+
+  // The agent is given the customer's identifiers and current position rather than
+  // just a display name: the name is masked for some roles, so the id is what makes
+  // the question answerable. The premise follows the actual score — asking "why is
+  // this high risk?" about a customer the model scored low is a false premise that
+  // pushes the agent into justifying something untrue.
+  const seedQuestion = useMemo(() => {
+    if (!d) return "";
+    const c = d.customer;
+    const facts = [
+      c.segment ? t("customers.ask.fact.segment", { segment: c.segment }) : null,
+      c.city ? t("customers.ask.fact.city", { city: c.city }) : null,
+      c.score != null ? t("customers.ask.fact.score", { score: Math.round(c.score * 100) }) : null,
+      t("customers.ask.fact.alerts", { count: c.openAlerts }),
+      t("customers.ask.fact.accounts", { count: c.accountCount }),
+      c.isPep ? t("customers.ask.fact.pep") : null,
+    ].filter(Boolean).join(", ");
+    const key =
+      c.score == null ? "unscored" : c.riskLevel != null && c.riskLevel >= 4 ? "high" : c.riskLevel === 3 ? "medium" : "low";
+    return t(`customers.ask.seed.${key}`, { id: c.id, facts });
+  }, [d, t]);
+
   return (
     <CaseDrawer
       open={!!customerId}
@@ -58,7 +80,7 @@ export function CustomerFile({ customerId, onClose }: { customerId: string | nul
       }
       side={
         d && customerId && askOpen ? (
-          <CustomerAskPanel customerId={customerId} seedQuestion={t("customers.ask.seed", { name })} onClose={() => setAskOpen(false)} />
+          <CustomerAskPanel customerId={customerId} seedQuestion={seedQuestion} onClose={() => setAskOpen(false)} />
         ) : undefined
       }
     >

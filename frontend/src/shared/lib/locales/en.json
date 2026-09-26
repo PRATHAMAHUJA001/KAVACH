@@ -626,7 +626,22 @@
       "reset": "Start this conversation again",
       "empty": "Ask anything about this customer.",
       "placeholder": "Ask about this customer…",
-      "seed": "Why is {{name}} scored high risk?"
+      "fact": {
+        "segment": "{{segment}} segment",
+        "city": "based in {{city}}",
+        "score": "model score {{score}}%",
+        "alerts_one": "{{count}} open alert",
+        "alerts_other": "{{count}} open alerts",
+        "accounts_one": "{{count}} account",
+        "accounts_other": "{{count}} accounts",
+        "pep": "flagged as a politically exposed person"
+      },
+      "seed": {
+        "high": "Customer {{id}} is scored high risk by the model ({{facts}}). What is driving that score, and what should I check first?",
+        "medium": "Customer {{id}} is scored medium risk by the model ({{facts}}). What is driving that score, and does it warrant a closer look?",
+        "low": "Customer {{id}} is scored low risk by the model ({{facts}}). Is there anything in their activity that still deserves attention?",
+        "unscored": "Customer {{id}} has no model score yet ({{facts}}). What does their activity look like, and should they be reviewed?"
+      }
     }
   },
   "ask": {
