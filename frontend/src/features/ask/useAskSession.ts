@@ -16,58 +16,83 @@ export interface Turn {
   vote: "up" | "down" | null;
 }
 
-/** Module-level so the conversation survives leaving the page and coming back. */
-let turns: Turn[] = [];
+/**
+ * Module-level so the conversation survives leaving the page and coming back.
+ * Keyed by scope: the Ask page is one conversation ("main"), and a chat pinned to
+ * a customer is its own, so opening a customer doesn't push a question into the
+ * history of the full-page chat. Same store, same streaming path either way.
+ */
+const MAIN = "main";
+const threads = new Map<string, Turn[]>();
 const listeners = new Set<() => void>();
-const controllers = new Map<string, AbortController>();
-const emit = () => listeners.forEach((l) => l());
-const patch = (id: string, p: Partial<Turn> | ((t: Turn) => Partial<Turn>)) => {
-  turns = turns.map((t) => (t.id === id ? { ...t, ...(typeof p === "function" ? p(t) : p) } : t));
-  emit();
-};
+/** Live streams, so stopping one conversation never aborts another. */
+const controllers = new Map<string, Map<string, AbortController>>();
+/** Stable identity: useSyncExternalStore must not see a fresh array every read. */
+const EMPTY: Turn[] = [];
 
-async function run(question: string) {
+const read = (scope: string): Turn[] => threads.get(scope) ?? EMPTY;
+const inflight = (scope: string) => {
+  let m = controllers.get(scope);
+  if (!m) controllers.set(scope, (m = new Map()));
+  return m;
+};
+const write = (scope: string, next: Turn[]) => {
+  threads.set(scope, next);
+  listeners.forEach((l) => l());
+};
+const patch = (scope: string, id: string, p: Partial<Turn> | ((t: Turn) => Partial<Turn>)) =>
+  write(
+    scope,
+    read(scope).map((t) => (t.id === id ? { ...t, ...(typeof p === "function" ? p(t) : p) } : t)),
+  );
+
+async function run(scope: string, question: string) {
   const id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  turns = [...turns, { id, question, state: "streaming", status: "", tools: [], text: "", answer: null, error: null, vote: null }];
-  emit();
+  write(scope, [...read(scope), { id, question, state: "streaming", status: "", tools: [], text: "", answer: null, error: null, vote: null }]);
   const ctrl = new AbortController();
-  controllers.set(id, ctrl);
+  inflight(scope).set(id, ctrl);
   try {
     const answer = await api.askStream(
       question,
       (e) => {
-        if (e.type === "status") patch(id, { status: e.message });
-        else if (e.type === "tool") patch(id, (t) => ({ tools: t.tools.includes(e.toolType) ? t.tools : [...t.tools, e.toolType] }));
-        else if (e.type === "delta") patch(id, (t) => ({ text: t.text + e.text }));
+        if (e.type === "status") patch(scope, id, { status: e.message });
+        else if (e.type === "tool") patch(scope, id, (t) => ({ tools: t.tools.includes(e.toolType) ? t.tools : [...t.tools, e.toolType] }));
+        else if (e.type === "delta") patch(scope, id, (t) => ({ text: t.text + e.text }));
       },
       ctrl.signal,
     );
-    patch(id, { state: "done", answer, text: answer.answer || turns.find((t) => t.id === id)?.text || "" });
+    patch(scope, id, { state: "done", answer, text: answer.answer || read(scope).find((t) => t.id === id)?.text || "" });
   } catch (e) {
-    if ((e as Error).name === "AbortError") patch(id, (t) => ({ state: t.text ? "done" : "error", error: t.text ? null : "stopped" }));
-    else patch(id, { state: "error", error: e instanceof ApiError ? e.kind : "server" });
+    if ((e as Error).name === "AbortError") patch(scope, id, (t) => ({ state: t.text ? "done" : "error", error: t.text ? null : "stopped" }));
+    else patch(scope, id, { state: "error", error: e instanceof ApiError ? e.kind : "server" });
   } finally {
-    controllers.delete(id);
+    inflight(scope).delete(id);
   }
 }
 
-export function useAskSession() {
+/**
+ * One conversation with the agent. `scope` picks which: omit it for the Ask page,
+ * or pass something stable (`customer:CUST000123`) for a chat pinned to one subject.
+ */
+export function useAskSession(scope: string = MAIN) {
   const list = useSyncExternalStore(
     (l) => {
       listeners.add(l);
       return () => listeners.delete(l);
     },
-    () => turns,
+    () => read(scope),
   );
-  const ask = useCallback((q: string) => {
-    if (q.trim() && !turns.some((t) => t.state === "streaming")) void run(q.trim());
-  }, []);
-  const stop = useCallback(() => controllers.forEach((c) => c.abort()), []);
-  const vote = useCallback((id: string, v: "up" | "down") => patch(id, (t) => ({ vote: t.vote === v ? null : v })), []);
+  const ask = useCallback(
+    (q: string) => {
+      if (q.trim() && !read(scope).some((t) => t.state === "streaming")) void run(scope, q.trim());
+    },
+    [scope],
+  );
+  const stop = useCallback(() => inflight(scope).forEach((c) => c.abort()), [scope]);
+  const vote = useCallback((id: string, v: "up" | "down") => patch(scope, id, (t) => ({ vote: t.vote === v ? null : v })), [scope]);
   const clear = useCallback(() => {
-    controllers.forEach((c) => c.abort());
-    turns = [];
-    emit();
-  }, []);
+    inflight(scope).forEach((c) => c.abort());
+    write(scope, EMPTY);
+  }, [scope]);
   return { turns: list, busy: list.some((t) => t.state === "streaming"), ask, stop, vote, clear };
 }

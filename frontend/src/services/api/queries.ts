@@ -5,7 +5,7 @@
 import { keepPreviousData, QueryClient, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as api from "./client";
 import { ApiError } from "./client";
-import type { AlertListParams, FeedbackRequestDTO } from "./dto";
+import type { AlertListParams, CustomerListParams, FeedbackRequestDTO } from "./dto";
 import type { AlertDetail } from "./models";
 
 export const qk = {
@@ -14,6 +14,8 @@ export const qk = {
   risk: ["risk"] as const,
   alerts: (p: AlertListParams) => ["alerts", p] as const,
   alert: (id: string) => ["alert", id] as const,
+  customers: (p: CustomerListParams) => ["customers", p] as const,
+  customer: (id: string) => ["customer", id] as const,
   evidence: (id: string) => ["evidence", id] as const,
   paragraph: (c: string, p: string) => ["paragraph", c, p] as const,
   search: (q: string) => ["search", q] as const,
@@ -53,6 +55,9 @@ export const useRisk = () => useQuery({ queryKey: qk.risk, queryFn: api.getRisk 
 export const useAlerts = (p: AlertListParams) => useQuery({ queryKey: qk.alerts(p), queryFn: () => api.listAlerts(p) });
 export const useAlert = (id: string | null) =>
   useQuery({ queryKey: qk.alert(id ?? ""), queryFn: () => api.getAlert(id!), enabled: !!id, placeholderData: undefined });
+export const useCustomers = (p: CustomerListParams) => useQuery({ queryKey: qk.customers(p), queryFn: () => api.listCustomers(p) });
+export const useCustomer = (id: string | null) =>
+  useQuery({ queryKey: qk.customer(id ?? ""), queryFn: () => api.getCustomer(id!), enabled: !!id, placeholderData: undefined });
 export const useEvidence = (id: string | null) =>
   useQuery({ queryKey: qk.evidence(id ?? ""), queryFn: () => api.getEvidence(id!), enabled: !!id, placeholderData: undefined });
 export const useParagraph = (c: string | null, p: string | null) =>
@@ -80,6 +85,12 @@ export const useJob = (id: string | null) =>
 export function usePrefetchAlert() {
   const qc = useQueryClient();
   return (id: string) => void qc.prefetchQuery({ queryKey: qk.alert(id), queryFn: () => api.getAlert(id), staleTime: 30_000 });
+}
+
+/** Same hover prefetch for the customer file. */
+export function usePrefetchCustomer() {
+  const qc = useQueryClient();
+  return (id: string) => void qc.prefetchQuery({ queryKey: qk.customer(id), queryFn: () => api.getCustomer(id), staleTime: 30_000 });
 }
 
 /** Optimistic: the case file shows the verdict at once and rolls back if the server refuses. */

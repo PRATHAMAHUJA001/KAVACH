@@ -251,6 +251,84 @@ export interface RiskDTO {
   pct_at_risk: number;
 }
 
+/* ───────────── Customers ───────────── */
+export type CustomerSortDTO = "risk" | "alerts" | "balance" | "name" | "city" | "segment" | "id";
+export type RiskBandDTO = "high" | "medium" | "low" | "pep" | "alerted";
+
+export interface CustomerDTO {
+  customer_id: string;
+  /** Masked for roles whose masking policy says so — show it as it arrives. */
+  customer_name: string | null;
+  pan: string | null;
+  city: string | null;
+  segment: string | null;
+  risk_category: string | null;
+  is_pep: boolean;
+  kyc_status: string | null;
+  account_count: number;
+  total_balance_inr: number;
+  /** Worst calibrated ML score across the customer's accounts, 0–1. Null when unscored. */
+  risk_score: number | null;
+  open_alerts: number;
+}
+export interface CustomerListDTO {
+  customers: CustomerDTO[];
+  total: number;
+  limit: number;
+  offset: number;
+  sort: string;
+  segments: string[];
+}
+export interface CustomerAccountDTO {
+  account_id: string;
+  account_type: string | null;
+  status: string | null;
+  branch_code: string | null;
+  open_date: string | null;
+  avg_monthly_balance_inr: number;
+  risk_score: number | null;
+  open_alerts: number;
+}
+export interface ScoreDriverDTO {
+  feature: string;
+  /** SHAP contribution; positive pushed the score up. */
+  shap: number;
+}
+export interface CustomerAlertDTO {
+  alert_id: string;
+  account_id: string | null;
+  typology: string | null;
+  severity: string | null;
+  score: number;
+  status: string | null;
+  created_at: string;
+}
+export interface CustomerDetailDTO {
+  customer: CustomerDTO;
+  dob: string | null;
+  state: string | null;
+  state_code: string | null;
+  region: string | null;
+  occupation: string | null;
+  declared_annual_income_inr: number | null;
+  kyc_last_updated: string | null;
+  onboarding_channel: string | null;
+  accounts: CustomerAccountDTO[];
+  drivers: ScoreDriverDTO[];
+  /** Scores are per account, so the drivers belong to one account, not the customer. */
+  driver_account_id: string | null;
+  driver_scored_at: string | null;
+  alerts: CustomerAlertDTO[];
+}
+export interface CustomerListParams {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  segment?: string;
+  risk?: RiskBandDTO;
+  sort?: CustomerSortDTO;
+}
+
 /* ───────────── Circulars (EXT) ───────────── */
 export interface ParagraphDTO {
   circular_no: string;

@@ -1,9 +1,19 @@
 import * as React from "react";
 import { cn } from "@/shared/lib/cn";
 
-export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
+/**
+ * `scrollClassName` styles the scroll container, for a vertically clamped table with
+ * a sticky header. `flush` drops its own border/radius when the table sits inside a
+ * card that already has them.
+ */
+export function Table({
+  className,
+  scrollClassName,
+  flush,
+  ...props
+}: React.TableHTMLAttributes<HTMLTableElement> & { scrollClassName?: string; flush?: boolean }) {
   return (
-    <div className="scrollbar-thin w-full overflow-x-auto rounded-xl border border-border">
+    <div className={cn("scrollbar-thin w-full overflow-auto", !flush && "rounded-xl border border-border", scrollClassName)}>
       <table className={cn("w-full border-collapse text-body", className)} {...props} />
     </div>
   );

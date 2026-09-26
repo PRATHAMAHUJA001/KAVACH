@@ -208,6 +208,72 @@ export interface PortfolioRisk {
   pctAtRisk: number;
 }
 
+export interface Customer {
+  id: string;
+  /** Already masked by Snowflake for roles that shouldn't see it. */
+  name: string;
+  pan: string | null;
+  city: string | null;
+  segment: string | null;
+  riskCategory: string | null;
+  isPep: boolean;
+  kycStatus: string | null;
+  accountCount: number;
+  balance: number;
+  /** Worst calibrated model score on any of their accounts, 0–1. Null when unscored. */
+  score: number | null;
+  /** The 5-step band for `score`. Null when unscored, so the UI can say so. */
+  riskLevel: RiskLevel | null;
+  openAlerts: number;
+}
+export interface CustomerPage {
+  customers: Customer[];
+  total: number;
+  limit: number;
+  offset: number;
+  segments: string[];
+}
+export interface CustomerAccount {
+  id: string;
+  type: string | null;
+  status: string | null;
+  branch: string | null;
+  openedAt: string | null;
+  balance: number;
+  score: number | null;
+  riskLevel: RiskLevel | null;
+  openAlerts: number;
+}
+export interface ScoreDriver {
+  feature: string;
+  shap: number;
+}
+export interface CustomerAlertRef {
+  id: string;
+  accountId: string | null;
+  typology: string;
+  severity: string;
+  score: number;
+  status: string;
+  createdAt: string;
+  riskLevel: RiskLevel;
+}
+export interface CustomerDetail {
+  customer: Customer;
+  dob: string | null;
+  state: string | null;
+  region: string | null;
+  occupation: string | null;
+  declaredIncome: number | null;
+  kycUpdatedAt: string | null;
+  onboardingChannel: string | null;
+  accounts: CustomerAccount[];
+  drivers: ScoreDriver[];
+  driverAccountId: string | null;
+  driverScoredAt: string | null;
+  alerts: CustomerAlertRef[];
+}
+
 export interface Paragraph {
   circularNo: string;
   paraNo: string;

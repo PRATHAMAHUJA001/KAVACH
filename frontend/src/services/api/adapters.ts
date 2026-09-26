@@ -240,6 +240,78 @@ export function toPortfolioRisk(d: D.RiskDTO): M.PortfolioRisk {
   };
 }
 
+/** The 5 risk steps, but honest about "we have no score for this one". */
+function bandOf(score: number | null | undefined): M.RiskLevel | null {
+  if (score == null) return null;
+  return riskFrom(undefined, undefined, score);
+}
+
+export function toCustomer(d: D.CustomerDTO): M.Customer {
+  return {
+    id: d.customer_id,
+    // Falls back to the id rather than showing an empty cell; a masked name is a real value.
+    name: d.customer_name ?? d.customer_id,
+    pan: d.pan ?? null,
+    city: d.city ?? null,
+    segment: d.segment ?? null,
+    riskCategory: d.risk_category ?? null,
+    isPep: !!d.is_pep,
+    kycStatus: d.kyc_status ?? null,
+    accountCount: d.account_count ?? 0,
+    balance: d.total_balance_inr ?? 0,
+    score: d.risk_score ?? null,
+    riskLevel: bandOf(d.risk_score),
+    openAlerts: d.open_alerts ?? 0,
+  };
+}
+
+export function toCustomerPage(d: D.CustomerListDTO): M.CustomerPage {
+  return {
+    customers: (d.customers ?? []).map(toCustomer),
+    total: d.total ?? 0,
+    limit: d.limit ?? 25,
+    offset: d.offset ?? 0,
+    segments: d.segments ?? [],
+  };
+}
+
+export function toCustomerDetail(d: D.CustomerDetailDTO): M.CustomerDetail {
+  return {
+    customer: toCustomer(d.customer),
+    dob: d.dob ?? null,
+    state: d.state ?? null,
+    region: d.region ?? null,
+    occupation: d.occupation ?? null,
+    declaredIncome: d.declared_annual_income_inr ?? null,
+    kycUpdatedAt: d.kyc_last_updated ?? null,
+    onboardingChannel: d.onboarding_channel ?? null,
+    accounts: (d.accounts ?? []).map((a) => ({
+      id: a.account_id,
+      type: a.account_type ?? null,
+      status: a.status ?? null,
+      branch: a.branch_code ?? null,
+      openedAt: a.open_date ?? null,
+      balance: a.avg_monthly_balance_inr ?? 0,
+      score: a.risk_score ?? null,
+      riskLevel: bandOf(a.risk_score),
+      openAlerts: a.open_alerts ?? 0,
+    })),
+    drivers: (d.drivers ?? []).map((x) => ({ feature: x.feature, shap: x.shap })),
+    driverAccountId: d.driver_account_id ?? null,
+    driverScoredAt: d.driver_scored_at ?? null,
+    alerts: (d.alerts ?? []).map((a) => ({
+      id: a.alert_id,
+      accountId: a.account_id ?? null,
+      typology: a.typology ?? "GENERAL_AML",
+      severity: a.severity ?? "",
+      score: a.score ?? 0,
+      status: a.status ?? "NEW",
+      createdAt: a.created_at,
+      riskLevel: riskFrom(undefined, a.severity ?? undefined, a.score),
+    })),
+  };
+}
+
 export function toParagraph(d: D.ParagraphDTO): M.Paragraph {
   return {
     circularNo: d.circular_no,

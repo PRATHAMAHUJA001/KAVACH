@@ -129,6 +129,7 @@
     "label": "Main navigation",
     "today": "Today",
     "alerts": "Alerts",
+    "customers": "Customers",
     "ask": "Ask Kavach",
     "rings": "Mule rings",
     "rulebook": "Rulebook",
@@ -145,6 +146,10 @@
     "alerts": {
       "title": "Alerts",
       "subtitle": "Why is this suspicious, and can I prove it?"
+    },
+    "customers": {
+      "title": "Customers",
+      "subtitle": "Who do we bank, and who should we look at?"
     },
     "ask": {
       "title": "Ask Kavach",
@@ -515,6 +520,113 @@
       "hint": "AI-written from this case. A compliance officer must review it before filing.",
       "copy": "Copy text",
       "failed": "We couldn't write the draft. Please try again."
+    }
+  },
+  "customers": {
+    "searchPlaceholder": "Filter by name, PAN, customer ID or city",
+    "count_one": "{{count}} customer",
+    "count_other": "{{count}} customers",
+    "range": "{{from}}–{{to}} of {{total}}",
+    "prev": "Previous page",
+    "next": "Next page",
+    "open": "Open the customer file for {{name}}",
+    "empty": "No customers match these filters.",
+    "noScore": "Not scored",
+    "scoreTooltip": "Model score {{score}} on their riskiest account",
+    "pep": "PEP",
+    "pepHint": "Politically exposed person — needs enhanced due diligence.",
+    "col": {
+      "name": "Customer",
+      "pan": "PAN",
+      "city": "City",
+      "segment": "Segment",
+      "risk": "Risk",
+      "alerts": "Open alerts",
+      "accounts": "Accounts",
+      "balance": "Balance"
+    },
+    "band": {
+      "label": "Show",
+      "all": "Everyone",
+      "high": "High risk",
+      "medium": "Elevated risk",
+      "low": "Low risk",
+      "pep": "PEPs",
+      "alerted": "With open alerts"
+    },
+    "segment": {
+      "label": "Segment",
+      "all": "All segments"
+    },
+    "sort": {
+      "label": "Sort by",
+      "risk": "Highest risk",
+      "alerts": "Most alerts",
+      "balance": "Largest balance",
+      "name": "Name"
+    },
+    "field": {
+      "id": "Customer ID",
+      "pan": "PAN",
+      "kyc": "KYC",
+      "kycUpdated": "KYC updated",
+      "occupation": "Occupation",
+      "income": "Declared income",
+      "where": "Where",
+      "channel": "Joined through",
+      "category": "Bank risk category",
+      "dob": "Date of birth"
+    },
+    "kyc": {
+      "VERIFIED": "Verified",
+      "PENDING": "Pending",
+      "EXPIRED": "Expired"
+    },
+    "category": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High"
+    },
+    "acct": {
+      "id": "Account",
+      "type": "Type",
+      "status": "Status",
+      "balance": "Balance",
+      "openAlerts_one": "{{count}} open alert",
+      "openAlerts_other": "{{count}} open alerts"
+    },
+    "alertStatus": {
+      "NEW": "New",
+      "OPEN": "Open",
+      "CLOSED": "Closed"
+    },
+    "driver": {
+      "ACCOUNT_AGE_DAYS": "How long the account has been open",
+      "BENEFICIARY_COUNT": "How many payees the account sends money to",
+      "RISK_CATEGORY_NUM": "The risk category the bank already assigned",
+      "ACCOUNT_STATUS_NUM": "The state the account is in (active, dormant, frozen)"
+    },
+    "file": {
+      "loading": "Opening the customer file…",
+      "notFound": "We couldn't find that customer.",
+      "accounts": "Accounts they hold",
+      "noAccounts": "This customer holds no accounts.",
+      "drivers": "What pushes the score",
+      "noDrivers": "The model has not recorded drivers for this customer.",
+      "scoredAt": "Scored {{when}}",
+      "alerts": "Recent alerts",
+      "noAlerts": "No alerts have been raised against this customer.",
+      "openAlert": "Open the case file for alert {{id}}"
+    },
+    "ask": {
+      "open": "Ask KAVACH",
+      "title": "Ask KAVACH",
+      "scoped": "About {{id}}",
+      "close": "Close the chat",
+      "reset": "Start this conversation again",
+      "empty": "Ask anything about this customer.",
+      "placeholder": "Ask about this customer…",
+      "seed": "Why is {{name}} scored high risk?"
     }
   },
   "ask": {

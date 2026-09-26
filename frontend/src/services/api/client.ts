@@ -112,6 +112,14 @@ export async function getRisk(): Promise<M.PortfolioRisk> {
   return A.toPortfolioRisk(await ext<D.RiskDTO>("/api/risk"));
 }
 
+/* ───────────── customers ───────────── */
+export async function listCustomers(params: D.CustomerListParams = {}): Promise<M.CustomerPage> {
+  return A.toCustomerPage(await ext<D.CustomerListDTO>("/api/customers", { query: params as Record<string, string | number | undefined> }));
+}
+export async function getCustomer(id: string): Promise<M.CustomerDetail> {
+  return A.toCustomerDetail(await ext<D.CustomerDetailDTO>(`/api/customers/${encodeURIComponent(id)}`));
+}
+
 /* ───────────── alerts ───────────── */
 export async function listAlerts(params: D.AlertListParams = {}): Promise<M.AlertPage> {
   const { typology, due, q, sort, ...base } = params;
