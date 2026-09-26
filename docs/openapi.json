@@ -1,1 +1,4069 @@
-{"openapi":"3.1.0","info":{"title":"KAVACH API","description":"Risk, Fraud and Regulatory Intelligence Copilot for Indian Banking","version":"1.0.0"},"paths":{"/healthz":{"get":{"tags":["Health"],"summary":"Health Check","description":"Health check endpoint","operationId":"health_check_healthz_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HealthResponse"}}}}}}},"/api/home":{"get":{"tags":["Home"],"summary":"Get Home Dashboard","description":"Get home dashboard data:\n- Readiness score\n- Top 5 alerts\n- 7-day trend","operationId":"get_home_dashboard_api_home_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HomeResponse"}}}}}}},"/api/me":{"get":{"tags":["User"],"summary":"Get Current User","description":"Get current user profile","operationId":"get_current_user_api_me_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserProfile"}}}}}}},"/api/alerts":{"get":{"tags":["Alerts"],"summary":"List Alerts","description":"List alerts with optional filters","operationId":"list_alerts_api_alerts_get","parameters":[{"name":"status","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Status"}},{"name":"severity","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Severity"}},{"name":"page","in":"query","required":false,"schema":{"type":"integer","minimum":1,"default":1,"title":"Page"}},{"name":"page_size","in":"query","required":false,"schema":{"type":"integer","maximum":100,"minimum":1,"default":20,"title":"Page Size"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AlertListResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/alerts/{alert_id}":{"get":{"tags":["Alerts"],"summary":"Get Alert Detail","description":"Get detailed information for a specific alert","operationId":"get_alert_detail_api_alerts__alert_id__get","parameters":[{"name":"alert_id","in":"path","required":true,"schema":{"type":"string","title":"Alert Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AlertDetailResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/alerts/{alert_id}/evidence":{"get":{"tags":["Evidence"],"summary":"Get Evidence","description":"Get evidence for an alert","operationId":"get_evidence_api_alerts__alert_id__evidence_get","parameters":[{"name":"alert_id","in":"path","required":true,"schema":{"type":"string","title":"Alert Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/EvidenceResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["Evidence"],"summary":"Create Evidence","description":"Create evidence pack for an alert","operationId":"create_evidence_api_alerts__alert_id__evidence_post","parameters":[{"name":"alert_id","in":"path","required":true,"schema":{"type":"string","title":"Alert Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/EvidenceResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/alerts/{alert_id}/verify":{"get":{"tags":["Evidence"],"summary":"Verify Evidence","description":"Verify evidence integrity","operationId":"verify_evidence_api_alerts__alert_id__verify_get","parameters":[{"name":"alert_id","in":"path","required":true,"schema":{"type":"string","title":"Alert Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/VerifyResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/alerts/{alert_id}/feedback":{"post":{"tags":["Evidence"],"summary":"Submit Feedback","description":"Submit feedback for an alert","operationId":"submit_feedback_api_alerts__alert_id__feedback_post","parameters":[{"name":"alert_id","in":"path","required":true,"schema":{"type":"string","title":"Alert Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/FeedbackRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/alerts/{alert_id}/str-draft":{"get":{"tags":["Evidence"],"summary":"Get Str Draft","description":"Generate STR draft for an alert","operationId":"get_str_draft_api_alerts__alert_id__str_draft_get","parameters":[{"name":"alert_id","in":"path","required":true,"schema":{"type":"string","title":"Alert Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/STRDraftResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/ask":{"post":{"tags":["AI"],"summary":"Ask Question","description":"Ask KAVACH_AGENT a question.\n\nIf stream=true, returns a normalized SSE stream (status, text_delta, tool_call,\ntool_result, done, error). Otherwise returns the complete parsed response.","operationId":"ask_question_api_ask_post","parameters":[{"name":"stream","in":"query","required":false,"schema":{"type":"boolean","default":false,"title":"Stream"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AskRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/why-not/{txn_id}":{"get":{"tags":["Analysis"],"summary":"Why Not","description":"Explain why a transaction didn't trigger an alert","operationId":"why_not_api_why_not__txn_id__get","parameters":[{"name":"txn_id","in":"path","required":true,"schema":{"type":"string","title":"Txn Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WhyNotResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/time-machine":{"get":{"tags":["Analytics"],"summary":"Time Machine","description":"Get historical alert trends","operationId":"time_machine_api_time_machine_get","parameters":[{"name":"start_date","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Start date (YYYY-MM-DD)","title":"Start Date"},"description":"Start date (YYYY-MM-DD)"},{"name":"end_date","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"End date (YYYY-MM-DD)","title":"End Date"},"description":"End date (YYYY-MM-DD)"},{"name":"days","in":"query","required":false,"schema":{"type":"integer","maximum":365,"minimum":1,"description":"Number of days to look back","default":30,"title":"Days"},"description":"Number of days to look back"}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/TimeMachineResponse"},"title":"Response Time Machine Api Time Machine Get"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rings":{"get":{"tags":["Rings"],"summary":"List Rings","description":"List mule rings","operationId":"list_rings_api_rings_get","parameters":[{"name":"page","in":"query","required":false,"schema":{"type":"integer","minimum":1,"default":1,"title":"Page"}},{"name":"page_size","in":"query","required":false,"schema":{"type":"integer","maximum":100,"minimum":1,"default":20,"title":"Page Size"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RingListResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rings/{ring_id}":{"get":{"tags":["Rings"],"summary":"Get Ring Detail","description":"Get detailed information for a specific ring","operationId":"get_ring_detail_api_rings__ring_id__get","parameters":[{"name":"ring_id","in":"path","required":true,"schema":{"type":"string","title":"Ring Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RingDetailResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rules":{"get":{"tags":["Rules"],"summary":"List Rules","description":"List rules with optional filters","operationId":"list_rules_api_rules_get","parameters":[{"name":"status","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Status"}},{"name":"page","in":"query","required":false,"schema":{"type":"integer","minimum":1,"default":1,"title":"Page"}},{"name":"page_size","in":"query","required":false,"schema":{"type":"integer","maximum":100,"minimum":1,"default":20,"title":"Page Size"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RuleListResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rules/{rule_id}/approve":{"post":{"tags":["Rules"],"summary":"Approve Rule","description":"Approve a rule","operationId":"approve_rule_api_rules__rule_id__approve_post","parameters":[{"name":"rule_id","in":"path","required":true,"schema":{"type":"string","title":"Rule Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ApproveRejectRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rules/{rule_id}/reject":{"post":{"tags":["Rules"],"summary":"Reject Rule","description":"Reject a rule","operationId":"reject_rule_api_rules__rule_id__reject_post","parameters":[{"name":"rule_id","in":"path","required":true,"schema":{"type":"string","title":"Rule Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ApproveRejectRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rules/conflicts":{"get":{"tags":["Rules"],"summary":"Get Rule Conflicts","description":"Get rule conflicts","operationId":"get_rule_conflicts_api_rules_conflicts_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ConflictResponse"}}}}}}},"/api/rules/health":{"get":{"tags":["Rules"],"summary":"Get Rule Health","description":"Get rule health metrics","operationId":"get_rule_health_api_rules_health_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RuleHealthResponse"}}}}}}},"/api/rules/{rule_id}":{"get":{"tags":["Rules"],"summary":"Get Rule","description":"Get a specific rule","operationId":"get_rule_api_rules__rule_id__get","parameters":[{"name":"rule_id","in":"path","required":true,"schema":{"type":"string","title":"Rule Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RuleResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rules/upload":{"post":{"tags":["Rules"],"summary":"Upload Rules","description":"Upload rules from CSV/YAML file","operationId":"upload_rules_api_rules_upload_post","requestBody":{"content":{"multipart/form-data":{"schema":{"$ref":"#/components/schemas/Body_upload_rules_api_rules_upload_post"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UploadResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/rules/jobs/{job_id}":{"get":{"tags":["Rules"],"summary":"Get Job Status","description":"Get status of a rule upload job","operationId":"get_job_status_api_rules_jobs__job_id__get","parameters":[{"name":"job_id","in":"path","required":true,"schema":{"type":"string","title":"Job Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/JobStatusResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}}},"components":{"schemas":{"AlertDetailResponse":{"properties":{"alert":{"$ref":"#/components/schemas/AlertResponse"},"story_en":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Story En"},"story_hi":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Story Hi"},"txn_count":{"type":"integer","title":"Txn Count"},"total_amount_inr":{"type":"number","title":"Total Amount Inr"}},"type":"object","required":["alert","story_en","story_hi","txn_count","total_amount_inr"],"title":"AlertDetailResponse","description":"Alert detail response model"},"AlertListResponse":{"properties":{"alerts":{"items":{"$ref":"#/components/schemas/AlertResponse"},"type":"array","title":"Alerts"},"total":{"type":"integer","title":"Total"},"page":{"type":"integer","title":"Page"},"page_size":{"type":"integer","title":"Page Size"},"total_pages":{"type":"integer","title":"Total Pages"}},"type":"object","required":["alerts","total","page","page_size","total_pages"],"title":"AlertListResponse","description":"Alert list response model"},"AlertResponse":{"properties":{"alert_id":{"type":"string","title":"Alert Id"},"account_id":{"type":"string","title":"Account Id"},"customer_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Customer Id"},"typology":{"type":"string","title":"Typology"},"severity":{"type":"string","title":"Severity"},"score":{"type":"number","title":"Score"},"status":{"type":"string","title":"Status"},"rule_name":{"type":"string","title":"Rule Name"},"citation":{"type":"string","title":"Citation"},"created_at":{"type":"string","title":"Created At"},"resolution":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Resolution"},"customer_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Customer Name"},"pan":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Pan"}},"type":"object","required":["alert_id","account_id","customer_id","typology","severity","score","status","rule_name","citation","created_at"],"title":"AlertResponse","description":"Alert response model"},"ApproveRejectRequest":{"properties":{"user":{"type":"string","title":"User"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Reason"}},"type":"object","required":["user"],"title":"ApproveRejectRequest","description":"Approve/reject request model"},"AskRequest":{"properties":{"question":{"type":"string","title":"Question"}},"type":"object","required":["question"],"title":"AskRequest","description":"Ask request model"},"Body_upload_rules_api_rules_upload_post":{"properties":{"file":{"type":"string","format":"binary","title":"File"}},"type":"object","required":["file"],"title":"Body_upload_rules_api_rules_upload_post"},"ConflictResponse":{"properties":{"conflicts":{"items":{"type":"object"},"type":"array","title":"Conflicts"}},"type":"object","required":["conflicts"],"title":"ConflictResponse","description":"Rule conflict response"},"EvidenceResponse":{"properties":{"alert_id":{"type":"string","title":"Alert Id"},"evidence_json":{"type":"object","title":"Evidence Json"},"file_path":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"File Path"},"sha256_hash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Sha256 Hash"},"created_by":{"type":"string","title":"Created By"},"created_at":{"type":"string","title":"Created At"},"presigned_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Presigned Url"},"html_sha256_hash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Html Sha256 Hash"},"pdf_presigned_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Pdf Presigned Url"},"pdf_sha256_hash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Pdf Sha256 Hash"},"json_presigned_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Json Presigned Url"}},"type":"object","required":["alert_id","evidence_json","file_path","sha256_hash","created_by","created_at"],"title":"EvidenceResponse","description":"Evidence response model"},"FeedbackRequest":{"properties":{"rating":{"type":"integer","title":"Rating"},"comment":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Comment"}},"type":"object","required":["rating"],"title":"FeedbackRequest","description":"Feedback request model"},"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"HealthResponse":{"properties":{"status":{"type":"string","title":"Status"},"service":{"type":"string","title":"Service"},"version":{"type":"string","title":"Version"}},"type":"object","required":["status","service","version"],"title":"HealthResponse"},"HomeResponse":{"properties":{"readiness_score":{"$ref":"#/components/schemas/ReadinessScore"},"top_alerts":{"items":{"$ref":"#/components/schemas/TopAlert"},"type":"array","title":"Top Alerts"},"trend":{"items":{"$ref":"#/components/schemas/TrendData"},"type":"array","title":"Trend"}},"type":"object","required":["readiness_score","top_alerts","trend"],"title":"HomeResponse"},"JobStatusResponse":{"properties":{"job_id":{"type":"string","title":"Job Id"},"status":{"type":"string","title":"Status"},"progress":{"type":"integer","title":"Progress"},"message":{"type":"string","title":"Message"}},"type":"object","required":["job_id","status","progress","message"],"title":"JobStatusResponse","description":"Job status response"},"ReadinessScore":{"properties":{"score":{"type":"number","title":"Score"},"reason":{"type":"string","title":"Reason"}},"type":"object","required":["score","reason"],"title":"ReadinessScore"},"RingDetailResponse":{"properties":{"ring":{"$ref":"#/components/schemas/RingResponse"},"members":{"items":{"type":"object"},"type":"array","title":"Members"},"transactions":{"items":{"type":"object"},"type":"array","title":"Transactions"}},"type":"object","required":["ring","members","transactions"],"title":"RingDetailResponse","description":"Ring detail response model"},"RingListResponse":{"properties":{"rings":{"items":{"$ref":"#/components/schemas/RingResponse"},"type":"array","title":"Rings"},"total":{"type":"integer","title":"Total"},"page":{"type":"integer","title":"Page"},"page_size":{"type":"integer","title":"Page Size"},"total_pages":{"type":"integer","title":"Total Pages"}},"type":"object","required":["rings","total","page","page_size","total_pages"],"title":"RingListResponse","description":"Ring list response model"},"RingResponse":{"properties":{"ring_id":{"type":"string","title":"Ring Id"},"ring_name":{"type":"string","title":"Ring Name"},"member_count":{"type":"integer","title":"Member Count"},"total_volume_inr":{"type":"number","title":"Total Volume Inr"},"risk_score":{"type":"number","title":"Risk Score"},"status":{"type":"string","title":"Status"}},"type":"object","required":["ring_id","ring_name","member_count","total_volume_inr","risk_score","status"],"title":"RingResponse","description":"Ring response model"},"RuleHealthResponse":{"properties":{"total_rules":{"type":"integer","title":"Total Rules"},"active_rules":{"type":"integer","title":"Active Rules"},"pending_rules":{"type":"integer","title":"Pending Rules"},"rejected_rules":{"type":"integer","title":"Rejected Rules"},"avg_precision":{"type":"number","title":"Avg Precision"}},"type":"object","required":["total_rules","active_rules","pending_rules","rejected_rules","avg_precision"],"title":"RuleHealthResponse","description":"Rule health response"},"RuleListResponse":{"properties":{"rules":{"items":{"$ref":"#/components/schemas/RuleResponse"},"type":"array","title":"Rules"},"total":{"type":"integer","title":"Total"},"page":{"type":"integer","title":"Page"},"page_size":{"type":"integer","title":"Page Size"},"total_pages":{"type":"integer","title":"Total Pages"}},"type":"object","required":["rules","total","page","page_size","total_pages"],"title":"RuleListResponse","description":"Rule list response model"},"RuleResponse":{"properties":{"rule_id":{"type":"string","title":"Rule Id"},"rule_name":{"type":"string","title":"Rule Name"},"version":{"type":"integer","title":"Version"},"typology":{"type":"string","title":"Typology"},"sql_text":{"type":"string","title":"Sql Text"},"status":{"type":"string","title":"Status"},"source_citation":{"type":"string","title":"Source Citation"},"created_at":{"type":"string","title":"Created At"}},"type":"object","required":["rule_id","rule_name","version","typology","sql_text","status","source_citation","created_at"],"title":"RuleResponse","description":"Rule response model"},"STRDraftResponse":{"properties":{"alert_id":{"type":"string","title":"Alert Id"},"str_draft":{"type":"string","title":"Str Draft"},"format":{"type":"string","title":"Format"}},"type":"object","required":["alert_id","str_draft","format"],"title":"STRDraftResponse","description":"STR draft response"},"TimeMachineResponse":{"properties":{"date":{"type":"string","title":"Date"},"alert_count":{"type":"integer","title":"Alert Count"},"high_severity_count":{"type":"integer","title":"High Severity Count"},"total_risk_score":{"type":"number","title":"Total Risk Score"},"top_typologies":{"items":{"type":"object"},"type":"array","title":"Top Typologies"}},"type":"object","required":["date","alert_count","high_severity_count","total_risk_score","top_typologies"],"title":"TimeMachineResponse","description":"Time-machine response model"},"TopAlert":{"properties":{"alert_id":{"type":"string","title":"Alert Id"},"account_id":{"type":"string","title":"Account Id"},"typology":{"type":"string","title":"Typology"},"severity":{"type":"string","title":"Severity"},"score":{"type":"number","title":"Score"},"created_at":{"type":"string","title":"Created At"}},"type":"object","required":["alert_id","account_id","typology","severity","score","created_at"],"title":"TopAlert"},"TrendData":{"properties":{"date":{"type":"string","title":"Date"},"alert_count":{"type":"integer","title":"Alert Count"}},"type":"object","required":["date","alert_count"],"title":"TrendData"},"UploadResponse":{"properties":{"job_id":{"type":"string","title":"Job Id"},"status":{"type":"string","title":"Status"},"message":{"type":"string","title":"Message"}},"type":"object","required":["job_id","status","message"],"title":"UploadResponse","description":"Upload response"},"UserProfile":{"properties":{"user_id":{"type":"string","title":"User Id"},"name":{"type":"string","title":"Name"},"role":{"type":"string","title":"Role"},"email":{"type":"string","title":"Email"}},"type":"object","required":["user_id","name","role","email"],"title":"UserProfile"},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"},"VerifyResponse":{"properties":{"verified":{"type":"boolean","title":"Verified"},"details":{"type":"object","title":"Details"}},"type":"object","required":["verified","details"],"title":"VerifyResponse","description":"Evidence verification response"},"WhyNotResponse":{"properties":{"txn_id":{"type":"string","title":"Txn Id"},"explanation":{"type":"string","title":"Explanation"},"rules_checked":{"items":{"type":"object"},"type":"array","title":"Rules Checked"},"recommendation":{"type":"string","title":"Recommendation"}},"type":"object","required":["txn_id","explanation","rules_checked","recommendation"],"title":"WhyNotResponse","description":"Why-not response model"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KAVACH API",
+    "description": "Risk, Fraud and Regulatory Intelligence Copilot for Indian Banking",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "description": "Health check endpoint",
+        "operationId": "health_check_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/home": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Get Home Dashboard",
+        "description": "Today dashboard: readiness score (with the factors pulling it down), KPIs,\nthe five things needing attention, a 30-day alerts vs confirmed-fraud trend\nand a one-paragraph weekly brief. Deadlines use the data's as-of date.",
+        "operationId": "get_home_dashboard_api_home_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get Current User",
+        "description": "The signed-in identity. The role is the Snowflake session's CURRENT_ROLE(), so the\nUI's read-only mode matches what masking and row-access policies actually enforce.\n`as_of` is the data's \"today\" used for report deadlines.",
+        "operationId": "get_current_user_api_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "List Alerts",
+        "description": "List alerts with optional filters. `priority` puts open alerts first, then the\nnearest report deadline, then severity.",
+        "operationId": "list_alerts_api_alerts_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "name": "typology",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Typology"
+            }
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "overdue",
+                    "48h",
+                    "open"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Report deadline band",
+              "title": "Due"
+            },
+            "description": "Report deadline band"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Matches alert id, account, customer name or city",
+              "title": "Q"
+            },
+            "description": "Matches alert id, account, customer name or city"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "priority",
+                "amount",
+                "newest"
+              ],
+              "type": "string",
+              "default": "priority",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/{alert_id}": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get Alert Detail",
+        "description": "The case file: story, reasons, timeline, transactions, connections and the cited paragraph.",
+        "operationId": "get_alert_detail_api_alerts__alert_id__get",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/{alert_id}/evidence": {
+      "get": {
+        "tags": [
+          "Evidence"
+        ],
+        "summary": "Get Evidence",
+        "description": "Get evidence for an alert",
+        "operationId": "get_evidence_api_alerts__alert_id__evidence_get",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Evidence"
+        ],
+        "summary": "Create Evidence",
+        "description": "Create evidence pack for an alert",
+        "operationId": "create_evidence_api_alerts__alert_id__evidence_post",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/{alert_id}/verify": {
+      "get": {
+        "tags": [
+          "Evidence"
+        ],
+        "summary": "Verify Evidence",
+        "description": "Verify evidence integrity",
+        "operationId": "verify_evidence_api_alerts__alert_id__verify_get",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/{alert_id}/feedback": {
+      "post": {
+        "tags": [
+          "Evidence"
+        ],
+        "summary": "Submit Feedback",
+        "description": "Submit feedback for an alert. With a verdict, the alert is closed as confirmed\nfraud (TRUE_POSITIVE) or a false alarm (FALSE_POSITIVE).",
+        "operationId": "submit_feedback_api_alerts__alert_id__feedback_post",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/{alert_id}/str-draft": {
+      "get": {
+        "tags": [
+          "Evidence"
+        ],
+        "summary": "Get Str Draft",
+        "description": "Generate STR draft for an alert",
+        "operationId": "get_str_draft_api_alerts__alert_id__str_draft_get",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/STRDraftResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ask": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Ask Question",
+        "description": "Ask KAVACH_AGENT a question.\n\nIf stream=true, returns a normalized SSE stream (status, text_delta, tool_call,\ntool_result, done, error). Otherwise returns the complete parsed response.",
+        "operationId": "ask_question_api_ask_post",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Stream"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/why-not/{txn_id}": {
+      "get": {
+        "tags": [
+          "Analysis"
+        ],
+        "summary": "Why Not",
+        "description": "Explain why a transaction didn't trigger an alert (or open its alert if it did)",
+        "operationId": "why_not_api_why_not__txn_id__get",
+        "parameters": [
+          {
+            "name": "txn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Txn Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhyNotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/time-machine": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Time Machine",
+        "description": "Daily alert counts for the last `days` of data, with the top patterns per day",
+        "operationId": "time_machine_api_time_machine_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeMachineResponse"
+                  },
+                  "title": "Response Time Machine Api Time Machine Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/time-machine/rules": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Tunable Rules",
+        "description": "Rules with a limit the what-if slider can move",
+        "operationId": "tunable_rules_api_time_machine_rules_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/time-machine/replay": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Replay",
+        "description": "Run the rule over the last `days` at its current limit and at `value`; compare alerts,\nplanted fraud caught and review hours (45 minutes per alert).",
+        "operationId": "replay_api_time_machine_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rings": {
+      "get": {
+        "tags": [
+          "Rings"
+        ],
+        "summary": "List Rings",
+        "description": "List mule rings, most suspicious first",
+        "operationId": "list_rings_api_rings_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RingListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rings/{ring_id}": {
+      "get": {
+        "tags": [
+          "Rings"
+        ],
+        "summary": "Get Ring Detail",
+        "description": "Members (with roles), shared-device/IP and money links between them, and their transfers",
+        "operationId": "get_ring_detail_api_rings__ring_id__get",
+        "parameters": [
+          {
+            "name": "ring_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ring Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RingDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "List Rules",
+        "description": "List rules with optional filters",
+        "operationId": "list_rules_api_rules_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/{rule_id}/approve": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Approve Rule",
+        "description": "Approve a rule",
+        "operationId": "approve_rule_api_rules__rule_id__approve_post",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/{rule_id}/reject": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Reject Rule",
+        "description": "Reject a rule",
+        "operationId": "reject_rule_api_rules__rule_id__reject_post",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/conflicts": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Get Rule Conflicts",
+        "description": "Pairs of rules that overlap, or contradict each other on thresholds",
+        "operationId": "get_rule_conflicts_api_rules_conflicts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/health": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Get Rule Health",
+        "description": "Counts by status, and per rule: alerts and confirmed fraud in the last 30 days, with a verdict",
+        "operationId": "get_rule_health_api_rules_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/eval": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Get Rule Eval",
+        "description": "How many planted fraud cases per typology the rules catch (ML.EVAL_* or RAW.GROUND_TRUTH)",
+        "operationId": "get_rule_eval_api_rules_eval_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/upload": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Upload Circular",
+        "description": "Upload a circular PDF. It is read, its obligations extracted and checks written in\nthe background; poll /rules/jobs/{job_id}.",
+        "operationId": "upload_circular_api_rules_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_circular_api_rules_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Get Job Status",
+        "description": "Progress of a circular upload",
+        "operationId": "get_job_status_api_rules_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/{rule_id}/versions": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Get Rule Versions",
+        "description": "This rule's history: the original and any versions created by amendments",
+        "operationId": "get_rule_versions_api_rules__rule_id__versions_get",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/{rule_id}": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Get Rule",
+        "description": "Get a specific rule",
+        "operationId": "get_rule_api_rules__rule_id__get",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/circulars/paragraph": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Paragraph",
+        "description": "One paragraph of a synthetic circular, with its neighbours for context",
+        "operationId": "paragraph_api_circulars_paragraph_get",
+        "parameters": [
+          {
+            "name": "circular_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Circular No"
+            }
+          },
+          {
+            "name": "para_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 999,
+              "minimum": 0,
+              "title": "Para No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParagraphResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Search",
+        "description": "Alerts, accounts, customers, transactions, rings and rules matching `q`",
+        "operationId": "search_api_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": "",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tour/reset": {
+      "post": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Tour Reset",
+        "description": "Put the tour's alert, rule and evidence back to their starting state",
+        "operationId": "tour_reset_api_tour_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TourResetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertDetailResponse": {
+        "properties": {
+          "alert": {
+            "$ref": "#/components/schemas/AlertResponse"
+          },
+          "story_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story En"
+          },
+          "story_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Hi"
+          },
+          "txn_count": {
+            "type": "integer",
+            "title": "Txn Count"
+          },
+          "total_amount_inr": {
+            "type": "number",
+            "title": "Total Amount Inr"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonResponse"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "default": []
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEventResponse"
+            },
+            "type": "array",
+            "title": "Timeline",
+            "default": []
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TxnResponse"
+            },
+            "type": "array",
+            "title": "Transactions",
+            "default": []
+          },
+          "connections": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "citation_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CitationRefResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "alert",
+          "story_en",
+          "story_hi",
+          "txn_count",
+          "total_amount_inr"
+        ],
+        "title": "AlertDetailResponse",
+        "description": "Alert detail response model"
+      },
+      "AlertListResponse": {
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AlertResponse"
+            },
+            "type": "array",
+            "title": "Alerts"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alerts",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "AlertListResponse",
+        "description": "Alert list response model"
+      },
+      "AlertResponse": {
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "title": "Alert Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "typology": {
+            "type": "string",
+            "title": "Typology"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "rule_name": {
+            "type": "string",
+            "title": "Rule Name"
+          },
+          "citation": {
+            "type": "string",
+            "title": "Citation"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "pan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pan"
+          },
+          "amount_inr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Inr"
+          },
+          "txn_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txn Count"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "str_filed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Str Filed"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
+          "ring_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ring Id"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "action_required": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Required"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alert_id",
+          "account_id",
+          "customer_id",
+          "typology",
+          "severity",
+          "score",
+          "status",
+          "rule_name",
+          "citation",
+          "created_at"
+        ],
+        "title": "AlertResponse",
+        "description": "Alert response model"
+      },
+      "ApproveRejectRequest": {
+        "properties": {
+          "user": {
+            "type": "string",
+            "title": "User"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "title": "ApproveRejectRequest",
+        "description": "Approve/reject request model"
+      },
+      "AskRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AskRequest",
+        "description": "Ask request model"
+      },
+      "AttentionItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "report_overdue",
+              "report_due",
+              "rule_pending",
+              "ring_new",
+              "conflict_open"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "overdue",
+              "act",
+              "attention"
+            ],
+            "title": "Status"
+          },
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id"
+          },
+          "params": {
+            "$ref": "#/components/schemas/AttentionParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "entity_id",
+          "params"
+        ],
+        "title": "AttentionItem"
+      },
+      "AttentionParams": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "name_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Hi"
+          },
+          "amount_inr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Inr"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typology"
+          }
+        },
+        "type": "object",
+        "title": "AttentionParams"
+      },
+      "Body_upload_circular_api_rules_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_circular_api_rules_upload_post"
+      },
+      "CitationRefResponse": {
+        "properties": {
+          "circular_no": {
+            "type": "string",
+            "title": "Circular No"
+          },
+          "para_no": {
+            "type": "string",
+            "title": "Para No"
+          },
+          "highlight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highlight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "circular_no",
+          "para_no"
+        ],
+        "title": "CitationRefResponse"
+      },
+      "ConflictItem": {
+        "properties": {
+          "conflict_id": {
+            "type": "string",
+            "title": "Conflict Id"
+          },
+          "typology": {
+            "type": "string",
+            "title": "Typology"
+          },
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detected_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected At"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "overlap",
+              "contradiction"
+            ],
+            "title": "Kind"
+          },
+          "rule_a": {
+            "$ref": "#/components/schemas/ConflictSideResponse"
+          },
+          "rule_b": {
+            "$ref": "#/components/schemas/ConflictSideResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conflict_id",
+          "typology",
+          "description",
+          "status",
+          "kind",
+          "rule_a",
+          "rule_b"
+        ],
+        "title": "ConflictItem"
+      },
+      "ConflictResponse": {
+        "properties": {
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictItem"
+            },
+            "type": "array",
+            "title": "Conflicts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conflicts"
+        ],
+        "title": "ConflictResponse",
+        "description": "Rule conflict response"
+      },
+      "ConflictSideResponse": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "rule_name": {
+            "type": "string",
+            "title": "Rule Name"
+          },
+          "citation": {
+            "type": "string",
+            "title": "Citation"
+          },
+          "circular_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Circular No"
+          },
+          "para_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Para No"
+          },
+          "clause_text": {
+            "type": "string",
+            "title": "Clause Text"
+          },
+          "plain_english": {
+            "type": "string",
+            "title": "Plain English"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "rule_name",
+          "citation",
+          "clause_text",
+          "plain_english"
+        ],
+        "title": "ConflictSideResponse"
+      },
+      "EvidenceResponse": {
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "title": "Alert Id"
+          },
+          "evidence_json": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evidence Json"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "sha256_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256 Hash"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "presigned_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presigned Url"
+          },
+          "html_sha256_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Sha256 Hash"
+          },
+          "pdf_presigned_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Presigned Url"
+          },
+          "pdf_sha256_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Sha256 Hash"
+          },
+          "json_presigned_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Json Presigned Url"
+          },
+          "generation_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alert_id",
+          "evidence_json",
+          "file_path",
+          "sha256_hash",
+          "created_by",
+          "created_at"
+        ],
+        "title": "EvidenceResponse",
+        "description": "Evidence response model"
+      },
+      "FeedbackRequest": {
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "title": "Rating"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "FRAUD",
+                  "NOT_FRAUD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rating"
+        ],
+        "title": "FeedbackRequest",
+        "description": "Feedback request model"
+      },
+      "GraphEdgeResponse": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "shared_phone",
+              "shared_ip",
+              "shared_device",
+              "sent_money"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "kind"
+        ],
+        "title": "GraphEdgeResponse"
+      },
+      "GraphNodeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "risk_level": {
+            "type": "integer",
+            "title": "Risk Level"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "subject",
+              "member",
+              "external"
+            ],
+            "title": "Kind"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "alert_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "risk_level",
+          "kind"
+        ],
+        "title": "GraphNodeResponse"
+      },
+      "GraphResponse": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeResponse"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeResponse"
+            },
+            "type": "array",
+            "title": "Edges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "GraphResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "title": "HealthResponse"
+      },
+      "HomeKpis": {
+        "properties": {
+          "new_alerts": {
+            "type": "integer",
+            "title": "New Alerts"
+          },
+          "new_alerts_prev": {
+            "type": "integer",
+            "title": "New Alerts Prev"
+          },
+          "serious_new_alerts": {
+            "type": "integer",
+            "title": "Serious New Alerts"
+          },
+          "money_at_risk_inr": {
+            "type": "number",
+            "title": "Money At Risk Inr"
+          },
+          "money_at_risk_prev_inr": {
+            "type": "number",
+            "title": "Money At Risk Prev Inr"
+          },
+          "reports_due_48h": {
+            "type": "integer",
+            "title": "Reports Due 48H"
+          },
+          "reports_overdue": {
+            "type": "integer",
+            "title": "Reports Overdue"
+          },
+          "active_rings": {
+            "type": "integer",
+            "title": "Active Rings"
+          },
+          "active_rings_prev": {
+            "type": "integer",
+            "title": "Active Rings Prev"
+          },
+          "ring_volume_30d_inr": {
+            "type": "number",
+            "title": "Ring Volume 30D Inr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_alerts",
+          "new_alerts_prev",
+          "serious_new_alerts",
+          "money_at_risk_inr",
+          "money_at_risk_prev_inr",
+          "reports_due_48h",
+          "reports_overdue",
+          "active_rings",
+          "active_rings_prev",
+          "ring_volume_30d_inr"
+        ],
+        "title": "HomeKpis"
+      },
+      "HomeResponse": {
+        "properties": {
+          "readiness_score": {
+            "$ref": "#/components/schemas/ReadinessScore"
+          },
+          "top_alerts": {
+            "items": {
+              "$ref": "#/components/schemas/TopAlert"
+            },
+            "type": "array",
+            "title": "Top Alerts"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/TrendData"
+            },
+            "type": "array",
+            "title": "Trend"
+          },
+          "kpis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeKpis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attention": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionItem"
+            },
+            "type": "array",
+            "title": "Attention",
+            "default": []
+          },
+          "weekly_brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeeklyBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "readiness_score",
+          "top_alerts",
+          "trend"
+        ],
+        "title": "HomeResponse"
+      },
+      "JobStatusResponse": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "circular_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Circular No"
+          },
+          "rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rule Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status",
+          "progress",
+          "message"
+        ],
+        "title": "JobStatusResponse",
+        "description": "Job status response"
+      },
+      "Neighbour": {
+        "properties": {
+          "para_no": {
+            "type": "string",
+            "title": "Para No"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "para_no",
+          "text"
+        ],
+        "title": "Neighbour"
+      },
+      "ParagraphResponse": {
+        "properties": {
+          "circular_no": {
+            "type": "string",
+            "title": "Circular No"
+          },
+          "para_no": {
+            "type": "string",
+            "title": "Para No"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "issue_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Date"
+          },
+          "is_amendment": {
+            "type": "boolean",
+            "title": "Is Amendment"
+          },
+          "amends_circular": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amends Circular"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Neighbour"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Neighbour"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "circular_no",
+          "para_no",
+          "text",
+          "is_amendment"
+        ],
+        "title": "ParagraphResponse"
+      },
+      "ReadinessFactor": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "overdue",
+              "due_soon",
+              "rules_pending",
+              "conflicts"
+            ],
+            "title": "Key"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "count",
+          "points"
+        ],
+        "title": "ReadinessFactor"
+      },
+      "ReadinessScore": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "reason_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Hi"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessFactor"
+            },
+            "type": "array",
+            "title": "Factors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "reason"
+        ],
+        "title": "ReadinessScore"
+      },
+      "ReasonResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "text_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Hi"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "weight"
+        ],
+        "title": "ReasonResponse"
+      },
+      "ReplayOutcome": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "alerts": {
+            "type": "integer",
+            "title": "Alerts"
+          },
+          "fraud_caught": {
+            "type": "integer",
+            "title": "Fraud Caught"
+          },
+          "analyst_hours": {
+            "type": "number",
+            "title": "Analyst Hours"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "alerts",
+          "fraud_caught",
+          "analyst_hours"
+        ],
+        "title": "ReplayOutcome"
+      },
+      "ReplayRequest": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 7.0,
+            "title": "Days",
+            "default": 90
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "value"
+        ],
+        "title": "ReplayRequest"
+      },
+      "ReplayResponse": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "current": {
+            "$ref": "#/components/schemas/ReplayOutcome"
+          },
+          "proposed": {
+            "$ref": "#/components/schemas/ReplayOutcome"
+          },
+          "fraud_total": {
+            "type": "integer",
+            "title": "Fraud Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "days",
+          "current",
+          "proposed",
+          "fraud_total"
+        ],
+        "title": "ReplayResponse"
+      },
+      "RingDetailResponse": {
+        "properties": {
+          "ring": {
+            "$ref": "#/components/schemas/RingResponse"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/RingMemberResponse"
+            },
+            "type": "array",
+            "title": "Members"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/RingEdgeResponse"
+            },
+            "type": "array",
+            "title": "Edges",
+            "default": []
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TxnResponse"
+            },
+            "type": "array",
+            "title": "Transactions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ring",
+          "members",
+          "transactions"
+        ],
+        "title": "RingDetailResponse",
+        "description": "Ring detail response model"
+      },
+      "RingEdgeResponse": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "shared_phone",
+              "shared_ip",
+              "shared_device",
+              "sent_money"
+            ],
+            "title": "Kind"
+          },
+          "amount_inr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Inr"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "kind"
+        ],
+        "title": "RingEdgeResponse"
+      },
+      "RingListResponse": {
+        "properties": {
+          "rings": {
+            "items": {
+              "$ref": "#/components/schemas/RingResponse"
+            },
+            "type": "array",
+            "title": "Rings"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rings",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "RingListResponse",
+        "description": "Ring list response model"
+      },
+      "RingMemberResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "risk_level": {
+            "type": "integer",
+            "title": "Risk Level"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "subject",
+              "member",
+              "external"
+            ],
+            "title": "Kind"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "collector",
+                  "mule",
+                  "exit"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "alert_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id"
+          },
+          "money_in_inr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Money In Inr"
+          },
+          "money_out_inr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Money Out Inr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "risk_level",
+          "kind"
+        ],
+        "title": "RingMemberResponse"
+      },
+      "RingResponse": {
+        "properties": {
+          "ring_id": {
+            "type": "string",
+            "title": "Ring Id"
+          },
+          "ring_name": {
+            "type": "string",
+            "title": "Ring Name"
+          },
+          "member_count": {
+            "type": "integer",
+            "title": "Member Count"
+          },
+          "total_volume_inr": {
+            "type": "number",
+            "title": "Total Volume Inr"
+          },
+          "risk_score": {
+            "type": "number",
+            "title": "Risk Score"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "ring_name_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ring Name Hi"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "speed_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Hours"
+          },
+          "detected_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected At"
+          },
+          "alerted_members": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alerted Members"
+          },
+          "shared_devices": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Devices"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ring_id",
+          "ring_name",
+          "member_count",
+          "total_volume_inr",
+          "risk_score",
+          "status"
+        ],
+        "title": "RingResponse",
+        "description": "Ring response model"
+      },
+      "RuleChecked": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "rule_name": {
+            "type": "string",
+            "title": "Rule Name"
+          },
+          "typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typology"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "not_applicable",
+              "near_miss"
+            ],
+            "title": "Result"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "rule_name",
+          "result",
+          "reason"
+        ],
+        "title": "RuleChecked"
+      },
+      "RuleHealthResponse": {
+        "properties": {
+          "total_rules": {
+            "type": "integer",
+            "title": "Total Rules"
+          },
+          "active_rules": {
+            "type": "integer",
+            "title": "Active Rules"
+          },
+          "pending_rules": {
+            "type": "integer",
+            "title": "Pending Rules"
+          },
+          "rejected_rules": {
+            "type": "integer",
+            "title": "Rejected Rules"
+          },
+          "avg_precision": {
+            "type": "number",
+            "title": "Avg Precision"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleHealthRowResponse"
+            },
+            "type": "array",
+            "title": "Rules",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_rules",
+          "active_rules",
+          "pending_rules",
+          "rejected_rules",
+          "avg_precision"
+        ],
+        "title": "RuleHealthResponse",
+        "description": "Rule health response"
+      },
+      "RuleHealthRowResponse": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "rule_name": {
+            "type": "string",
+            "title": "Rule Name"
+          },
+          "typology": {
+            "type": "string",
+            "title": "Typology"
+          },
+          "alerts_30d": {
+            "type": "integer",
+            "title": "Alerts 30D"
+          },
+          "confirmed_30d": {
+            "type": "integer",
+            "title": "Confirmed 30D"
+          },
+          "precision": {
+            "type": "number",
+            "title": "Precision"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "noisy",
+              "quiet"
+            ],
+            "title": "Verdict"
+          },
+          "proposed_fix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Fix"
+          },
+          "proposed_fix_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Fix Hi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "rule_name",
+          "typology",
+          "alerts_30d",
+          "confirmed_30d",
+          "precision",
+          "verdict"
+        ],
+        "title": "RuleHealthRowResponse"
+      },
+      "RuleListResponse": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResponse"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "RuleListResponse",
+        "description": "Rule list response model"
+      },
+      "RuleParamResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "label_hi": {
+            "type": "string",
+            "title": "Label Hi"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "inr",
+              "count",
+              "hours",
+              "days",
+              "percent"
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "min": {
+            "type": "number",
+            "title": "Min"
+          },
+          "max": {
+            "type": "number",
+            "title": "Max"
+          },
+          "step": {
+            "type": "number",
+            "title": "Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "label_hi",
+          "unit",
+          "value",
+          "min",
+          "max",
+          "step"
+        ],
+        "title": "RuleParamResponse"
+      },
+      "RuleResponse": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "rule_name": {
+            "type": "string",
+            "title": "Rule Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "typology": {
+            "type": "string",
+            "title": "Typology"
+          },
+          "sql_text": {
+            "type": "string",
+            "title": "Sql Text"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source_citation": {
+            "type": "string",
+            "title": "Source Citation"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "plain_english": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plain English"
+          },
+          "plain_hindi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plain Hindi"
+          },
+          "circular_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Circular No"
+          },
+          "para_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Para No"
+          },
+          "source_quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Quote"
+          },
+          "highlight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highlight"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/RuleParamResponse"
+            },
+            "type": "array",
+            "title": "Params",
+            "default": []
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "rule_name",
+          "version",
+          "typology",
+          "sql_text",
+          "status",
+          "source_citation",
+          "created_at"
+        ],
+        "title": "RuleResponse",
+        "description": "Rule response model"
+      },
+      "STRDraftResponse": {
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "title": "Alert Id"
+          },
+          "str_draft": {
+            "type": "string",
+            "title": "Str Draft"
+          },
+          "format": {
+            "type": "string",
+            "title": "Format"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alert_id",
+          "str_draft",
+          "format"
+        ],
+        "title": "STRDraftResponse",
+        "description": "STR draft response"
+      },
+      "SearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "SearchResponse"
+      },
+      "SearchResult": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "title_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Hi"
+          },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle"
+          },
+          "alert_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "title",
+          "subtitle"
+        ],
+        "title": "SearchResult"
+      },
+      "TimeMachineResponse": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "alert_count": {
+            "type": "integer",
+            "title": "Alert Count"
+          },
+          "high_severity_count": {
+            "type": "integer",
+            "title": "High Severity Count"
+          },
+          "total_risk_score": {
+            "type": "number",
+            "title": "Total Risk Score"
+          },
+          "top_typologies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Top Typologies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "alert_count",
+          "high_severity_count",
+          "total_risk_score",
+          "top_typologies"
+        ],
+        "title": "TimeMachineResponse",
+        "description": "Time-machine response model"
+      },
+      "TimelineEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "login",
+              "device_change",
+              "new_beneficiary",
+              "cash_deposit",
+              "transfer_in",
+              "transfer_out",
+              "alert",
+              "kyc"
+            ],
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "title_hi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Hi"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "amount_inr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Inr"
+          },
+          "suspicious": {
+            "type": "boolean",
+            "title": "Suspicious",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "type",
+          "title"
+        ],
+        "title": "TimelineEventResponse"
+      },
+      "TopAlert": {
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "title": "Alert Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "typology": {
+            "type": "string",
+            "title": "Typology"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alert_id",
+          "account_id",
+          "typology",
+          "severity",
+          "score",
+          "created_at"
+        ],
+        "title": "TopAlert"
+      },
+      "TourResetResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "alert_id": {
+            "type": "string",
+            "title": "Alert Id"
+          },
+          "ring_id": {
+            "type": "string",
+            "title": "Ring Id"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "circular_no": {
+            "type": "string",
+            "title": "Circular No"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "alert_id",
+          "ring_id",
+          "rule_id",
+          "circular_no"
+        ],
+        "title": "TourResetResponse"
+      },
+      "TrendData": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "alert_count": {
+            "type": "integer",
+            "title": "Alert Count"
+          },
+          "confirmed_fraud": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Fraud"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "alert_count"
+        ],
+        "title": "TrendData"
+      },
+      "TxnResponse": {
+        "properties": {
+          "txn_id": {
+            "type": "string",
+            "title": "Txn Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "txn_ts": {
+            "type": "string",
+            "title": "Txn Ts"
+          },
+          "amount_inr": {
+            "type": "number",
+            "title": "Amount Inr"
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "CREDIT",
+              "DEBIT"
+            ],
+            "title": "Direction"
+          },
+          "counterparty": {
+            "type": "string",
+            "title": "Counterparty"
+          },
+          "counterparty_bank": {
+            "type": "string",
+            "title": "Counterparty Bank"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "narration": {
+            "type": "string",
+            "title": "Narration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "txn_id",
+          "account_id",
+          "txn_ts",
+          "amount_inr",
+          "channel",
+          "direction",
+          "counterparty",
+          "counterparty_bank",
+          "country",
+          "narration"
+        ],
+        "title": "TxnResponse"
+      },
+      "UploadResponse": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status",
+          "message"
+        ],
+        "title": "UploadResponse",
+        "description": "Upload response"
+      },
+      "UserProfile": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "email"
+        ],
+        "title": "UserProfile"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerifyResponse": {
+        "properties": {
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verified",
+          "details"
+        ],
+        "title": "VerifyResponse",
+        "description": "Evidence verification response"
+      },
+      "WeeklyBrief": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "text_hi": {
+            "type": "string",
+            "title": "Text Hi"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "text_hi",
+          "generated_at"
+        ],
+        "title": "WeeklyBrief"
+      },
+      "WhyNotResponse": {
+        "properties": {
+          "txn_id": {
+            "type": "string",
+            "title": "Txn Id"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "rules_checked": {
+            "items": {
+              "$ref": "#/components/schemas/RuleChecked"
+            },
+            "type": "array",
+            "title": "Rules Checked"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "txn_id",
+          "explanation",
+          "rules_checked",
+          "recommendation"
+        ],
+        "title": "WhyNotResponse",
+        "description": "Why-not response model"
+      }
+    }
+  }
+}

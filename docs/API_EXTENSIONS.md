@@ -25,7 +25,7 @@ Status legend:
 
 | | |
 |---|---|
-| **`GET /api/me`** + `as_of: string` (ISO) 🟡 | The dataset's "today" (`SETTINGS.AS_OF_DATE`). Deadlines are measured against it. |
+| **`GET /api/me`** + `as_of: string` (ISO) ✅ | The dataset's "today" (`SETTINGS.AS_OF_DATE`). Deadlines are measured against it. |
 
 **Why:** the synthetic data is frozen at 24 Sep 2026. Measured against the wall
 clock, every report looks overdue within a week.
@@ -39,7 +39,7 @@ ran, not a synthetic date.
 
 ## 2. Today — `GET /api/home`
 
-All of these are new optional fields 🟡. They're built as
+All of these are new optional fields ✅ (run live, 26 Sep 2026). They're built as
 `HomeService` → `DashboardRepository` → `SnowflakeDashboardRepository`, and the SQL
 moved out of the router. Report deadlines are 7 working days from identification
 (domain policy).
@@ -59,144 +59,149 @@ The KPI tiles, attention cards and weekly brief are hidden.
 
 ## 3. Alerts
 
-**`GET /api/alerts`**
-- New item fields ⬜: `amount_inr`, `txn_count`, `due_at` (report deadline: 7
-  working days), `str_filed`, `risk_level` (1–5), `ring_id`, `window_start`,
-  `window_end`, `branch`, `city`, `city_hi`, `customer_name_hi`, `action_required`.
-- New query parameters ⬜: `typology`, `due=overdue|48h|open`, `q` (text search),
-  `sort=priority|amount|newest`.
-- **Without them:** the list shows name, pattern and risk (from `severity`).
-  Amounts and deadline pills are hidden.
+Built as `AlertService` → `AlertRepository` → `SnowflakeAlertRepository` (bound
+parameters only; the old f-string SQL is gone). List + detail + evidence were run
+against live Snowflake on 26 Sep 2026; feedback verdicts and the STR draft are tested
+with fake repositories only (they write data / call an LLM).
 
-**`GET /api/alerts/{id}`** adds ⬜:
-- `reasons[] {text, text_hi, weight}` — from `CORE.ALERTS.REASONS`, which the API
-  doesn't expose yet.
-- `timeline[] {id, at, type, title, title_hi, detail, amount_inr, suspicious}`.
-- `transactions[]` — `CORE.TRANSACTIONS` rows.
-- `connections {nodes, edges}` — the mini network graph.
-- `citation_ref {circular_no, para_no, highlight}` — `highlight` is the exact
-  substring of the paragraph to mark.
+**`GET /api/alerts`** ✅
+- New item fields: `amount_inr`, `txn_count`, `window_start`, `window_end` (the
+  account's last 30 days, anchored on the newest transaction), `due_at` (7 working
+  days), `str_filed` (closed as `TRUE_POSITIVE` and the check asks for an STR/CTR),
+  `risk_level` (1–5), `ring_id`, `branch`, `city`, `action_required`.
+- Not sent: `city_hi`, `customer_name_hi` (no Hindi source in `CORE`; the UI falls
+  back to English).
+- New query parameters: `typology`, `due=overdue|48h|open`, `q` (alert id, account,
+  customer name or city), `sort=priority|amount|newest`. Deadline filters and the
+  priority order run in SQL, using the same as-of date as Today.
+- Customer names: live alerts leave `CUSTOMER_ID` empty, so the customer comes from
+  `CORE.ACCOUNTS`; KYC checks put the customer id in `ACCOUNT_ID`, which is handled too.
 
-**`POST /api/alerts/{id}/evidence`** + `generation_ms` ⬜: the measured build time
-for the "Generated in 3.2 s" badge. Until it exists, the UI shows its own measured
-round-trip time. It never shows an invented number.
+**`GET /api/alerts/{id}`** ✅ adds:
+- `reasons[] {text, text_hi, weight}` — up to 3, only from recorded facts: the
+  matched pattern, the triggering amount/channel or customer risk category parsed
+  from `CORE.ALERTS.REASONS.details`, and the 30-day volume. Weights are a fixed
+  ordering (0.6 / 0.45 / 0.35 / 0.3), not model output.
+- `timeline[]` — the 15 most recent transactions, payees added in the window, and
+  the alert itself. The alert's own `TXN_ID` is the one marked `suspicious`.
+- `transactions[]` — up to 50 `CORE.TRANSACTIONS` rows, always including the alert's.
+- `connections {nodes, edges}` — ring members and shared device/IP/phone edges;
+  `null` when the account isn't in a ring (true for every live alert today).
+- `citation_ref {circular_no, para_no, highlight}` — `highlight` is an approximation:
+  the first sentence of the paragraph that carries a number (or the words around it).
 
-**`POST /api/alerts/{id}/feedback`** accepts `verdict: FRAUD|NOT_FRAUD` ⬜ alongside
-`rating`, for the "Mark as fraud" / "Not fraud" buttons.
+**`POST /api/alerts/{id}/evidence`** + `generation_ms` ✅ (measured around the
+build, e.g. 4430 ms live).
 
-**`GET /api/why-not/{txn_id}`**: `rules_checked[]` should be
-`{rule_id, rule_name, typology, result: passed|not_applicable|near_miss, reason}`.
-Today it is untyped. The adapter also accepts a boolean `matched`.
+**`POST /api/alerts/{id}/feedback`** accepts `verdict: FRAUD|NOT_FRAUD` ✅ — closes
+the alert as `TRUE_POSITIVE` / `FALSE_POSITIVE` and returns `status`, `resolution`.
 
-## 4. Circular paragraphs (new) ⬜
+**`GET /api/why-not/{txn_id}`** ✅: `rules_checked[] {rule_id, rule_name, typology,
+result: passed|not_applicable|near_miss, reason}`, computed by comparing each active
+rule's own limits (read from its SQL) with the transaction. The LLM call is gone, so the
+explanation can't invent reasons. A flagged transaction returns `open_alert:<id>`.
+
+## 4. Circular paragraphs (new) ✅
 
 `GET /api/circulars/paragraph?circular_no=KAVACH/2024/01&para_no=2` →
 `{ circular_no, para_no, text, issue_date, is_amendment, amends_circular, before, after }`
+from `AI.REG_CHUNKS`. The bundled `static/reg_chunks.json` stays as the offline fallback.
 
-Used by every citation chip's drawer.
+## 5. Global search (new) ✅
 
-**Without it:** the frontend falls back to a bundled copy of `AI.REG_CHUNKS`
-(`services/api/static/reg_chunks.json`, 49 synthetic paragraphs), so citations work
-against today's backend too.
+`GET /api/search?q=` → alerts (id, account, customer name), transactions (`TXN…`
+prefix), rings and rules; at most 15 results.
 
-## 5. Global search (new) ⬜
+## 6. Mule rings ✅
 
-`GET /api/search?q=` → `{ results: [{ kind: alert|account|txn|ring|rule, id, title, title_hi, subtitle, alert_id }] }`
+Rings come from the new `CORE.DETECT_MULE_RINGS()` (`sql/11_graph_detection.sql`),
+which did not exist before (the tables had only a smoke-test row). Device and IP sharing
+alone is noise in this data (every device is used by 25–58 random accounts), so rings are
+the connected components of account-to-account transfers, and shared devices/IPs are
+recorded only between members. Live result: 9 rings; the 3 HIGH ones are exactly the 29
+planted mule accounts; the 6 LOW ones are the planted round-tripping loops.
 
-**Without it:** the search box still jumps between screens; record search shows
-"Nothing matches".
+- **`GET /api/rings`** items add `confidence`, `speed_hours` (median hours from money in
+  to money out, transfers between members only), `detected_at`, `alerted_members`,
+  `shared_devices`, `city`, `ring_name_hi`. "Money moved" counts only transfers between
+  members.
+- **`GET /api/rings/{id}`**: typed `members[]` with `role` (collector = takes in the most,
+  exit = sends out the most, others mules; a reading of the flows, not a stored label)
+  and `money_in_inr`/`money_out_inr`; `edges[]` from `CORE.ACCOUNT_EDGES`.
 
-## 6. Mule rings
+## 7. Rulebook ✅
 
-**`GET /api/rings`** item fields ⬜: `confidence` (`CORE.RINGS.CONFIDENCE_LABEL`),
-`speed_hours` (median hours money stays in a member account), `detected_at`,
-`alerted_members`, `shared_devices`, `city`, `city_hi`, `ring_name_hi`.
+- **`GET /api/rules`** items add `plain_english`/`plain_hindi` (what the rule's **SQL**
+  checks, parsed from it, so a reviewer can see when check and paragraph disagree),
+  `circular_no`, `para_no`, `source_quote` (the paragraph), `highlight`, `severity`,
+  `entity`, `params[]` (numeric limits with slider ranges), `approved_by`, `rejection_reason`.
+- `GET /api/rules/{id}/versions`: the rule's amendment line (same typology, citing the
+  circular or an amendment of it).
+- `GET /api/rules/conflicts`: typed; `kind` is `contradiction` when both rules test
+  different amount limits, else `overlap`. Each side carries the clause text.
+- `GET /api/rules/health` + `rules[]`: alerts and confirmed fraud per rule over the last
+  30 days, precision, and a verdict (quiet = never fired; noisy = 200+ alerts, or mostly
+  wrong once 5+ were judged).
+- `GET /api/rules/eval`: `ML.EVAL_*` when the ML pipeline has written it, otherwise
+  measured against `RAW.GROUND_TRUTH`. Live today: 16 of 161 planted fraud accounts
+  alerted (recall 9.9%, precision 1.1%).
+- **Uploads are real now** (they used to return a made-up job): `POST /api/rules/upload`
+  stores the PDF on `@RAW.REG_STAGE/uploads/`, then in the background parses it, re-chunks,
+  extracts obligations **for that circular only**, compiles checks, applies amendments and
+  re-detects conflicts. Progress is in `APP.UPLOAD_JOBS`; `GET /api/rules/jobs/{id}` returns
+  `step` (0–4), `circular_no`, `rule_ids`. About 80 s for a 2-paragraph circular.
 
-**`GET /api/rings/{id}`**:
-- `members[]` should be typed as
-  `{id, label, label_hi, risk_level, kind, role: collector|mule|exit, city, alert_id, money_in_inr, money_out_inr}`.
-- New `edges[] {source, target, kind: shared_phone|shared_ip|shared_device|sent_money, amount_inr, count}`
-  ⬜, built from `CORE.ACCOUNT_EDGES` plus the transfers between members.
-- **Without `edges`:** the adapter derives "sent ₹" links from transactions whose
-  counterparty is another member. Shared-device links are missing until the
-  backend sends them.
+## 8. Time Machine ✅
 
-## 7. Rulebook
+- `GET /api/time-machine/rules`: active rules with one limit the slider can move (a
+  BETWEEN band's lower bound, an `AMOUNT_INR >=` limit, or a `HAVING COUNT(*) >=` count).
+- `POST /api/time-machine/replay` `{ rule_id, value, days }`: runs the rule's **own SQL**
+  over the last `days` at today's limit and at `value`, counts results and how many are
+  planted fraud accounts, and prices review at 45 minutes per alert. About 1.5 s live.
+- `GET /api/time-machine` now binds its parameters and is anchored on the newest alert.
 
-**`GET /api/rules`** item fields ⬜: `plain_english`, `plain_hindi`, `circular_no`,
-`para_no`, `source_quote`, `highlight`, `severity`, `entity`,
-`params[] {key, label, label_hi, unit, value, min, max, step}`, `approved_by`,
-`rejection_reason`.
+## 9. Ask Kavach — `POST /api/ask?stream=true` ✅
 
-New endpoints and typed shapes:
+`result_set: { columns, rows }` is forwarded on `tool_result` and `done` (and the
+non-streaming response) from the `system_execute_sql` result, numbers typed, at most 200
+rows. The citation lookup no longer formats search text into SQL.
 
-| Endpoint | Shape |
-|---|---|
-| `GET /api/rules/{id}/versions` ⬜ | `{ versions: [{ version, status, created_at, approved_by, change_summary, change_summary_hi, source_citation }] }` |
-| `GET /api/rules/conflicts` (type the items) | `{ conflict_id, typology, entity, description, status, detected_at, kind: overlap\|contradiction, rule_a, rule_b }`. Each side is `{ rule_id, rule_name, citation, circular_no, para_no, clause_text, plain_english }`. |
-| `GET /api/rules/health` + `rules[]` ⬜ | `{ rule_id, rule_name, typology, alerts_30d, confirmed_30d, precision, verdict: healthy\|noisy\|quiet, proposed_fix, proposed_fix_hi }` |
-| `GET /api/rules/jobs/{id}` + `step` (0–4), `circular_no`, `rule_ids[]` ⬜ | Drives the 4-step upload stepper and the review screen that follows it |
-| `GET /api/rules/eval` ⬜ | `ML.EVAL_TYPOLOGY_COVERAGE` + `EVAL_REPORT` for the rule-health tab |
+## 10. Product tour ✅
 
-## 8. Time Machine (new) ⬜
-
-`GET /api/time-machine` exists but returns daily history only. The what-if replay
-needs:
-
-- `GET /api/time-machine/rules` →
-  `{ rules: [{ rule_id, rule_name, typology, param: {key, label, label_hi, unit, value, min, max, step} }] }`
-- `POST /api/time-machine/replay` with body `{ rule_id, value, days }` →
-  `{ rule_id, days, current: {value, alerts, fraud_caught, analyst_hours}, proposed: {…}, fraud_total }`
-
-PROGRESS.md (checkpoint 4) notes that the agent's `time_machine` tool fails: its
-`new_params` argument is an `object`, which warehouse-executed generic tools reject.
-A plain REST endpoint that calls `AI.TIME_MACHINE` with scalar arguments avoids that
-problem.
-
-## 9. Ask Kavach — `POST /api/ask?stream=true`
-
-The normalized SSE stream from `ask.py` is used as-is (`status`, `text_delta`,
-`tool_call`, `tool_result`, `done`, `error`). One addition ⬜:
-
-- `result_set: { columns: string[], rows: any[][] }` on `tool_result` and `done`,
-  taken from the `system_execute_sql` tool result's `result_set`. Today it's
-  dropped, so "Show the data" (table + auto chart) is hidden against the real
-  backend.
-
-## 10. Product tour (new) ⬜
-
-`POST /api/tour/reset` → `{ ok, alert_id, ring_id, rule_id, circular_no }`. Calls
-`AI.RESET_TOUR_DATA()` so the tour always starts from the same seeded state.
+`POST /api/tour/reset` → `{ ok, alert_id, ring_id, rule_id, circular_no }`.
+`AI.RESET_TOUR_DATA()` now resets exactly the records pinned in `APP.SETTINGS`
+(`TOUR_ALERT_ID`, `TOUR_RING_ID`, `TOUR_RULE_ID`, `TOUR_CIRCULAR_NO`): the rule back to
+waiting for review, the alert reopened with its evidence and feedback removed. The old
+version flipped whichever rule was approved last.
 
 ---
 
 ## Data-quality issues found while building the fixtures
 
-These show up on screen with the real backend and should be fixed before the demo.
+Status on the live account, 26 Sep 2026:
 
-1. **Alert stories** (`AI.ALERT_STORIES`, 200 rows):
-   - 193 stories start with "Here is a 3-5 sentence story in simple English:"; the
-     Hindi versions carry a Hindi version of the same preamble.
-   - 7 are model refusals ("I can't fulfill that request").
-   - All of them say "risk score is 1", refer to people by raw IDs
-     (`ACC0024016`, `CUST007049`) and name rule codes (`PASSTHROUGH_RULE`).
-   - One story gives "₹6.29 lakh (6,290,000 rupees)", which is wrong: 6.29 lakh is
-     6,29,000.
-   - The adapter strips the preamble and hides refusals; the rest needs regenerating.
-2. **Rule review history** (`RULES.RULE_LIBRARY`): approvals and rejections were
-   left by the smoke test (`APPROVED_BY = smoke_test`, reason "Smoke test
-   rejection"). Reset them before the demo.
-3. **Rule SQL vs. source paragraph:** several rules share copy-pasted SQL that
-   doesn't match their quoted paragraph. For example:
-   - `CASH_REPORTING_KAVACH_2024_01_3` quotes the ₹50,000 PAN rule but checks cash
-     of ₹10 L or more.
-   - `STRUCTURING_KAVACH_2024_04_5` quotes the device-registry paragraph.
-4. **Circular issue dates:**
-   - `KAVACH/2024/07` is dated 29 Oct 2026 and `KAVACH/2025/01` is dated
-     12 Jan 2027, both after the data's as-of date. The UI hides future dates.
-   - The last paragraph of each circular has a "SYNTHETIC circular…" footer appended
-     to its text.
-5. **Evaluation numbers:** `ML.EVAL_REPORT` has identical rows for BLENDED,
-   ML_ONLY and RULES_ONLY (precision 0.80, recall 0.58, F1 0.67). That conflicts
-   with the README's F1 0.85 / precision 0.92 / recall 0.79. The UI doesn't compare
-   methods until this is resolved.
+1. **Alert stories** ✅ regenerated (`AI.GENERATE_ALERT_STORIES`, llama3.1-70b; the 8B model
+   added claims that weren't in the facts). 200 stories for the alerts an analyst meets
+   first: no preamble, no refusals, no scores, rule codes or account numbers. The customer
+   is stored as the token `XCUSTX` and filled in with `CUSTOMER_NAME` when read, so the
+   masking policy still applies to names inside stories.
+2. **Rule review history** ✅ smoke-test approvals/rejections and feedback removed; all 19
+   rules are waiting for review. `scripts/smoke_test.py` now restores what it changes.
+3. **Rule SQL vs. source paragraph** 🟡 the compiler now puts the extracted thresholds and
+   time window into the SQL (e.g. a ₹5 L / 24 h paragraph compiles to `>= 500000`, 1 day).
+   The 19 existing rules were compiled before this and still use template limits; they
+   are all pending review, and the review screen shows the mismatch. Recompiling them is a
+   decision for the rule owners. The LLM's typology choice also limits accuracy (a UPI
+   paragraph was classed as cash reporting).
+4. **Circular issue dates** ✅ now 2024–2025 on the live account; the "SYNTHETIC
+   circular…" footer is stripped from paragraph text by the chunker.
+5. **Evaluation numbers** ✅ `ML.EVAL_*` is empty on the live account; `/api/rules/eval`
+   measures against `RAW.GROUND_TRUTH` instead (see §7). The README's F1 0.85 / precision
+   0.92 / recall 0.79 are not supported by the data and should be removed.
+6. **New: dates** ⬜ transactions are dated Apr–Sep 2024 while alerts carry the time the
+   rule executor ran (25 Sep 2026), and `APP.SETTINGS.AS_OF_DATE` is missing on the live
+   account. Deadlines follow the alerts (consistent), but timelines span two years.
+7. **Fixed while testing uploads**: the deployed `RULES.COMPILE_RULES` selected `COMPILED`
+   candidates (changed during the migration), so every run duplicated the whole library;
+   and `RULES.APPLY_AMENDMENTS` retired its own v2 rule. Both are idempotent now; the 19
+   duplicates one test run created were removed.

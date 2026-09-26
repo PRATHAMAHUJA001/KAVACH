@@ -962,3 +962,203 @@ Screens: `docs/screens/shell-{base,search,shortcuts,collapsed,reviewer}-{1280,19
   half up (69). The backend now rounds half up.
 
 Screens: `docs/screens/today-{1280,1920}-{light,dark}.png`, `today-hindi-1280-*`.
+
+## Step 4 — Alerts + Case file ✅
+
+**UI** (`features/alerts`, `pages/AlertsPage.tsx`, DESIGN_SPEC §3.2):
+- "Why wasn't this flagged?" box above the list: which checks looked at a
+  transaction (Almost flagged / Doesn't apply / Checked, no issue), the reason for
+  each, and a recommendation. A flagged transaction offers "Open the case file".
+- Priority-sorted list: RiskMeter, pattern in plain words, city and branch, ₹ amount
+  with transaction count, and a deadline pill (or "Confirmed fraud" / "Not fraud" /
+  "Report filed" once closed). Hovering prefetches the case file.
+- Filter chips (Open · Report overdue · Report due in 48 h · All), pattern menu, text
+  filter (debounced), sort (Most urgent · Largest amount · Newest), pagination.
+  Filters live in the URL, so Today's links (`?view=new`, `?view=due`,
+  `?sort=amount`, `?case=…`) land on the right view and Back closes the drawer.
+- Case file, in spec order: story (EN/HI toggle, AI badge; a plain fallback sentence
+  when there's no story) → why it was flagged (ReasonBars + citation chip opening the
+  paragraph with the highlight) → what happened (Timeline + all transactions) → who
+  is connected (new `MiniNetworkGraph`, click → Mule rings) → evidence pack (measured
+  "Generated in" badge, green/red seal).
+- Sticky footer: Mark as fraud · Not fraud (optimistic, rolled back on error) ·
+  Verify evidence · Create draft report (dialog with copy). Download evidence pack is
+  the header's primary action. Reviewers and auditors see the write actions disabled,
+  with a tooltip.
+- New hooks: `useSTRDraft`, `useWhyNot`, `useVerification`; the verification result
+  is cached so the header, body and footer show the same seal.
+
+**Backend** (N-layered, like Home):
+- `domain/policies.py`: deadline cutoffs for SQL, `str_filed`, timeline event
+  classification and titles (EN/HI), citation parsing, highlight picking, and reasons
+  built only from recorded facts.
+- `SnowflakeAlertRepository` rewritten with bound parameters. New filters
+  (`typology`, `due`, `q`, `sort`) run in SQL; the 30-day window is anchored on the
+  newest transaction (the old code used the newest alert).
+- Detail adds reasons, timeline, transactions, ring connections and `citation_ref`.
+- Feedback takes a `verdict` and closes the alert; evidence create reports
+  `generation_ms`; why-not, feedback and STR draft no longer format values into SQL.
+- `client_session_keep_alive` on the Snowflake session: a long-running backend was
+  failing every request with "Authentication token has expired".
+- Dev proxy target is configurable: `API_PROXY=http://localhost:8091 npm run dev`.
+
+**Tests:**
+- `backend/tests`: 41 pass (18 new: alert policies, `AlertService` filters/sorting/
+  verdicts against a fake repository, HTTP contract incl. bound feedback SQL).
+- Samples `alerts.json`, `alert_detail.json` (fake) and `alert_detail_live.json`
+  (captured from live Snowflake) pass `npm run contract`.
+- **Run against live Snowflake:** list, every filter and sort, detail for three
+  typologies, evidence create/get/verify; verdicts and the STR draft later, through the
+  reversible smoke test (see "Live verification").
+
+**Found in the live data (not fixed in code):**
+- Transactions are dated Apr–Sep **2024** while alerts are stamped 25 Sep **2026**
+  (the rule run time), so timelines span two years. `AS_OF_DATE` and the synthetic
+  data dates should be realigned.
+- ~~`AI.ALERT_STORIES` holds the old account's alert ids~~ — wrong: all 200 stories match
+  live alerts; they cover the top 200 high-severity alerts and the case I opened wasn't
+  one of them. Other cases use the fallback sentence. (Stories regenerated later; see
+  "Live data fixes".)
+- `CORE.RING_MEMBERS` has 5 rows (one smoke-test ring) and `CORE.ACCOUNT_EDGES` is
+  empty, so live case files show "No known links to other accounts".
+- `CORE.ALERTS.CUSTOMER_ID` is never filled; KYC alerts store the customer id in
+  `ACCOUNT_ID`.
+- `KYC_CDD` alerts cite KAVACH/2024/01 ¶3 (the PAN-for-cash paragraph), another case
+  of rule SQL not matching its source paragraph.
+
+**Visual QA fixes:**
+- "Elevated"/"गंभीर" ran into the customer name → wider risk column.
+- Graph edges showed through translucent node fills and crossed labels → opaque node
+  base, haloed labels, labels above nodes in the top half.
+- Footer wrapped to two rows at 640 px → small buttons, one row in EN and HI.
+- **Reviewer PII leak (mock):** the header name was masked but the story still named
+  the customer → names are masked inside the story text too.
+- A mutation-per-component bug: Verify in the footer didn't update the seal in the
+  body → verification moved to the query cache.
+
+Screens: `docs/screens/alerts-{list,whynot,case,case-connected,case-verified,draft}-{1280,1920}-{light,dark}.png`,
+`alerts-{reviewer,hindi}-1280-*`.
+
+## Step 5 — Ask Kavach ✅
+
+**UI** (`features/ask`, `pages/AskPage.tsx`, DESIGN_SPEC §3.3): centred 760 px column;
+empty state with the heading and 6 suggested questions (the four the agent was verified
+on, plus two); each answer streams in with its steps ("Looked up the data", "Searched
+the circulars"), then shows the answer (bold and lists rendered safely, no HTML), the
+Verified / AI-generated badge, citation chips (open the paragraph), "Show the data" (table
+plus an automatic chart only when the data supports one: dates → line, ≤15 labels → bars)
+and "Show the SQL" (hidden in presentation mode), 👍/👎, Stop, New conversation. The
+conversation survives leaving the page; `/ask?q=…` asks straight away.
+
+**Backend:** `result_set {columns, rows}` forwarded from the agent's SQL tool (typed
+numbers, ≤200 rows); the citation lookup uses bound parameters. 3 new tests.
+
+## Step 6 — Mule rings ✅
+
+**Detection (new):** `CORE.DETECT_MULE_RINGS()` in `sql/11_graph_detection.sql`. The ring
+tables had never been populated (one smoke-test row). Profiling showed device/IP sharing
+is noise here, so rings are connected components of account-to-account transfers, with
+shared devices/IPs recorded between members; scored on size, how fast money passes
+through, and shared devices. Live: 9 rings; the 3 HIGH rings are exactly the 29 planted
+mule accounts; the 6 LOW ones are the planted round-trip loops. 205 round-trip cycles.
+
+**UI** (`features/rings`, `pages/RingsPage.tsx`, §3.4): ring cards (₹ moved, accounts, how
+fast, how sure) → full-width React Flow graph: collector left, mules middle, exit right;
+nodes coloured by risk, alert ring on accounts with open alerts, hover card per account,
+click → case file; money links directed and labelled (top 6, others on hover), shared
+links dashed; legend always visible; a Money / Shared / Both switch because a real ring
+has ~180 links; entrance animation once (off under reduced motion). Members and transfers
+tables below.
+
+**Backend:** `SnowflakeRingRepository` rewritten (bound parameters, typed members with
+roles and money in/out, edges, transfers between members only). Case-file connections now
+include money links. 2 new tests; `rings.json`, `ring_detail.json` contract samples.
+
+## Step 7 — Rulebook ✅
+
+**UI** (`features/rulebook`, `pages/RulebookPage.tsx`, §3.5): dropzone → 4-step stepper →
+"N checks from KAVACH/… are ready for review" → the review list filtered to them. Review:
+the paragraph with the relied-on sentence highlighted, beside what the check actually does
+in plain EN/HI, its limits, Approve / Edit in Time Machine / Reject (reason required,
+saved), SQL in a "For engineers" expander. Tabs: Versions (amendment timeline), Conflicts
+(side-by-side clauses, red for contradictions, amber for overlaps), Rule health (KPIs, how
+much planted fraud the rules catch, per-rule verdicts with "Try it in Time Machine").
+Reviewers get the actions disabled with a reason.
+
+**Backend:** plain-language descriptions are parsed from each rule's SQL (so the review
+shows when a check and its paragraph disagree), versions, typed conflicts, per-rule health,
+evaluation against `RAW.GROUND_TRUTH`, and **real uploads**: store → parse → re-chunk →
+extract that circular only → compile → amendments → conflicts, in the background, with
+progress in the new `APP.UPLOAD_JOBS`. The compiler now puts the paragraph's thresholds
+and window into the SQL.
+
+**Bugs found by running an upload live:**
+- The deployed `COMPILE_RULES` selected `COMPILED` candidates (changed during migration),
+  so the test upload duplicated all 19 rules. Removed exactly those 19 (inserted within
+  one 8-second window, no alerts attached); the procedure now also skips candidates that
+  already have a rule.
+- `APPLY_AMENDMENTS` retired its own v2 rule (the v2 citation contains the original
+  circular) and inserted a new v2 on every run. Both fixed; v2 restored.
+- The upload test circular (`KAVACH/2026/09`) was removed afterwards, including its stage
+  file, parsed document, chunks, candidates, rules and job.
+
+## Step 8 — Time Machine ✅
+
+**UI** (`features/time-machine`, `pages/TimeMachinePage.tsx`, §3.6): rule picker, big
+slider with today's limit marked, "Replay last 90 days", animated before/after bars for
+alerts, fraud caught and review hours, and a one-sentence verdict ("Lowering to ₹8 L
+catches 4 more fraud cases for 11 extra review hours" in demo data). The method note says
+exactly what was measured, and says "built-in model" in demo mode.
+
+**Backend:** replays run the rule's own SQL over the chosen window at both limits and count
+planted fraud; 45 minutes per alert. Live examples: lowering structuring to ₹8 L changes
+nothing (the planted deposits are all ₹9–10 L); raising the cash report limit to ₹15 L
+cuts 8,856 → 6,181 alerts and misses 7 more fraud accounts.
+
+## Step 9 — Search, citations, why-not, product tour ✅
+
+- `/api/circulars/paragraph` and `/api/search` (alerts, accounts, customers, transactions,
+  rings, rules).
+- Why-not is deterministic now: each active rule's limits vs the transaction (not
+  applicable / checked / almost flagged, with the reason); the LLM guess is gone.
+- **Product tour** (§4.2): 6 steps across Today, a case file, a ring, a rule and Time
+  Machine; numbered, Back/Next, → and ← keys, dimmed background, "Take the tour" in the
+  sidebar or `?tour=1`. It resets its pinned records first (`/api/tour/reset`), and loads
+  react-joyride only when started (main bundle 344 → 315 kB).
+
+**Bugs found:**
+- **Pages stopped changing after the case drawer had been opened**: the title updated but
+  the Alerts page stayed on its exit frame (`AnimatePresence mode="wait"` never completed).
+  Route transitions are enter-only now.
+- The tour restarted at step 1 on every navigation: `useNavigate` changes identity with the
+  location in this router, and it was an effect dependency.
+- Joyride's own `aria-label`s ("Last") overrode the visible "Done"/"Next".
+
+## Live data fixes (26 Sep 2026)
+
+- Alert stories regenerated with llama3.1-70b from facts computed in SQL: no preamble,
+  IDs, scores or invented comparisons. The customer is stored as `XCUSTX` and filled in
+  from `CUSTOMER_NAME` when read, so masking still applies inside stories.
+- Smoke-test approvals, rejections and feedback removed; all 19 rules waiting for review.
+- "SYNTHETIC circular" footer stripped from paragraph text.
+- Tour records pinned in `APP.SETTINGS`; `RESET_TOUR_DATA` resets exactly those.
+- `client_session_keep_alive` on the backend's Snowflake session (a long-running backend
+  failed every request with "Authentication token has expired").
+
+**Still open:** transactions are dated 2024 while alerts are stamped 2026 and
+`AS_OF_DATE` is missing (timelines span two years); the 19 existing rules still use
+template limits (the compiler fix applies to new compiles); the README's accuracy figures
+aren't supported by the data.
+
+## Live verification
+
+- `scripts/smoke_test.py` rewritten: it writes only to the tour's alert and rule, restores
+  every rule it touches, resets the tour at the end, checks the new endpoints, and uses a
+  non-PDF upload to test validation (a real upload runs the LLM). **31/31 pass** against
+  live Snowflake; afterwards all rules are back to waiting for review and the tour alert is
+  open.
+- `backend/tests`: 55 pass. `npm run contract`: 12 samples pass (one captured live).
+- `docs/openapi.json` and `generated/schema.ts` regenerated from the backend; enums are
+  `Literal`s now, so the generated types are exact.
+- Screens: 34 Playwright scenarios pass; new `ask-*`, `rings-*`, `rulebook-*`,
+  `timemachine-*`, `tour-1..6-*` in `docs/screens/`.

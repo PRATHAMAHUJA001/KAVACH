@@ -84,3 +84,18 @@ row-access policy + both tags on `CORE`, Cortex Search Service
 `AI.KAVACH_REG_SEARCH` (matches `sql/07` field-for-field), and
 `AUDIT.EVIDENCE_REGISTRY` (matches `sql/08` exactly, including the
 HTML/PDF columns added during the 2026-09-25 hardening pass).
+
+## Added 26 Sep 2026 (Steps 4–9)
+
+Run these after the numbered scripts on a fresh account:
+
+- `sql/11_graph_detection.sql` → `CORE.DETECT_MULE_RINGS()`, then `CALL KAVACH_DB.CORE.DETECT_MULE_RINGS();`
+  (populates `ACCOUNT_EDGES`, `RINGS`, `RING_MEMBERS`, `ROUND_TRIP_CYCLES`).
+- `sql/07_regulation_compiler.sql`: `EXTRACT_RULES_FROM_CHUNKS(CIRCULAR_FILTER STRING DEFAULT NULL)`
+  replaces the zero-argument version (drop it first), `COMPILE_RULES` and `APPLY_AMENDMENTS`
+  are idempotent, the chunker strips the circular footer, and `APP.UPLOAD_JOBS` is created.
+  Do **not** change `COMPILE_RULES` to select `COMPILED` candidates to rebuild the library:
+  that duplicates every rule on each later run.
+- `sql/08_explainability.sql`: `RESET_TOUR_DATA()` needs `TOUR_ALERT_ID`, `TOUR_RING_ID`,
+  `TOUR_RULE_ID`, `TOUR_CIRCULAR_NO` rows in `APP.SETTINGS`; `GENERATE_ALERT_STORIES()` writes
+  stories with the `XCUSTX` token (the backend fills in the name).
