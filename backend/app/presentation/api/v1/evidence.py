@@ -1,10 +1,13 @@
 """
 Evidence API endpoints
 """
-from fastapi import APIRouter, HTTPException
+import time
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
+from app.application.services.alert_service import AlertService
 from app.infrastructure.snowflake.connection import get_session
+from app.presentation.api.v1.alerts import get_alert_service
 from app.infrastructure.repositories.evidence_repository import SnowflakeEvidenceRepository
 from app.application.services.evidence_service import EvidenceService
 
@@ -27,6 +30,8 @@ class EvidenceResponse(BaseModel):
     pdf_sha256_hash: Optional[str] = None
     # JSON is kept as a downloadable attachment, not the primary artifact
     json_presigned_url: Optional[str] = None
+    # Measured time to build the pack (POST only) for the "Generated in 3.2 s" badge
+    generation_ms: Optional[int] = None
 
 
 class VerifyResponse(BaseModel):
@@ -39,6 +44,8 @@ class FeedbackRequest(BaseModel):
     """Feedback request model"""
     rating: int
     comment: Optional[str] = None
+    # When set, the alert is also closed as confirmed fraud / false alarm
+    verdict: Optional[Literal["FRAUD", "NOT_FRAUD"]] = None
 
 
 class STRDraftResponse(BaseModel):
@@ -60,8 +67,10 @@ def _get_presigned_url(file_path: Optional[str]) -> Optional[str]:
     if not file_path:
         return None
     session = get_session()
-    sql = f"SELECT GET_PRESIGNED_URL(@APP.EVIDENCE_STAGE, '{file_path}', 3600)"
-    rows = session.sql(sql).collect()
+    # GET_PRESIGNED_URL needs the path at compile time, so it can't be a bind variable.
+    # The path comes from AUDIT.EVIDENCE_REGISTRY, not the request; quotes are escaped anyway.
+    literal = file_path.replace("\\", "\\\\").replace("'", "\\'")
+    rows = session.sql(f"SELECT GET_PRESIGNED_URL(@APP.EVIDENCE_STAGE, '{literal}', 3600)").collect()
     return rows[0][0] if rows else None
 
 
@@ -99,8 +108,10 @@ async def create_evidence(alert_id: str):
     """Create evidence pack for an alert"""
     try:
         service = get_evidence_service()
+        started = time.perf_counter()
         evidence = service.create_evidence(alert_id)
-        
+        generation_ms = round((time.perf_counter() - started) * 1000)
+
         return EvidenceResponse(
             alert_id=evidence.alert_id,
             evidence_json=evidence.evidence_json,
@@ -113,6 +124,7 @@ async def create_evidence(alert_id: str):
             pdf_presigned_url=_get_presigned_url(evidence.pdf_file_path),
             pdf_sha256_hash=evidence.pdf_sha256_hash,
             json_presigned_url=_get_presigned_url(evidence.file_path),
+            generation_ms=generation_ms,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create evidence: {str(e)}")
@@ -138,21 +150,30 @@ async def verify_evidence(alert_id: str):
 
 
 @router.post("/alerts/{alert_id}/feedback")
-async def submit_feedback(alert_id: str, feedback: FeedbackRequest):
-    """Submit feedback for an alert"""
+async def submit_feedback(alert_id: str, feedback: FeedbackRequest, alerts: AlertService = Depends(get_alert_service)):
+    """Submit feedback for an alert. With a verdict, the alert is closed as confirmed
+    fraud (TRUE_POSITIVE) or a false alarm (FALSE_POSITIVE)."""
     try:
-        session = get_session()
-        
-        sql = f"""
+        resolution = None
+        if feedback.verdict:
+            resolution = alerts.record_verdict(alert_id, feedback.verdict)
+            if resolution is None:
+                raise HTTPException(status_code=404, detail="Alert not found")
+
+        get_session().sql(
+            """
             INSERT INTO AUDIT.ALERT_FEEDBACK (alert_id, rating, comment, submitted_at)
-            VALUES ('{alert_id}', {feedback.rating}, 
-                    {f"'{feedback.comment}'" if feedback.comment else 'NULL'}, 
-                    CURRENT_TIMESTAMP())
-        """
-        
-        session.sql(sql).collect()
-        
-        return {"message": "Feedback submitted successfully", "alert_id": alert_id}
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP())
+            """,
+            params=[alert_id, feedback.rating, feedback.comment],
+        ).collect()
+
+        body = {"message": "Feedback submitted successfully", "alert_id": alert_id}
+        if resolution:
+            body.update(status="CLOSED", resolution=resolution)
+        return body
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to submit feedback: {str(e)}")
 
@@ -163,8 +184,7 @@ async def get_str_draft(alert_id: str):
     try:
         session = get_session()
         
-        sql = f"SELECT AI.DRAFT_STR('{alert_id}')"
-        result = session.sql(sql).collect()
+        result = session.sql("SELECT AI.DRAFT_STR(?)", params=[alert_id]).collect()
         
         if not result:
             raise HTTPException(status_code=404, detail="Failed to generate STR draft")

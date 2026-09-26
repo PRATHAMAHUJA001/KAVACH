@@ -1,11 +1,15 @@
-import { Suspense, useState } from "react";
-import { useLocation, useNavigate, useOutlet } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { useLocation, useNavigate, useOutlet, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { pageVariants } from "@/shared/lib/motion";
 import { useHotkeys } from "@/shared/lib/useHotkeys";
 import { usePresentation, CursorSpotlight } from "@/shared/lib/presentation";
 import { useSession } from "@/features/session";
+import { startTour, useTourRunning } from "@/features/tour/tourStore";
+
+// The tour (and react-joyride) loads only when someone starts it.
+const ProductTour = lazy(() => import("@/features/tour/ProductTour").then((m) => ({ default: m.ProductTour })));
 import { routeFor, ROUTES } from "../routes";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -48,6 +52,18 @@ export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  const tourRunning = useTourRunning();
+  const [sp, setSp] = useSearchParams();
+  useEffect(() => {
+    if (sp.get("tour") !== "1") return;
+    setSp((p) => {
+      const n = new URLSearchParams(p);
+      n.delete("tour");
+      return n;
+    }, { replace: true });
+    startTour();
+  }, [sp, setSp]);
+
   const route = routeFor(location.pathname);
   const title = route ? t(`page.${route.key}.title`) : t("page.notFound.title");
   const subtitle = route ? t(`page.${route.key}.subtitle`) : t("page.notFound.subtitle");
@@ -72,19 +88,24 @@ export function AppShell() {
         <TopBar title={title} subtitle={subtitle} onSearch={() => setSearchOpen(true)} />
         {readOnly && <ReviewerBanner />}
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-8 py-6 outline-none">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate" exit="exit">
-              <ErrorBoundary>
-                <Suspense fallback={<PageSkeleton />}>{outlet}</Suspense>
-              </ErrorBoundary>
-            </motion.div>
-          </AnimatePresence>
+          {/* Enter-only: with mode="wait", a page whose tree once held a motion element in a
+              portal (the case drawer) could hang on its exit frame and never swap out. */}
+          <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate">
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>{outlet}</Suspense>
+            </ErrorBoundary>
+          </motion.div>
         </main>
         <Footer />
       </div>
       <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
       <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
       <CursorSpotlight />
+      {tourRunning && (
+        <Suspense fallback={null}>
+          <ProductTour />
+        </Suspense>
+      )}
     </div>
   );
 }

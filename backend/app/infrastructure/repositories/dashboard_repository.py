@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta
 from snowflake.snowpark import Session
 
 from app.domain.dashboard import AlertCounts, AlertFact, DashboardFacts, RingFact, TrendRow, WeekSummary
+from app.domain.policies import ring_name
 from app.domain.repositories import DashboardRepository
 
 _ALERT_FACT_COLUMNS = """
@@ -143,7 +144,7 @@ class SnowflakeDashboardRepository(DashboardRepository):
         rings = [
             RingFact(
                 ring_id=r["RING_ID"],
-                ring_name=f"Ring {str(r['RING_ID'])[:8]}",
+                ring_name=ring_name(r["RING_ID"]),
                 member_count=int(r["RING_SIZE"] or 0),
                 volume_inr=float(r["VOLUME"] or 0),
                 confidence=r["CONFIDENCE_LABEL"],

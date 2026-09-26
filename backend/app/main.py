@@ -5,7 +5,7 @@ N-layered architecture: Presentation → Application → Domain ← Infrastructu
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.presentation.api.v1 import health, home, me, alerts, evidence, ask, whynot, timemachine, rings, rules
+from app.presentation.api.v1 import health, home, me, alerts, evidence, ask, whynot, timemachine, rings, rules, reference
 
 app = FastAPI(
     title="KAVACH API",
@@ -44,6 +44,7 @@ app.include_router(rings.router, prefix="/api", tags=["Rings"])
 
 # Rules
 app.include_router(rules.router, prefix="/api", tags=["Rules"])
+app.include_router(reference.router, prefix="/api", tags=["Reference"])
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

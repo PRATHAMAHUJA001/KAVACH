@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
+/** Where `npm run dev` sends /api (override with API_PROXY=http://localhost:8091). */
+const API = process.env.API_PROXY ?? "http://localhost:8080";
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -11,8 +14,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:8080",
-      "/healthz": "http://localhost:8080",
+      "/api": API,
+      "/healthz": API,
     },
   },
   build: {

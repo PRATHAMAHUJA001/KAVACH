@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Compass, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { startTour } from "@/features/tour";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/cn";
 import { Kbd, Tooltip } from "@/shared/ui";
@@ -70,6 +71,20 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         </ul>
       </nav>
       <div className={cn("border-t border-border p-3", collapsed && "flex flex-col items-center")}>
+        <Tooltip content={collapsed ? t("tour.start") : undefined} side="right">
+          <button
+            type="button"
+            onClick={startTour}
+            aria-label={t("tour.start")}
+            className={cn(
+              "mb-1 flex h-10 items-center gap-3 rounded-control text-body font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg",
+              collapsed ? "w-10 justify-center" : "w-full px-3",
+            )}
+          >
+            <Compass className="size-5" strokeWidth={1.75} />
+            {!collapsed && t("tour.start")}
+          </button>
+        </Tooltip>
         {!collapsed && (
           <p className="mb-2 flex items-center gap-1.5 px-3 text-small text-muted">
             <Kbd>?</Kbd> {t("shell.shortcuts")}

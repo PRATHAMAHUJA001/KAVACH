@@ -1,5 +1,5 @@
 """Home (Today) dashboard endpoint — presentation only; logic lives in HomeService."""
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 class ReadinessFactor(BaseModel):
-    key: str
+    key: Literal["overdue", "due_soon", "rules_pending", "conflicts"]
     count: int
     points: float
 
@@ -63,8 +63,8 @@ class AttentionParams(BaseModel):
 
 class AttentionItem(BaseModel):
     id: str
-    kind: str
-    status: str
+    kind: Literal["report_overdue", "report_due", "rule_pending", "ring_new", "conflict_open"]
+    status: Literal["overdue", "act", "attention"]
     entity_id: str
     params: AttentionParams
 

@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from app.domain.dashboard import DashboardFacts
 from app.domain.labels import typology_phrase
-from app.domain.policies import created_before_for_due_by, format_inr_compact, readiness, report_due
+from app.domain.policies import created_before_for_due_by, format_inr_compact, readiness, report_due, ring_name
 from app.domain.repositories import DashboardRepository
 
 
@@ -56,7 +56,7 @@ class HomeService:
             ring = high[0]
             attention.append({
                 "id": f"att-{ring.ring_id}", "kind": "ring_new", "status": "attention", "entity_id": ring.ring_id,
-                "params": {"name": ring.ring_name, "amount_inr": ring.volume_inr, "count": ring.member_count},
+                "params": {"name": ring.ring_name, "name_hi": ring_name(ring.ring_id, "hi"), "amount_inr": ring.volume_inr, "count": ring.member_count},
             })
         if f.pending_rules and f.first_pending_rule_id:
             attention.append({"id": "att-rules", "kind": "rule_pending", "status": "attention", "entity_id": f.first_pending_rule_id, "params": {"count": f.pending_rules}})

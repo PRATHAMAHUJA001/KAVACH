@@ -19,6 +19,9 @@ def get_snowflake_session() -> Session:
         "warehouse": settings.snowflake_warehouse,
         "schema": settings.snowflake_schema,
         "role": settings.snowflake_role,
+        # The session is a long-lived singleton: without heartbeats its token expires
+        # after ~4 idle hours and every request fails with "Authentication token has expired".
+        "client_session_keep_alive": True,
     }
     
     try:

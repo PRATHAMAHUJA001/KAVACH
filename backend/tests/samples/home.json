@@ -266,7 +266,7 @@
       "entity_id": "RING-A",
       "params": {
         "name": "Ring RING-A",
-        "name_hi": null,
+        "name_hi": "समूह A",
         "amount_inr": 8960000.0,
         "due_at": null,
         "count": 5,
