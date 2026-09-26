@@ -189,6 +189,15 @@ KAVACH closes all four loops inside Snowflake — the data never leaves the acco
 
 ## 📸 Feature Tour
 
+> [!NOTE]
+> **How these screenshots were captured.** The landing and sign-in shots are taken against a
+> running stack reading live Snowflake data. The in-app screenshots come from the repo's
+> Playwright visual-QA suite (`npm run screens`), which runs against the deterministic **mock**
+> dataset so the images are reproducible and stable. The layouts, components and copy are
+> identical to live; the numbers in them are the fixture values rather than the current contents
+> of the account — most visibly the 30-day trend chart, which is evenly distributed in the
+> fixtures but concentrated on one date live (see [limitations](#-honest-limitations)).
+
 ### Landing & sign-in
 
 The landing page reads live deployment counts straight from Snowflake, so the numbers on it
@@ -492,6 +501,14 @@ returns `403` before it reaches a handler. Hiding the button is not the control.
 Full methodology in **[docs/EVALUATION.md](docs/EVALUATION.md)**. The headline numbers, stated
 with the framing that produced them:
 
+> [!IMPORTANT]
+> These figures come from the evaluation run recorded in that document, performed **before this
+> project was migrated between Snowflake accounts**. The `ML.EVAL_*` tables exist in the current
+> account but did not carry their rows across the migration, so the numbers are traceable to the
+> documented methodology rather than queryable from the live account. They are also a **different
+> measure** from the Rulebook's per-rule precision, which is based on analyst decisions — see
+> [limitations](#-honest-limitations).
+
 - **Split** — transactions 2024-04-01 → 2024-09-27, 70% train / 30% held-out test by date
 - **Test set** — 8,401 accounts, 58 positives (0.69% fraud rate)
 - **Alert budget** — top 50 accounts reviewed, simulating one scoring run for a real team
@@ -697,9 +714,23 @@ Stated so nobody is surprised while clicking around:
 
 - **The SPCS link cannot be made anonymous.** Snowflake gates public endpoints by design;
   the credentials above are required.
-- **Alert dates sit in 2026 while transactions run through 2024.** Alert timestamps were
-  generated relative to "today" rather than to the transaction window, so deadline clocks look
-  plausible but do not line up with the underlying transaction dates.
+- **Transactions run Apr–Sep 2024, and alerts now follow them.** The transaction window is
+  deliberately historical — the engine scores whatever period it is pointed at, which is the point
+  of the Time Machine. Alert timestamps are derived from the transaction each alert fired on plus a
+  detection lag, so they span 2024-08-28 → 2024-09-30 across 34 days and the deadline clocks and
+  30-day trend line up with the evidence underneath them. "Today" in the app is the newest alert,
+  not the wall clock.
+- **Per-rule precision on the Rulebook "rule health" tab has no data to compute from.** It is
+  defined as confirmed ÷ (confirmed + dismissed) over analyst decisions, and every alert in this
+  deployment is still `NEW` — nobody has worked the queue. The tab is therefore empty rather than
+  wrong. This is a **different measure** from the detection figures below, which come from a
+  held-out evaluation against injected ground truth, not from analyst review.
+- **The evaluation tables are empty in the current Snowflake account.** The numbers quoted in
+  [Detection & evaluation](#-detection--evaluation) come from the documented run recorded in
+  [docs/EVALUATION.md](docs/EVALUATION.md), which was executed **before this project was migrated
+  between Snowflake accounts**. `ML.EVAL_GROUND_TRUTH`, `ML.EVAL_REPORT` and `ML.EVAL_COMPARISON`
+  exist but did not carry their rows across, so those figures are reproducible from the methodology
+  in that document, not by querying this account today.
 - **Rings 4–9 are lower-fidelity than rings 1–3.** The realistic collector → mule → exit flow
   with timing was applied to the three HIGH-severity rings; the six LOW ones have the
   membership and edges but not the same narrative timing.

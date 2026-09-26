@@ -1162,3 +1162,68 @@ aren't supported by the data.
   `Literal`s now, so the generated types are exact.
 - Screens: 34 Playwright scenarios pass; new `ask-*`, `rings-*`, `rulebook-*`,
   `timemachine-*`, `tour-1..6-*` in `docs/screens/`.
+
+---
+
+## Checkpoint 5 — Submission hardening (26–27 Sep 2026)
+
+Built and verified through CoCo. Every item below is committed.
+
+### Shipped
+
+- **Sign-out.** The role dropdown had no exit, so a demo viewer could not switch personas without
+  clearing cookies. Added a sign-out item that closes the server-side Snowflake session and
+  returns to `/login`. Verified by round-trip: login `200` → `/api/me` `200` → logout `200` →
+  session invalidated, cookie cleared.
+- **Top bar identity.** `/api/me` reported `CURRENT_USER()`, which is the shared service identity
+  for persona sign-ins, so the dropdown showed `kavach_web` (live) or `prathamahuja001` (local)
+  instead of who signed in. It now prefers the sign-in name. Verified for `admin`, `analyst`,
+  `reviewer`.
+- **Submission README.** Rewritten as the hackathon entry: problem statement #01, team *The
+  Believer* (solo), rubric mapping, 28 screenshots across 8 features, architecture diagram, tech
+  stack read from `package.json`/`requirements.txt`, the container path to SPCS, and a per-step map
+  of which Snowflake feature each of the twelve `sql/` steps uses.
+- **CoCo lifecycle evidence.** New [COCO_USAGE.md](COCO_USAGE.md) records planning → development →
+  execution → testing with reproducible artifacts (7 plan-mode files, project memory, skills,
+  commit history). Cites session titles/IDs/dates rather than message counts, which CoCo trims once
+  a session is summarised.
+- **Repo hygiene.** `brag-output/` (550 MB, 4,557 files) gitignored with only the hero image copied
+  out; stopped tracking a committed `.DS_Store`. All 25 prior commits re-authored to the project
+  owner, and every commit carries the CoCo trailer.
+
+### Resolved from "Still open"
+
+- **Alert timestamps now follow their evidence.** Previously all 2,879 alerts shared a single
+  timestamp (2026-09-25, the build date) two years after the transactions they described — so the
+  deadline clocks were computed from one date and the 30-day trend collapsed onto a single day.
+  Each alert's `CREATED_AT` is now derived from the transaction it fired on plus a deterministic
+  0–72h detection lag (hashed from `ALERT_ID`, so reruns are stable); the 372 alerts whose accounts
+  have no transactions were spread across the same window. Result: **2024-08-28 → 2024-09-30 across
+  34 distinct days, 2,751 within the trailing 30**. `as_of` is the newest alert, so "today" in the
+  app sits just after the transaction window closes. Backup clone taken before the change.
+
+### Corrected rather than shipped
+
+Two claims were investigated and **withdrawn** instead of being papered over:
+
+- **Time Travel.** The old README listed it as a feature used. A grep across all twelve SQL files
+  found nothing supporting it — the apparent matches were `AT(` inside unrelated function calls.
+  Claim removed.
+- **Per-rule precision.** An attempt to populate analyst resolutions so the rule-health tab had
+  something to show was **reverted**. `ML.EVAL_GROUND_TRUTH` is empty in the current account (the
+  evaluation ran before the cross-account migration and the rows did not carry across), and only
+  **2** alerts sit on known ring accounts — so there is no honest label source. Labelling the
+  backlog `FALSE_POSITIVE` by default made all 19 rules read as `NOISY (precision 0.000)`, which is
+  a worse misrepresentation than an empty tab. Reverted; both facts are now documented in the
+  README's limitations, with the rule-health measure explicitly distinguished from the held-out
+  evaluation figures.
+
+### Still open
+
+- The 19 existing rules still use template limits (the compiler fix applies to new compiles).
+- `ML.EVAL_*` tables are empty in this account; the evaluation figures are traceable to
+  [EVALUATION.md](EVALUATION.md)'s methodology, not queryable live.
+- Rings 4–9 lack the collector → mule → exit timing applied to rings 1–3.
+- The two Snowflake tasks (`ML.DAILY_SCORE_TASK`, `RULES.RULE_EXECUTOR_TASK`) exist but are
+  `suspended` and have never executed — `TASK_HISTORY` has no rows for either.
+- No MCP connector, CoCo automation, or multi-agent orchestration yet.
