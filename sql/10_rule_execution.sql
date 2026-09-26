@@ -93,10 +93,31 @@ def run(session):
                 session.sql(f"""
                     INSERT INTO KAVACH_DB.CORE.ALERTS
                         (ACCOUNT_ID, TXN_ID, RULE_ID, RULE_NAME, RULE_VERSION, TYPOLOGY,
-                         SCORE, REASONS, CITATION, SEVERITY, ACTION_REQUIRED)
+                         SCORE, REASONS, CITATION, SEVERITY, ACTION_REQUIRED, CREATED_AT)
                     SELECT ''{esc_acct}'', NULLIF(''{esc_txn}'',''''), ''{rid}'', ''{rname}'', {ver}, ''{typ}'',
                            1.0, PARSE_JSON(''{{"rule_hit": "{typ}", "details": "{reasons[:200]}"}}''),
-                           ''{citation}'', ''{sev}'', ''{act}''
+                           ''{citation}'', ''{sev}'', ''{act}'',
+                           -- Stamp the alert at its evidence, not at the wall clock. The column
+                           -- default is CURRENT_TIMESTAMP(), which put every alert two years
+                           -- after the transaction it described and collapsed the 30-day trend
+                           -- onto one day. Prefer the triggering transaction, then the account''''s
+                           -- most recent transaction, and only fall back to now if neither exists.
+                           COALESCE(
+                             (SELECT t.TXN_TS FROM KAVACH_DB.RAW.TRANSACTIONS t
+                               WHERE t.TXN_ID = NULLIF(''{esc_txn}'','''')),
+                             (SELECT MAX(t2.TXN_TS) FROM KAVACH_DB.RAW.TRANSACTIONS t2
+                               WHERE t2.ACCOUNT_ID = ''{esc_acct}''),
+                             CURRENT_TIMESTAMP()
+                           )
+                    WHERE NOT EXISTS (
+                      -- One alert per (account, rule, transaction). Re-running a rule
+                      -- must be idempotent, otherwise every scheduled execution
+                      -- re-inserts the same findings.
+                      SELECT 1 FROM KAVACH_DB.CORE.ALERTS a
+                       WHERE a.ACCOUNT_ID = ''{esc_acct}''
+                         AND a.RULE_ID = ''{rid}''
+                         AND COALESCE(a.TXN_ID, ''~'') = COALESCE(NULLIF(''{esc_txn}'',''''), ''~'')
+                    )
                 """).collect()
                 total_alerts += 1
 
