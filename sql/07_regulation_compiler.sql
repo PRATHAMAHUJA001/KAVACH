@@ -590,11 +590,15 @@ WHERE c.IS_PEP = TRUE
 
         'KYC_CDD': """
 -- KYC re-verification overdue or income mismatch requiring EDD
+-- Anchored to the data's reference date, like every other typology here. Measured
+-- from the wall clock instead, the "-2 years" window starts two years past the end
+-- of the data on this account, so "overdue" matched almost every customer
+-- (2,407 of 20,000) rather than the genuinely stale ones.
 SELECT c.CUSTOMER_ID, c.CUSTOMER_NAME, c.RISK_CATEGORY,
        c.KYC_STATUS, c.KYC_LAST_UPDATED, c.DECLARED_ANNUAL_INCOME
 FROM KAVACH_DB.CORE.CUSTOMERS c
-WHERE (c.RISK_CATEGORY = 'HIGH' AND c.KYC_LAST_UPDATED < DATEADD('year', -2, CURRENT_DATE()))
-   OR (c.RISK_CATEGORY = 'MEDIUM' AND c.KYC_LAST_UPDATED < DATEADD('year', -8, CURRENT_DATE()))
+WHERE (c.RISK_CATEGORY = 'HIGH' AND c.KYC_LAST_UPDATED < DATEADD('year', -2, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS)))
+   OR (c.RISK_CATEGORY = 'MEDIUM' AND c.KYC_LAST_UPDATED < DATEADD('year', -8, (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS)))
    OR c.KYC_STATUS = 'EXPIRED'""",
 
         'SANCTIONS_SCREENING': """

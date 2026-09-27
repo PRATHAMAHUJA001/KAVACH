@@ -40,6 +40,9 @@ PACKAGES = ('snowflake-snowpark-python')
 HANDLER = 'run'
 EXECUTE AS CALLER
 AS '
+import json
+
+
 def run(session):
     rules = session.sql("""
         SELECT RULE_ID, RULE_NAME, TYPOLOGY, ENTITY, SQL_TEXT, SOURCE_CITATION, VERSION
@@ -64,10 +67,10 @@ def run(session):
 
     for rule in rules:
         rid = rule[''RULE_ID'']
-        rname = (rule[''RULE_NAME''] or '''').replace("''", "''''")
+        rname = rule[''RULE_NAME''] or ''''
         typ = rule[''TYPOLOGY''] or ''''
         sql = rule[''SQL_TEXT'']
-        citation = (rule[''SOURCE_CITATION''] or '''').replace("''", "''''")
+        citation = rule[''SOURCE_CITATION''] or ''''
         ver = rule[''VERSION''] or 1
         sev = severity_map.get(typ, ''MEDIUM'')
         act = action_map.get(typ, ''ALERT'')
@@ -83,43 +86,69 @@ def run(session):
             acct_col = ''ACCOUNT_ID'' if ''ACCOUNT_ID'' in cols else (cols[0] if cols else ''UNKNOWN'')
 
             for row in results[:500]:  # cap at 500 alerts per rule
-                acct_id = str(row[acct_col]) if acct_col in row.as_dict() else str(list(row.as_dict().values())[0])
-                txn_id = str(row.get(''TXN_ID'', '''')) if hasattr(row, ''get'') else str(row.as_dict().get(''TXN_ID'', ''''))
                 row_dict = row.as_dict()
-                reasons = str(row_dict).replace("''", "''''")[:2000]
-                esc_acct = acct_id.replace("''", "''''")
-                esc_txn = txn_id.replace("''", "''''") if txn_id else ''''
+                acct_id = str(row_dict[acct_col]) if acct_col in row_dict else str(list(row_dict.values())[0])
+                txn_id = str(row_dict.get(''TXN_ID'') or '''')
 
-                session.sql(f"""
-                    INSERT INTO KAVACH_DB.CORE.ALERTS
-                        (ACCOUNT_ID, TXN_ID, RULE_ID, RULE_NAME, RULE_VERSION, TYPOLOGY,
-                         SCORE, REASONS, CITATION, SEVERITY, ACTION_REQUIRED, CREATED_AT)
-                    SELECT ''{esc_acct}'', NULLIF(''{esc_txn}'',''''), ''{rid}'', ''{rname}'', {ver}, ''{typ}'',
-                           1.0, PARSE_JSON(''{{"rule_hit": "{typ}", "details": "{reasons[:200]}"}}''),
-                           ''{citation}'', ''{sev}'', ''{act}'',
-                           -- Stamp the alert at its evidence, not at the wall clock. The column
-                           -- default is CURRENT_TIMESTAMP(), which put every alert two years
-                           -- after the transaction it described and collapsed the 30-day trend
-                           -- onto one day. Prefer the triggering transaction, then the account''''s
-                           -- most recent transaction, and only fall back to now if neither exists.
-                           COALESCE(
-                             (SELECT t.TXN_TS FROM KAVACH_DB.RAW.TRANSACTIONS t
-                               WHERE t.TXN_ID = NULLIF(''{esc_txn}'','''')),
-                             (SELECT MAX(t2.TXN_TS) FROM KAVACH_DB.RAW.TRANSACTIONS t2
-                               WHERE t2.ACCOUNT_ID = ''{esc_acct}''),
-                             CURRENT_TIMESTAMP()
-                           )
-                    WHERE NOT EXISTS (
-                      -- One alert per (account, rule, transaction). Re-running a rule
-                      -- must be idempotent, otherwise every scheduled execution
-                      -- re-inserts the same findings.
-                      SELECT 1 FROM KAVACH_DB.CORE.ALERTS a
-                       WHERE a.ACCOUNT_ID = ''{esc_acct}''
-                         AND a.RULE_ID = ''{rid}''
-                         AND COALESCE(a.TXN_ID, ''~'') = COALESCE(NULLIF(''{esc_txn}'',''''), ''~'')
-                    )
-                """).collect()
-                total_alerts += 1
+                # REASONS is built by the JSON serialiser and passed as a bind, so no
+                # amount of punctuation in the data can break it. The previous version
+                # pasted str(row_dict) into a SQL literal and then truncated the
+                # already-escaped text at 200 chars -- that cut landed inside an escaped
+                # quote pair, ended the literal early and left the JSON unterminated, so
+                # every KYC_CDD rule aborted partway through its rows (7 of 2,407
+                # customers were enough to lose the rest of the run).
+                details = {}
+                for key, value in row_dict.items():
+                    details[key] = value if isinstance(value, (int, float, bool)) or value is None else str(value)[:120]
+                reasons = json.dumps({''rule_hit'': typ, ''details'': details}, default=str)[:2000]
+
+                try:
+                    session.sql("""
+                        INSERT INTO KAVACH_DB.CORE.ALERTS
+                            (ACCOUNT_ID, TXN_ID, RULE_ID, RULE_NAME, RULE_VERSION, TYPOLOGY,
+                             SCORE, REASONS, CITATION, SEVERITY, ACTION_REQUIRED, CREATED_AT)
+                        SELECT ?, NULLIF(?, ''''), ?, ?, ?, ?,
+                               1.0, PARSE_JSON(?), ?, ?, ?,
+                               -- Stamp the alert at its evidence, not at the wall clock. The column
+                               -- default is CURRENT_TIMESTAMP(), which put every alert two years
+                               -- after the transaction it described and collapsed the 30-day trend
+                               -- onto one day. Prefer the triggering transaction, then the account''''s
+                               -- most recent transaction, and only fall back to now if neither exists.
+                               COALESCE(
+                                 (SELECT t.TXN_TS FROM KAVACH_DB.RAW.TRANSACTIONS t
+                                   WHERE t.TXN_ID = NULLIF(?, '''')),
+                                 (SELECT MAX(t2.TXN_TS) FROM KAVACH_DB.RAW.TRANSACTIONS t2
+                                   WHERE t2.ACCOUNT_ID = ?),
+                                 -- Customer-entity rules (KYC_CDD, PEP_UNUSUAL_CASH) key on a
+                                 -- CUSTOMER_ID, so the account lookup above finds nothing. Reach the
+                                 -- transactions through that customer''''s accounts before giving up.
+                                 (SELECT MAX(t3.TXN_TS) FROM KAVACH_DB.RAW.TRANSACTIONS t3
+                                    JOIN KAVACH_DB.CORE.ACCOUNTS ac ON ac.ACCOUNT_ID = t3.ACCOUNT_ID
+                                   WHERE ac.CUSTOMER_ID = ?),
+                                 -- A KYC-expiry alert has no triggering transaction at all, and some
+                                 -- flagged customers hold no account with any history. The alert is
+                                 -- still raised as of the data''''s own as-of date, so use that rather
+                                 -- than the wall clock, which would land two years in the future.
+                                 (SELECT MAX(TXN_TS) FROM KAVACH_DB.CORE.TRANSACTIONS),
+                                 CURRENT_TIMESTAMP()
+                               )
+                        WHERE NOT EXISTS (
+                          -- One alert per (account, rule, transaction). Re-running a rule
+                          -- must be idempotent, otherwise every scheduled execution
+                          -- re-inserts the same findings.
+                          SELECT 1 FROM KAVACH_DB.CORE.ALERTS a
+                           WHERE a.ACCOUNT_ID = ?
+                             AND a.RULE_ID = ?
+                             AND COALESCE(a.TXN_ID, ''~'') = COALESCE(NULLIF(?, ''''), ''~'')
+                        )
+                    """, params=[acct_id, txn_id, rid, rname, ver, typ,
+                                 reasons, citation, sev, act,
+                                 txn_id, acct_id, acct_id,
+                                 acct_id, rid, txn_id]).collect()
+                    total_alerts += 1
+                except Exception as row_err:
+                    # One unwritable row must not cost us the rest of the rule''''s findings.
+                    errors.append(f"{rname}/{acct_id}: {str(row_err)[:60]}")
 
         except Exception as e:
             errors.append(f"{rname}: {str(e)[:80]}")

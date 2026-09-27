@@ -204,9 +204,12 @@ def alert_reasons(
 ) -> list[ReasonFact]:
     """Up to 3 plain-language reasons from what the alert actually records.
 
-    CORE.ALERTS.REASONS is {"rule_hit", "details"}, where details is the matched row
-    dumped as a Python dict repr (cut at 200 characters). Only facts that can be read
-    from it reliably are used: the triggering amount/channel and the customer's risk
+    CORE.ALERTS.REASONS is {"rule_hit", "details"}. `details` is the matched row, and it
+    comes in two shapes: a real JSON object for anything the current rule engine wrote,
+    and — for alerts written before the engine moved to bind parameters — a Python dict
+    repr cut at 200 characters. Read the object by field where we have one, and fall back
+    to scraping the old text so historical alerts keep their reasons. Only facts that can
+    be read reliably are used: the triggering amount/channel and the customer's risk
     category. Weights are a fixed ordering, not model output."""
     from app.domain.entities import ReasonFact
     from app.domain.labels import typology_phrase
@@ -216,24 +219,35 @@ def alert_reasons(
         text_hi=f"इस पैटर्न से मेल: {typology_phrase(typology, 'hi')}",
         weight=0.6,
     )]
-    details = (reasons_variant or {}).get("details")
-    details = details if isinstance(details, str) else ""
-    amount = _DETAIL_AMOUNT.search(details)
-    if amount:
-        channel = _DETAIL_CHANNEL.search(details)
-        by = f" by {channel.group(1)}" if channel else ""
-        by_hi = f" ({channel.group(1)})" if channel else ""
-        v = float(amount.group(1))
+    raw = (reasons_variant or {}).get("details")
+    if isinstance(raw, dict):
+        amount_value = next((raw[k] for k in ("AMOUNT_INR", "TOTAL_AMOUNT") if raw.get(k) is not None), None)
+        channel_value = raw.get("CHANNEL")
+        risk_value = raw.get("RISK_CATEGORY")
+    else:
+        details = raw if isinstance(raw, str) else ""
+        amount_match = _DETAIL_AMOUNT.search(details)
+        channel_match = _DETAIL_CHANNEL.search(details)
+        risk_match = _DETAIL_RISK.search(details)
+        amount_value = amount_match.group(1) if amount_match else None
+        channel_value = channel_match.group(1) if channel_match else None
+        risk_value = risk_match.group(1) if risk_match else None
+    try:
+        amount_value = float(amount_value) if amount_value is not None else None
+    except (TypeError, ValueError):
+        amount_value = None
+    if amount_value is not None:
+        by = f" by {channel_value}" if channel_value else ""
+        by_hi = f" ({channel_value})" if channel_value else ""
         out.append(ReasonFact(
-            text=f"The transaction that set off the check: {format_inr_compact(v)}{by}",
-            text_hi=f"जिस लेनदेन से जाँच शुरू हुई: {format_inr_compact(v, 'hi')}{by_hi}",
+            text=f"The transaction that set off the check: {format_inr_compact(amount_value)}{by}",
+            text_hi=f"जिस लेनदेन से जाँच शुरू हुई: {format_inr_compact(amount_value, 'hi')}{by_hi}",
             weight=0.45,
         ))
-    risk = _DETAIL_RISK.search(details)
-    if risk and risk.group(1) in _RISK_HI:
+    if risk_value in _RISK_HI:
         out.append(ReasonFact(
-            text=f"The customer is rated {risk.group(1).lower()} risk",
-            text_hi=f"ग्राहक {_RISK_HI[risk.group(1)]} जोखिम श्रेणी में है",
+            text=f"The customer is rated {str(risk_value).lower()} risk",
+            text_hi=f"ग्राहक {_RISK_HI[risk_value]} जोखिम श्रेणी में है",
             weight=0.35,
         ))
     if txn_count and amount_inr:
@@ -254,12 +268,18 @@ def ring_name(ring_id: str, lang: str = "en") -> str:
     return f"Ring {n}" if lang == "en" else f"समूह {n}"
 
 
-def ring_roles(money: dict[str, tuple[float, float]]) -> dict[str, str]:
+def ring_roles(money: dict[str, tuple[float, float]], kind: str = "mule") -> dict[str, str]:
     """Roles from money in/out per member: the member who takes in the most is the
     collector, the one who sends out the most (another member) is the exit, the rest
-    are mules. A derived reading of the flows, not a label stored anywhere."""
+    are mules. A derived reading of the flows, not a label stored anywhere.
+
+    A round-trip loop has no collector and no exit -- the money comes back to where it
+    started, so every member is just a hop. Calling the biggest receiver a "collector"
+    there would invent a structure the flows do not have, so every member reads `loop`."""
     if not money:
         return {}
+    if kind == "round_trip":
+        return {a: "loop" for a in money}
     collector = max(money, key=lambda a: (money[a][0], a))
     others = [a for a in money if a != collector]
     exit_ = max(others, key=lambda a: (money[a][1], a)) if others else None
