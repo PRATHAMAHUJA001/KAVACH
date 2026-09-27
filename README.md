@@ -651,6 +651,20 @@ backend/app/ ──────────────┘                      
                                     https://ea5glc-onfhcci-tv84204.snowflakecomputing.app
 ```
 
+One script does all of it — build, push, in-place upgrade, wait for the rollout, print the URL:
+
+```bash
+./deploy/redeploy.sh            # full redeploy
+./deploy/redeploy.sh status     # service + pool + endpoint (cheap)
+./deploy/redeploy.sh spec       # ALTER SERVICE only, when just the spec changed
+./deploy/redeploy.sh suspend    # take the compute pool to zero nodes
+```
+
+Full operator handover — prerequisites, credentials, cost control, troubleshooting, data gotchas and
+the open backlog — is in **[DEPLOY.md](DEPLOY.md)**.
+
+Under the hood it is these three steps:
+
 ```bash
 # 1. Build for SPCS (linux/amd64 regardless of your host — required by SPCS)
 docker build --platform linux/amd64 \

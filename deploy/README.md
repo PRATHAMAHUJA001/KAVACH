@@ -1,6 +1,15 @@
 # KAVACH Deployment to Snowpark Container Services
 
-## NOT FULLY IMPLEMENTED — SKELETAL STRUCTURE
+> **Superseded.** This file is the original design sketch from before the service
+> existed. The deployment is live now — see **[../DEPLOY.md](../DEPLOY.md)** for
+> the real procedure and `redeploy.sh` for the script. Kept for the cost model
+> and the SPCS notes at the bottom, which still hold.
+>
+> Two things below are wrong in practice: the `snow`/`snowsql` CLI is not
+> installed (use `snowctl.py`), and the Dockerfile here drifted from the real
+> one at the repo root.
+
+## Historical design sketch
 
 ### What's Needed (estimate: 3-4 hours)
 
