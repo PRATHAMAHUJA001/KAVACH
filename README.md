@@ -144,6 +144,7 @@ the service can get through. So there are **two** gates, and both use the same c
 - [AI models](#-ai-models)
 - [Data model](#-data-model)
 - [Governance](#-governance-personas-are-real)
+- [Compliance: obligations and controls](#-compliance-obligations-and-controls)
 - [Detection & evaluation](#-detection--evaluation)
 - [Snowflake features at every step](#-snowflake-features-at-every-step)
 - [Running it locally](#-running-it-locally)
@@ -250,9 +251,18 @@ circular text, and helpers for alerts, rings and rules. Answers show their worki
 ### 5. Mule rings — graph detection
 
 Accounts that work together to move money, laid out as a network. Edges are shared phone,
-shared device, shared IP, or money actually sent. The flow is realistic: victims fund a
-collector, the collector skims and fans out to mules, each mule forwards on within minutes,
-and an exit account drains the ring to cash, SWIFT or crypto.
+shared device, shared IP, or money actually sent.
+
+Two shapes are detected and the page names each for what it is, rather than describing both in
+the language of one. A **collection ring** runs victims → collector → mules → exit: the
+collector skims and fans out, each mule forwards on within minutes, and an exit account drains
+the ring to cash, SWIFT or crypto. A **round trip** is a closed loop — the money leaves an
+account, travels a chain shaving a little at each hop, and returns to where it started, so the
+page shows the loop path (`A → B → C → A`) and labels every member a loop hop, because a cycle
+has no collector and no exit to point at. Live: 3 collection rings, 6 round trips.
+
+The classification is read from the direction of each ring's internal edges, not from a stored
+label, so it stays correct if the data is regenerated.
 
 | The ring | Hovering an account |
 |---|---|
@@ -375,14 +385,14 @@ how this image reaches the live URL.
 graph TB
     subgraph SF["❄️ Snowflake — KAVACH_DB"]
         direction TB
-        CIRC["Synthetic circulars<br/>(RAW stage)"] -->|AI_PARSE_DOCUMENT<br/>AI_COMPLETE| RULES["RULES.RULE_LIBRARY<br/>19 compiled rules"]
-        TXN["RAW.TRANSACTIONS<br/>1,502,668 rows"] --> FEAT["ML.ACCOUNT_FEATURES<br/>24 behavioural features"]
+        CIRC["Synthetic circulars<br/>(RAW stage)"] -->|AI_PARSE_DOCUMENT<br/>AI_COMPLETE| RULES["RULES.RULE_LIBRARY<br/>19 compiled rules · 14 in force"]
+        TXN["RAW.TRANSACTIONS<br/>1,502,674 rows"] --> FEAT["ML.ACCOUNT_FEATURES<br/>24 behavioural features"]
         FEAT --> XGB["XGBoost + isotonic<br/>calibration"]
         TXN --> ENGINE["Rule engine<br/>9 typologies"]
         RULES --> ENGINE
         XGB --> BLEND["Blended scoring"]
         ENGINE --> BLEND
-        BLEND --> ALERTS["CORE.ALERTS<br/>2,879 alerts"]
+        BLEND --> ALERTS["CORE.ALERTS<br/>8,407 alerts"]
         TXN --> GRAPH["Graph detection<br/>CORE.RING_MEMBERS"]
         ALERTS --> STORY["AI.ALERT_STORIES<br/>EN + HI narratives"]
         ALERTS --> EVID["AUDIT.EVIDENCE_REGISTRY<br/>hashed packs"]
@@ -424,6 +434,7 @@ touches one layer.
 | Feature | Where it earns its place |
 |---|---|
 | **Cortex Agent** | `AI.KAVACH_AGENT` — orchestrates 5 tools to answer analyst questions |
+| **Snowflake-managed MCP server** | `AI.KAVACH_MCP` — exposes the agent and circular search to any MCP client (Claude, Cursor) with no infrastructure of ours, behind a least-privileged role |
 | **Cortex Analyst / semantic view** | `AI.KAVACH_SV` — natural-language → SQL over alerts, accounts, rings |
 | **Cortex Search** | Retrieval over regulatory circular text so answers can cite a paragraph |
 | **`AI_COMPLETE`** | Rule compilation, alert narratives, weekly brief, conflict detection, draft reports |
@@ -461,9 +472,9 @@ Eight schemas, each with one job:
 
 | Schema | Holds |
 |---|---|
-| `RAW` | Landing zone — 1,502,668 transactions, 28,000 accounts, circular stage |
-| `CORE` | Curated entities — 20,000 customers, 2,879 alerts, ring membership |
-| `RULES` | Compiled rule library (19), approvals, detected conflicts |
+| `RAW` | Landing zone — 1,502,674 transactions, 28,000 accounts, circular stage |
+| `CORE` | Curated entities — 20,000 customers, 8,407 alerts, ring membership |
+| `RULES` | Compiled rule library (19 compiled, 14 in force), approvals, detected conflicts |
 | `ML` | Features, model artefacts, evaluation ground truth and reports |
 | `AI` | Semantic view, agent, alert stories (200), explainability views |
 | `APP` | Application-facing objects, image repository, secrets, the service |
@@ -472,9 +483,9 @@ Eight schemas, each with one job:
 
 **Live contents right now:**
 
-| Transactions | Accounts | Customers | Alerts | Rules | AI narratives | Mule rings |
+| Transactions | Accounts | Customers | Alerts | Rules in force | AI narratives | Rings |
 |---|---|---|---|---|---|---|
-| 1,502,668 | 28,000 | 20,000 | 2,879 | 19 | 200 | 9 |
+| 1,502,674 | 28,000 | 20,000 | 8,407 | 14 of 19 | 200 | 9 (3 collection · 6 round-trip) |
 
 ---
 
@@ -496,6 +507,64 @@ returns `403` before it reaches a handler. Hiding the button is not the control.
 
 ---
 
+## 📋 Compliance: obligations and controls
+
+Two questions a compliance officer asks about a system like this: *does it cover what the
+regulation actually obliges us to do*, and *would its output survive a regulator asking how
+you got there*. Both answered below, including where the answer is "not yet".
+
+### Obligations the circulars impose
+
+The eight synthetic circulars — generated to `@RAW.REG_STAGE` by
+[`sql/06_reg_circulars.sql`](sql/06_reg_circulars.sql) — are parsed into 49 paragraphs and
+compiled into 19 rules, every one carrying a `SOURCE_CITATION` back to the paragraph it came
+from and every one `COMPILED_BY = 'AI'`, none hand-written. What each obligation maps to:
+
+| Obligation | Implemented by | Live state |
+|---|---|---|
+| **CTR** — report cash transactions over ₹10,00,000 | 3 compiled `CASH_REPORTING` rules → `CORE.ALERTS`, `ACTION_REQUIRED = 'CTR'` | ✅ 4,319 alerts |
+| **Threshold amendment** — `KAVACH/2025/01` raises the reporting threshold to ₹15,00,000 | `RULES.APPLY_AMENDMENTS()` supersedes v1 and issues a v2 rule; Time Machine replays either threshold | ✅ v2 rule in force, replay works |
+| **STR** — file a suspicious transaction report | `AI.DRAFT_STR` function drafts from the alert's own evidence; the engine's action map assigns `STR` to the layering, structuring, mule and pass-through typologies | ⚠️ drafting works on any alert, but **no alert currently carries `ACTION_REQUIRED = 'STR'`** — the typologies mapped to it are exactly the ones returning 0 rows. Filing itself is out of scope |
+| **KYC / CDD** — re-verify customers whose KYC is stale or expired | `KYC_CDD` rule, anchored to the data's reference date | ✅ 500 alerts, 1 rule in force |
+| **Wire transfer reporting** | `WIRE_TRANSFER` rule | ✅ 1,081 alerts |
+| **General AML monitoring** | 2 `GENERAL_AML` rules | ✅ 2,500 alerts |
+| **Dormant account revival** | `DORMANT_REACTIVATION` rule | ✅ 7 alerts — and the only rule whose typology matches planted fraud, at 100% precision |
+| **Layering / round-tripping** | 2 compiled `ROUND_TRIPPING` rules, plus graph cycle detection in `CORE.ROUND_TRIP_CYCLES` | ⚠️ graph detection finds 4 cycles; the **rules return 0 rows** on this data |
+| **Structuring / smurfing** | 2 compiled `STRUCTURING` rules | ⚠️ **0 rows** — the multi-condition joins match nothing here |
+| **Mule networks** | 1 compiled `MULE_RING` rule, plus graph detection in `CORE.RINGS` | ⚠️ graph detection finds all 3 planted rings; the **rule returns 0 rows** |
+| **Sanctions screening** | 1 compiled `SANCTIONS_SCREENING` rule against `REF.WATCHLIST` | ⚠️ **0 rows** |
+| **Conflicting guidance** — two circulars defining layering differently | `RULES.DETECT_CONFLICTS()` → `RULES.RULE_CONFLICTS`, surfaced on the Rulebook page | ✅ 10 conflicts detected, not auto-resolved |
+| **Filing deadlines** | `AI.DEADLINE_CLOCK` view | ✅ |
+| **Programme readiness** | `AI.READINESS_SCORE`, `AI.RULE_HEALTH` views | ✅ |
+
+Five further fraud typologies present in the ground truth — income mismatch, rapid
+pass-through, high-risk corridor, account takeover and PEP cash — have **no compiled rule at
+all**, because the AI extraction step never produced a candidate of those typologies from
+these circulars. The consequence is measured, not hidden:
+**[docs/EVALUATION.md](docs/EVALUATION.md#live-re-run-2026-09-27)**.
+
+### Controls that make the output defensible
+
+| Control | How it is enforced | Verify with |
+|---|---|---|
+| PII redaction | 4 masking policies in `CORE` — `MASK_PAN`, `MASK_CUSTOMER_NAME`, `MASK_ACCOUNT_NUMBER`, `MASK_MOBILE` — applied by the database, so they hold however the data is reached | `SHOW MASKING POLICIES IN DATABASE KAVACH_DB`; the persona table [above](#-governance-personas-are-real) |
+| Regional data segregation | Row access policy `CORE.RAP_REGION_FILTER` driven by `REGION_ACCESS_MAP` | `SHOW ROW ACCESS POLICIES IN DATABASE KAVACH_DB` |
+| Least privilege | Five application roles; the backend runs as `KAVACH_ADMIN`, never `ACCOUNTADMIN`. MCP clients get a sixth, separate `KAVACH_MCP_ROLE` | `SHOW ROLES LIKE 'KAVACH%'` |
+| Read-only enforcement | Middleware rejects any non-`GET` to a write path from a read-only role with `403`, before a handler runs | `scripts/smoke_test.py` |
+| Every alert traceable to a paragraph | `CITATION` populated on **all 8,407** alerts; `REASONS` holds the matched row that fired the rule | `SELECT CITATION, REASONS FROM CORE.ALERTS LIMIT 1` |
+| Tamper-evident evidence | Evidence packs written to `APP.EVIDENCE_STAGE` and registered in `AUDIT.EVIDENCE_REGISTRY` with a SHA-256 taken over the bytes uploaded; re-verification re-hashes the stored file | the `/evidence` → presigned URL → re-hash path in `scripts/smoke_test.py` |
+| Rule changes reversible | Any in-place rule regeneration writes the previous SQL to `RULES.RULE_SQL_HISTORY` | `SELECT * FROM RULES.RULE_SQL_HISTORY` |
+| Rules never silently self-approve | Compiled rules land as `PENDING_APPROVAL`; approval and rejection are recorded with actor and reason | `SELECT STATUS, APPROVED_BY, REJECTED_BY, REJECTION_REASON FROM RULES.RULE_LIBRARY` |
+| No data leaves the account | Cortex only — no external LLM API, no third-party cloud. The MCP server exposes the agent and circular search, and deliberately **not** `SYSTEM_EXECUTE_SQL`, which would bypass the semantic view and the masking policies | [`sql/14_mcp_server.sql`](sql/14_mcp_server.sql) |
+
+> [!NOTE]
+> `AUDIT.ACTIVITY_LOG` and its `log_activity()` procedure exist and are wired up, but the
+> table is **empty** on this account — nothing has exercised the write path since the
+> migration. `AUDIT.EVIDENCE_REGISTRY` holds 2 packs from verification runs. Both are
+> plumbing that works rather than an audit history that has accumulated.
+
+---
+
 ## 📊 Detection & Evaluation
 
 Full methodology in **[docs/EVALUATION.md](docs/EVALUATION.md)**. The headline numbers, stated
@@ -503,11 +572,18 @@ with the framing that produced them:
 
 > [!IMPORTANT]
 > These figures come from the evaluation run recorded in that document, performed **before this
-> project was migrated between Snowflake accounts**. The `ML.EVAL_*` tables exist in the current
-> account but did not carry their rows across the migration, so the numbers are traceable to the
-> documented methodology rather than queryable from the live account. They are also a **different
-> measure** from the Rulebook's per-rule precision, which is based on analyst decisions — see
-> [limitations](#-honest-limitations).
+> project was migrated between Snowflake accounts**, with a calibrated model and a rule set
+> written one-per-typology. They are a **different measure** from the Rulebook's per-rule
+> precision, which is based on analyst decisions — see [limitations](#-honest-limitations).
+>
+> The `ML.EVAL_*` tables have since been **rebuilt on the current account** by
+> [`sql/13_evaluation.sql`](sql/13_evaluation.sql), so there is now a live, queryable
+> re-run as well. It scores **materially worse** than the table below — the compiled
+> rulebook targets regulatory-reporting obligations rather than the planted fraud
+> typologies, and the only model on this account is the uncalibrated v1. Both runs, and
+> the reasons they differ, are set out in
+> **[docs/EVALUATION.md](docs/EVALUATION.md#live-re-run-2026-09-27)**. Read the numbers
+> below as the documented capability of the design, not as the current account's output.
 
 - **Split** — transactions 2024-04-01 → 2024-09-27, 70% train / 30% held-out test by date
 - **Test set** — 8,401 accounts, 58 positives (0.69% fraud rate)
@@ -524,7 +600,7 @@ features, **PR-AUC 0.7968** on test. A leakage audit removed `NEAR_10L_CASH_COUN
 `INTERNAL_TRANSFER_COUNT` because they directly encoded rule thresholds.
 
 > Read these as "precision/recall at a top-50 review budget on the held-out split", not as a
-> claim about the full 2,879-row alert table, whose denominator is different.
+> claim about the full 8,407-row alert table, whose denominator is different.
 
 **Typologies covered:** mule rings · round-tripping · structuring / threshold avoidance ·
 smurfing · dormant account revival · high-risk corridor exposure · rapid pass-through ·
@@ -557,6 +633,8 @@ Below is exactly what each build step uses. The step numbers match the files in 
 | **10** | `10_rule_execution.sql` | Incremental rule engine | **`CREATE STREAM`** for change capture · **`CREATE TASK`** gated on **`SYSTEM$STREAM_HAS_DATA`** · `AI_COMPLETE` ×2 · blended scoring procedure |
 | **11** | `11_graph_detection.sql` | Mule rings and cycles | Recursive graph traversal in SQL · shared phone/IP/device edge building · round-trip cycle detection |
 | **12** | `12_ai_agent_tools.sql` | Agent tooling | Tool procedures the Cortex Agent calls · result staging |
+| **13** | `13_evaluation.sql` | **Reproducible evaluation** | Rebuilds every `ML.EVAL_*` table from ground truth, scores, and alerts · recovers the model's held-out split from its own SHAP coverage · idempotent |
+| **14** | `14_mcp_server.sql` | **MCP server** | **`CREATE MCP SERVER`** exposing the Cortex Agent (`CORTEX_AGENT_RUN`) and circular search (`CORTEX_SEARCH_SERVICE_QUERY`) · least-privileged access role · OAuth setup documented |
 | **—** | `semantic/kavach_sv.yaml` | **Semantic layer** | **`SEMANTIC VIEW` (`AI.KAVACH_SV`)** — Cortex Analyst model with verified queries |
 | **—** | *(agent DDL)* | **Conversational layer** | **Cortex Agent (`AI.KAVACH_AGENT`)** — `claude-sonnet-5` orchestration across 5 tools |
 | **—** | `backend/` | API | **OAuth token auth** from `/snowflake/session/token` · **Snowpark `Session`** per signed-in user · masking enforced by the database, not the app |
@@ -739,15 +817,31 @@ Stated so nobody is surprised while clicking around:
   deployment is still `NEW` — nobody has worked the queue. The tab is therefore empty rather than
   wrong. This is a **different measure** from the detection figures below, which come from a
   held-out evaluation against injected ground truth, not from analyst review.
-- **The evaluation tables are empty in the current Snowflake account.** The numbers quoted in
-  [Detection & evaluation](#-detection--evaluation) come from the documented run recorded in
-  [docs/EVALUATION.md](docs/EVALUATION.md), which was executed **before this project was migrated
-  between Snowflake accounts**. `ML.EVAL_GROUND_TRUTH`, `ML.EVAL_REPORT` and `ML.EVAL_COMPARISON`
-  exist but did not carry their rows across, so those figures are reproducible from the methodology
-  in that document, not by querying this account today.
-- **Rings 4–9 are lower-fidelity than rings 1–3.** The realistic collector → mule → exit flow
-  with timing was applied to the three HIGH-severity rings; the six LOW ones have the
-  membership and edges but not the same narrative timing.
+- **The compiled rulebook covers regulatory reporting, not most of the planted fraud typologies.**
+  Of the nine injected typologies only `DORMANT_REACTIVATION` has a rule of its own that fires.
+  Three (`STRUCTURING`, `ROUND_TRIPPING`, `MULE_RING`) compiled into rules whose multi-condition
+  joins match nothing in this dataset, and five never produced a rule candidate at all. Mule
+  rings and round-trip loops are still found — by the graph detection, not by the rulebook. This
+  is the single biggest gap in the build and it is measured, not estimated:
+  [docs/EVALUATION.md](docs/EVALUATION.md#live-re-run-2026-09-27).
+- **The evaluation tables are populated, and the live numbers are much worse than the documented
+  ones.** [`sql/13_evaluation.sql`](sql/13_evaluation.sql) rebuilds `ML.EVAL_*` from ground truth,
+  scores and alerts, so the evaluation is reproducible on this account. At a top-50 budget it
+  scores **zero true positives** for rules, ML and blended alike — a consequence of the rule
+  coverage gap above and of the fact that the only model here is the **uncalibrated v1**, whose
+  own logged PR-AUC is 0.0038. The figures in
+  [Detection & evaluation](#-detection--evaluation) are from the pre-migration run with a
+  calibrated model and a one-rule-per-typology rule set; both runs and the reasons they differ
+  are laid out in [docs/EVALUATION.md](docs/EVALUATION.md).
+- **`RETRAIN_AND_EVALUATE()` cannot run on this account.** It reads `ML.ACCOUNT_FEATURES_STATIC`,
+  which is empty, and asks for feature columns that exist only on `ML.ACCOUNT_FEATURES`. Rebuilding
+  the calibrated model would mean fixing both.
+- **Rings 4–9 are round-trip loops, not thin mule rings.** An earlier version of this README
+  called them lower-fidelity. They are not: they map one-to-one onto the six planted
+  round-tripping loops, and a closed loop legitimately has no collector and no exit, because the
+  money returns to where it started. The page now labels them for what they are. What is true is
+  that they carry no shared-device edges, so they score LOW on a ring score weighted towards
+  device sharing.
 - **Evidence pack PDF rendering is HTML-to-print**, not a typeset PDF pipeline.
 - **The circulars are synthetic.** They are written in regulator style and are deliberately
   *not* real RBI text.
