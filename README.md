@@ -145,6 +145,7 @@ the service can get through. So there are **two** gates, and both use the same c
 - [Data model](#-data-model)
 - [Governance](#-governance-personas-are-real)
 - [Compliance: obligations and controls](#-compliance-obligations-and-controls)
+- [MCP: KAVACH as a tool for other agents](#-mcp-kavach-as-a-tool-for-other-agents)
 - [Detection & evaluation](#-detection--evaluation)
 - [Snowflake features at every step](#-snowflake-features-at-every-step)
 - [Running it locally](#-running-it-locally)
@@ -181,6 +182,7 @@ KAVACH closes all four loops inside Snowflake — the data never leaves the acco
 | 💬 | **Explains every alert in plain English and Hindi** | `AI_COMPLETE` writes the narrative, `AI_TRANSLATE` produces हिन्दी — with ranked, weighted reasons underneath. |
 | 🙋 | **Answers "why was this *not* flagged?"** | The negative explainer replays every check against any transaction ID and shows how close each came. |
 | 🤖 | **Answers questions in natural language** | Cortex Agent over a semantic view + Cortex Search across circular text, with citations. |
+| 🔌 | **Plugs into other AI agents** | A Snowflake-managed MCP server exposes the compliance agent and circular search as tools, so Claude or Cursor can query the bank's posture without any infrastructure of ours. |
 | 📦 | **Produces audit-ready evidence packs** | JSON + HTML/PDF pack, hashed and registered so it can be verified as untouched. |
 | 📝 | **Drafts the suspicious transaction report** | One click from the case file. |
 | ⏱️ | **Replays thresholds over history** | Move a threshold, see how alert volume and review hours would have changed over 90 days. |
@@ -565,6 +567,77 @@ these circulars. The consequence is measured, not hidden:
 
 ---
 
+## 🔌 MCP: KAVACH as a tool for other agents
+
+Everything above is KAVACH's own UI. A **Snowflake-managed MCP server** makes the same
+capability available *to other AI agents* — Claude, Cursor, ChatGPT, or a custom client —
+with no server, container or gateway of ours in the path. Snowflake hosts the endpoint.
+
+```
+https://<account>.snowflakecomputing.com/api/v2/databases/KAVACH_DB/schemas/AI/mcp-servers/KAVACH_MCP
+```
+
+Defined in [`sql/14_mcp_server.sql`](sql/14_mcp_server.sql), two tools:
+
+| Tool | Type | What it is for |
+|---|---|---|
+| `kavach_agent` | `CORTEX_AGENT_RUN` | The governed entry point. The client asks a question; `AI.KAVACH_AGENT` decides whether to reach for the semantic view, circular search, or an explainability procedure, and answers with citations. |
+| `kavach_reg_search` | `CORTEX_SEARCH_SERVICE_QUERY` | Direct paragraph lookup over the circulars. "What does the regulation say" needs no orchestration, and this answers in about a second rather than about a minute. |
+
+Exposing the agent as the client-facing tool is
+[Snowflake's own recommendation](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-mcp)
+for governed business data: the client gets one interface and the agent picks the right
+resource per request.
+
+**What is deliberately *not* exposed.** `SYSTEM_EXECUTE_SQL` is available as an MCP tool
+type and is left off. It would let a client write its own SQL and walk straight past the
+semantic view, the verified queries and the masking policies the agent goes through. If raw
+SQL is ever needed it belongs on a separate server with its own least-privileged role.
+`time_machine` is also left off — it takes an `OBJECT` parameter, which the warehouse
+execution environment does not support for tool calls.
+
+**Masking still holds.** An MCP session runs as the connecting user's role, so a client
+sees exactly what that role is granted and nothing more. Access is a dedicated
+`KAVACH_MCP_ROLE`, because access to the server is *not* access to its tools — each tool
+needs its own grant, and the agent additionally needs the objects it reads.
+
+**It is verified, not just declared.** [`scripts/mcp_smoke_test.sh`](scripts/mcp_smoke_test.sh)
+drives the live endpoint over JSON-RPC with a role-restricted token and no MCP SDK. Real
+output, abridged only by trimming the long lines:
+
+```
+== tools/list
+  kavach_agent       KAVACH compliance copilot
+  kavach_reg_search  Regulatory circular search
+
+== tools/call kavach_reg_search -- what the circulars say
+  isError: False
+  hit: All Regulated Entities (REs) shall report Cash Transaction Reports (CTRs) for all
+       cash transactions of value exceeding Rs. 10,00,000 (Rupees Ten Lakhs) ...
+  hit: This circular supersedes all previous circulars on cash transaction monitoring
+       thresholds.
+
+== tools/call kavach_agent -- a question about the bank's own data (~1 min)
+  isError: False
+  status: completed | blocks: 14
+  answer: Key breakdown: - **CASH_REPORTING**: 4,319 alerts (~51%) - **GENERAL_AML**:
+          2,500 (~30%) - **WIRE_TRANSFER**: 1,081 (~13%) - **KYC_CDD**: 500 (~6%)
+          - **DORMANT_REACTIVATION**: 7 (<1%)
+MCP smoke test: PASS
+```
+
+Those figures match `CORE.ALERTS` exactly, so the whole path — MCP client → server → agent
+→ semantic view → live data — is doing real work. In an earlier run the agent also corrected
+itself mid-answer on finding that every alert carries status `NEW` rather than `OPEN`.
+
+`tools/call` responses arrive as Server-Sent Events, so a client must send
+`Accept: application/json, text/event-stream` and read the last `data:` frame. OAuth is the
+route real clients use; the exact security-integration SQL is in `sql/14_mcp_server.sql`,
+left uncreated because the redirect URI belongs to a specific client and the integration
+holds a client secret.
+
+---
+
 ## 📊 Detection & Evaluation
 
 Full methodology in **[docs/EVALUATION.md](docs/EVALUATION.md)**. The headline numbers, stated
@@ -644,10 +717,10 @@ Below is exactly what each build step uses. The step numbers match the files in 
 
 | Category | Features used |
 |---|---|
-| **Cortex AI** | Cortex Agent · Cortex Analyst (semantic view) · Cortex Search · `AI_COMPLETE` · `AI_PARSE_DOCUMENT` · `AI_TRANSLATE` |
+| **Cortex AI** | Cortex Agent · **Snowflake-managed MCP server** · Cortex Analyst (semantic view) · Cortex Search · `AI_COMPLETE` · `AI_PARSE_DOCUMENT` · `AI_TRANSLATE` |
 | **ML** | Snowpark ML · XGBoost · isotonic calibration · SHAP explanations |
 | **Pipelines** | Dynamic table (`TARGET_LAG = DOWNSTREAM`) · stream · 2 tasks · `SYSTEM$STREAM_HAS_DATA` |
-| **Governance** | 4 masking policies · 1 row access policy · 5 roles · RBAC · network policy |
+| **Governance** | 4 masking policies · 1 row access policy · 6 roles · RBAC · network policy · PAT with `ROLE_RESTRICTION` |
 | **Compute & code** | Snowpark Python procedures · SQL UDFs · multiple warehouses with auto-suspend |
 | **Deployment** | SPCS service · compute pool · image registry · secrets · service spec upgrades |
 | **Storage** | Internal stages for circulars and evidence packs |
@@ -662,7 +735,7 @@ policies that protect the tables apply to the AI layer automatically, with nothi
 ## 💻 Running It Locally
 
 **Prerequisites:** Python 3.11+, Node 20+, and a Snowflake account with `KAVACH_DB` built from
-`sql/` (run `01_foundation.sql` → `12_ai_agent_tools.sql` in order).
+`sql/` (run `01_foundation.sql` → `14_mcp_server.sql` in order).
 
 ```bash
 # 1. Backend
