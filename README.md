@@ -97,7 +97,7 @@ ls ~/.snowflake/cortex/conversations/*/              # CoCo session store
 
 | | |
 |---|---|
-| 🎥 **Video walkthrough** | **[Watch the demo](https://drive.google.com/file/d/1EpPFWhzPx6lSMo7wNHND_MvFBwJqvvxa/view?usp=sharing)** |
+| 🎥 **Video walkthrough** | **[Watch the demo](https://drive.google.com/file/d/10kvSVKHjXcEucd8HBB1q1Q2N43T72NxH/view?usp=sharing)** |
 | 🌐 **Live app (SPCS)** | **https://ea5glc-onfhcci-tv84204.snowflakecomputing.app** |
 
 ### Signing in
