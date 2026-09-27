@@ -40,7 +40,10 @@ class HomeService:
     @staticmethod
     def compose(f: DashboardFacts) -> HomeView:
         c = f.counts
-        r = readiness(c.overdue, c.due_48h, f.pending_rules, f.open_conflicts)
+        r = readiness(
+            c.overdue, c.due_48h, f.pending_rules, f.open_conflicts,
+            open_reports=c.open_reports, total_rules=f.total_rules,
+        )
 
         attention: list[dict] = []
         for a in f.urgent[:2]:

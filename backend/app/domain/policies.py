@@ -77,13 +77,55 @@ class Readiness:
     factors: list[ReadinessFactor]
 
 
-# Points lost per open item. Overdue reports matter most.
-WEIGHTS = {"overdue": 4.0, "due_soon": 2.0, "rules_pending": 0.5, "conflicts": 0.5}
+# The most each factor can cost, out of 100. A factor's actual cost is its cap times
+# the share of that factor's population in a bad state, so the score answers "how much
+# of the book is behind?" and not "how big is the book?".
+#
+# Scoring the raw counts instead (4 points per overdue report) drove the score to 0 at
+# 25 overdue reports, which every realistic backlog exceeds -- on a 8,407-alert book it
+# read "0 out of 100, -22,108 points" and stayed there no matter what a team cleared.
+CAPS = {"overdue": 45.0, "due_soon": 20.0, "rules_pending": 20.0, "conflicts": 15.0}
 
 
-def readiness(overdue: int, due_soon: int, rules_pending: int, conflicts: int) -> Readiness:
+def _share(part: int, whole: int) -> float:
+    """Fraction of `whole` that `part` covers, clamped to 0..1.
+
+    With no population there is nothing outstanding to penalise, so the share is 0.
+    A part larger than the whole (counts read from different queries a moment apart)
+    clamps to 1 rather than overshooting the cap.
+    """
+    if whole <= 0:
+        return 0.0
+    return min(1.0, max(0.0, part / whole))
+
+
+def readiness(
+    overdue: int,
+    due_soon: int,
+    rules_pending: int,
+    conflicts: int,
+    open_reports: int = 0,
+    total_rules: int = 0,
+) -> Readiness:
+    """Audit readiness out of 100, as a weighted share of what is outstanding.
+
+    `open_reports` is the denominator for the two deadline factors and `total_rules` for
+    the two rulebook ones. Both default to 0, which reads as "no population, nothing to
+    answer for" -- so a caller that cannot supply them gets 100 rather than a
+    misleadingly precise number built from a denominator that was never there.
+    """
+    shares = {
+        "overdue": _share(overdue, open_reports),
+        "due_soon": _share(due_soon, open_reports),
+        "rules_pending": _share(rules_pending, total_rules),
+        "conflicts": _share(conflicts, total_rules),
+    }
     counts = {"overdue": overdue, "due_soon": due_soon, "rules_pending": rules_pending, "conflicts": conflicts}
-    factors = [ReadinessFactor(k, c, WEIGHTS[k] * c) for k, c in counts.items() if c > 0]
+    factors = [
+        ReadinessFactor(k, counts[k], round(CAPS[k] * shares[k], 1))
+        for k in counts
+        if counts[k] > 0 and shares[k] > 0
+    ]
     # Round half up (not banker's rounding) so the score matches the UI's Math.round.
     score = int(max(0.0, min(100.0, 100.0 - sum(f.points for f in factors))) + 0.5)
     if overdue:

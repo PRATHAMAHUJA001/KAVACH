@@ -1,28 +1,28 @@
 {
   "readiness_score": {
-    "score": 69.0,
+    "score": 77.0,
     "reason": "4 reports are overdue and 3 more are due within 48 hours.",
     "reason_hi": "4 रिपोर्ट की समय सीमा निकल चुकी है और 3 और 48 घंटों में देय हैं।",
     "factors": [
       {
         "key": "overdue",
         "count": 4,
-        "points": 16.0
+        "points": 4.5
       },
       {
         "key": "due_soon",
         "count": 3,
-        "points": 6.0
+        "points": 1.5
       },
       {
         "key": "rules_pending",
         "count": 10,
-        "points": 5.0
+        "points": 10.0
       },
       {
         "key": "conflicts",
         "count": 9,
-        "points": 4.5
+        "points": 6.8
       }
     ]
   },

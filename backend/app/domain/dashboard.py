@@ -43,6 +43,8 @@ class AlertCounts:
     money_at_risk_week_ago_inr: float = 0.0
     overdue: int = 0
     due_48h: int = 0
+    #: All unresolved reports — the denominator for the deadline share of readiness.
+    open_reports: int = 0
 
 
 @dataclass
@@ -64,6 +66,8 @@ class DashboardFacts:
     active_rings_week_ago: int = 0
     pending_rules: int = 0
     first_pending_rule_id: str | None = None
+    #: Every compiled rule — the denominator for the rulebook share of readiness.
+    total_rules: int = 0
     open_conflicts: int = 0
     first_open_conflict_id: str | None = None
     week: WeekSummary = field(default_factory=WeekSummary)

@@ -21,6 +21,6 @@ def test_home_contract_and_sample():
     assert res.status_code == 200
     body = res.json()
     assert set(body) >= {"readiness_score", "top_alerts", "trend", "kpis", "attention", "weekly_brief", "as_of"}
-    assert body["readiness_score"]["factors"][0] == {"key": "overdue", "count": 4, "points": 16.0}
+    assert body["readiness_score"]["factors"][0] == {"key": "overdue", "count": 4, "points": 4.5}
     SAMPLES.mkdir(exist_ok=True)
     (SAMPLES / "home.json").write_text(json.dumps(body, ensure_ascii=False, indent=2))

@@ -33,11 +33,42 @@ def test_deadline_bands():
 
 
 def test_readiness_explains_itself():
-    r = readiness(overdue=4, due_soon=3, rules_pending=10, conflicts=9)
-    assert r.score == 69  # 100 - 16 - 6 - 5 - 4.5 = 68.5, rounded half up
+    # 4 of 40 reports overdue and 3 due soon; 10 of 20 rules pending, 9 conflicts.
+    # overdue 45*0.1=4.5 · due_soon 20*0.075=1.5 · pending 20*0.5=10 · conflicts 15*0.45=6.75
+    r = readiness(overdue=4, due_soon=3, rules_pending=10, conflicts=9, open_reports=40, total_rules=20)
+    assert r.score == 77  # 100 - 22.8 = 77.2, rounded half up
     assert [f.key for f in r.factors] == ["overdue", "due_soon", "rules_pending", "conflicts"]
     assert r.reason_en == "4 reports are overdue and 3 more are due within 48 hours."
     assert readiness(0, 0, 0, 0).reason_en == "All reports are on time."
+
+
+def test_readiness_is_bounded_by_share_not_volume():
+    """A big backlog must not saturate the score: what matters is the share behind.
+
+    Scoring raw counts sent the real 8,407-report book to 0 out of 100 and kept it
+    there, which told a reviewer nothing about whether clearing work helped."""
+    small = readiness(overdue=50, due_soon=10, rules_pending=2, conflicts=1, open_reports=100, total_rules=20)
+    # The same proportions over a book 100x larger must score the same.
+    large = readiness(overdue=5000, due_soon=1000, rules_pending=2, conflicts=1, open_reports=10_000, total_rules=20)
+    assert small.score == large.score
+
+    # Everything outstanding is the floor, and it is still a usable number, not 0.
+    worst = readiness(overdue=10, due_soon=0, rules_pending=5, conflicts=5, open_reports=10, total_rules=5)
+    assert worst.score == 100 - int(45 + 20 + 15)  # due_soon contributes nothing at 0
+    assert worst.score > 0
+
+    # Clearing the backlog has to move the number.
+    assert readiness(1, 0, 0, 0, open_reports=100, total_rules=19).score > \
+           readiness(90, 0, 0, 0, open_reports=100, total_rules=19).score
+
+
+def test_readiness_without_denominators_does_not_invent_a_score():
+    """No population means nothing outstanding to answer for, so no penalty is charged
+    rather than a penalty computed against a denominator that was never supplied."""
+    assert readiness(overdue=5, due_soon=5, rules_pending=5, conflicts=5).score == 100
+    assert readiness(overdue=5, due_soon=5, rules_pending=5, conflicts=5).factors == []
+    # A count larger than its population clamps instead of overshooting the cap.
+    assert readiness(overdue=500, due_soon=0, rules_pending=0, conflicts=0, open_reports=10).score == 55
 
 
 def test_risk_level_prefers_severity():

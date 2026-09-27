@@ -22,7 +22,7 @@ def test_builds_kpis_and_attention():
 
 def test_readiness_and_brief_are_bilingual():
     view = HomeService(FakeDashboardRepository()).build()
-    assert view.readiness_score["score"] == 69
+    assert view.readiness_score["score"] == 77
     assert view.readiness_score["reason_hi"]
     assert "1 of them has been confirmed" in view.weekly_brief["text"]
     assert "करोड़" in view.weekly_brief["text_hi"]

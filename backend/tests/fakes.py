@@ -25,7 +25,7 @@ def sample_facts(now: datetime = AS_OF) -> DashboardFacts:
 
     return DashboardFacts(
         as_of=now,
-        counts=AlertCounts(new_24h=14, new_same_day_last_week=7, serious_new_24h=9, money_at_risk_inr=2.9e8, money_at_risk_week_ago_inr=2.6e8, overdue=4, due_48h=3),
+        counts=AlertCounts(new_24h=14, new_same_day_last_week=7, serious_new_24h=9, money_at_risk_inr=2.9e8, money_at_risk_week_ago_inr=2.6e8, overdue=4, due_48h=3, open_reports=40),
         urgent=[alert(1, 20), alert(2, 12, "MULE_RING")],
         due_soon=[alert(3, 8, "ACCOUNT_TAKEOVER")],
         trend=[TrendRow(day=(now - timedelta(days=29 - i)).date(), alert_count=i % 9, confirmed_fraud=i % 3) for i in range(30)],
@@ -36,6 +36,7 @@ def sample_facts(now: datetime = AS_OF) -> DashboardFacts:
         active_rings_week_ago=1,
         pending_rules=10,
         first_pending_rule_id="RL-1",
+        total_rules=20,
         open_conflicts=9,
         first_open_conflict_id="CONF-1",
         week=WeekSummary(alerts=62, amount_inr=2.65e8, confirmed_fraud=1, top_typology="RAPID_PASSTHROUGH"),

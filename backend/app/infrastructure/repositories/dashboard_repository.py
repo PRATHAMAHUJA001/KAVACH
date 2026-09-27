@@ -88,7 +88,8 @@ class SnowflakeDashboardRepository(DashboardRepository):
               COALESCE(SUM(IFF({_OPEN}, t.amount_inr, 0)), 0) AS money_open,
               COALESCE(SUM(IFF({_OPEN} AND a.created_at <= ?, t.amount_inr, 0)), 0) AS money_week_ago,
               COUNT_IF({_OPEN} AND a.created_at < ?) AS overdue,
-              COUNT_IF({_OPEN} AND a.created_at >= ? AND a.created_at < ?) AS due_48h
+              COUNT_IF({_OPEN} AND a.created_at >= ? AND a.created_at < ?) AS due_48h,
+              COUNT_IF({_OPEN}) AS open_reports
             {_ALERT_JOINS}
             """,
             [day_ago, now, week_ago - timedelta(days=1), week_ago, day_ago, now, week_ago, overdue_before, overdue_before, due_48h_before],
@@ -101,6 +102,7 @@ class SnowflakeDashboardRepository(DashboardRepository):
             money_at_risk_week_ago_inr=float(c["MONEY_WEEK_AGO"]),
             overdue=int(c["OVERDUE"]),
             due_48h=int(c["DUE_48H"]),
+            open_reports=int(c["OPEN_REPORTS"]),
         )
 
         # Report deadlines grow with created_at, so the oldest open alerts are the most urgent.
@@ -154,7 +156,12 @@ class SnowflakeDashboardRepository(DashboardRepository):
         ]
 
         rules = self._one(
-            "SELECT COUNT(*) AS n, MIN(rule_id) AS first_id FROM RULES.RULE_LIBRARY WHERE status = 'PENDING_APPROVAL'"
+            """
+            SELECT COUNT_IF(status = 'PENDING_APPROVAL') AS n,
+                   MIN(IFF(status = 'PENDING_APPROVAL', rule_id, NULL)) AS first_id,
+                   COUNT(*) AS total
+            FROM RULES.RULE_LIBRARY
+            """
         )
         conflicts = self._one(
             "SELECT COUNT(*) AS n, MIN(conflict_id) AS first_id FROM RULES.RULE_CONFLICTS WHERE status = 'OPEN'"
@@ -180,6 +187,7 @@ class SnowflakeDashboardRepository(DashboardRepository):
             active_rings_week_ago=sum(1 for r in rings if r.detected_at is None or r.detected_at <= week_ago),
             pending_rules=int(rules["N"]) if rules else 0,
             first_pending_rule_id=rules["FIRST_ID"] if rules else None,
+            total_rules=int(rules["TOTAL"]) if rules else 0,
             open_conflicts=int(conflicts["N"]) if conflicts else 0,
             first_open_conflict_id=conflicts["FIRST_ID"] if conflicts else None,
             week=WeekSummary(
