@@ -79,7 +79,7 @@ class GraphNodeFact:
     kind: str  # subject | member | external
     city: Optional[str] = None
     alert_id: Optional[str] = None
-    role: Optional[str] = None  # collector | mule | exit
+    role: Optional[str] = None  # collector | mule | exit | loop
     money_in_inr: Optional[float] = None
     money_out_inr: Optional[float] = None
 
@@ -179,13 +179,21 @@ class UploadJob:
 
 @dataclass
 class Ring:
-    """Mule ring entity"""
+    """A group of accounts the graph detector found working together.
+
+    Two shapes are planted and both surface here: a collection ring (collector ->
+    mules -> exit) and a round-trip loop that closes back on its origin. `ring_kind`
+    says which, so neither gets described in the other's language.
+    """
     ring_id: str
     ring_name: str
     member_count: int
     total_volume_inr: float
     risk_score: float
     status: str
+    ring_kind: str = "mule"  # mule | round_trip
+    hops: Optional[int] = None
+    loop_path: Optional[List[str]] = None  # round_trip only: [A, B, C, A]
     confidence: Optional[str] = None
     speed_hours: Optional[float] = None
     detected_at: Optional[datetime] = None

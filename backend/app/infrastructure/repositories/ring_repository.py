@@ -29,6 +29,24 @@ _RING_TXNS = """
 _RING_SELECT = f"""
     WITH rt AS ({_RING_TXNS}),
     vol AS (SELECT ring_id, SUM(IFF(direction = 'DEBIT', amount_inr, 0)) AS volume FROM rt GROUP BY ring_id),
+    -- Direction of each member's internal edges, used to tell the two ring shapes apart.
+    internal AS (
+        SELECT ring_id, account_id,
+               SUM(IFF(direction = 'CREDIT', 1, 0)) AS in_edges,
+               SUM(IFF(direction = 'DEBIT', 1, 0)) AS out_edges
+        FROM rt GROUP BY ring_id, account_id
+    ),
+    shape AS (
+        SELECT ring_id,
+               COUNT(*) AS on_edges,
+               SUM(IFF(in_edges > 0 AND out_edges = 0, 1, 0)) AS terminal_receivers,
+               SUM(IFF(out_edges > 0 AND in_edges = 0, 1, 0)) AS pure_senders
+        FROM internal GROUP BY ring_id
+    ),
+    hops AS (
+        SELECT ring_id, COUNT(DISTINCT account_id || '>' || counterparty) AS hops
+        FROM rt WHERE direction = 'DEBIT' GROUP BY ring_id
+    ),
     speed AS (
         -- hours from money arriving in a member account to the next payment out of it
         SELECT ring_id, MEDIAN(DATEDIFF('minute', txn_ts, next_debit)) / 60 AS hours
@@ -50,12 +68,55 @@ _RING_SELECT = f"""
     )
     SELECT r.ring_id, r.ring_size, r.alerted_members, r.shared_devices, r.ring_score,
            r.confidence_label, r.detected_at, COALESCE(vol.volume, 0) AS volume, speed.hours, city.city,
+           shape.on_edges, shape.terminal_receivers, shape.pure_senders, hops.hops,
            COUNT(*) OVER () AS total_count
     FROM CORE.RINGS r
     LEFT JOIN vol ON vol.ring_id = r.ring_id
     LEFT JOIN speed ON speed.ring_id = r.ring_id
     LEFT JOIN city ON city.ring_id = r.ring_id
+    LEFT JOIN shape ON shape.ring_id = r.ring_id
+    LEFT JOIN hops ON hops.ring_id = r.ring_id
 """
+
+
+def _ring_kind(on_edges: int, terminal_receivers: int, pure_senders: int) -> str:
+    """Which of the two planted shapes this ring is, read off its internal edges.
+
+    A collection ring has one account that only pays in (the collector) and one that
+    only takes in (the exit). A round-trip loop is closed, so every member both sends
+    and receives and neither end exists. Derived from the flows, so it stays correct
+    if the data is regenerated -- nothing is keyed off ring ids.
+    """
+    if on_edges >= 3 and terminal_receivers == 0 and pure_senders == 0:
+        return "round_trip"
+    return "mule"
+
+
+def _loop_path(edges: list[GraphEdgeFact]) -> list[str]:
+    """Walk the money edges once round the loop, e.g. [A, B, C, D, A].
+
+    Starts at the lowest account id so the same loop always renders the same way.
+    Returns [] if the edges do not in fact close a cycle.
+    """
+    nxt: dict[str, str] = {}
+    for e in edges:
+        if e.kind == "sent_money":
+            nxt.setdefault(e.source, e.target)
+    if not nxt:
+        return []
+    start = min(nxt)
+    path = [start]
+    seen = {start}
+    node = start
+    while node in nxt:
+        node = nxt[node]
+        path.append(node)
+        if node == start:
+            return path
+        if node in seen:
+            return []
+        seen.add(node)
+    return []
 
 
 def _edge_kind(edge_type: str | None) -> str | None:
@@ -82,6 +143,8 @@ class SnowflakeRingRepository(RingRepository):
         return Ring(
             ring_id=r['RING_ID'],
             ring_name=policies.ring_name(r['RING_ID']),
+            ring_kind=_ring_kind(int(r['ON_EDGES'] or 0), int(r['TERMINAL_RECEIVERS'] or 0), int(r['PURE_SENDERS'] or 0)),
+            hops=int(r['HOPS']) if r['HOPS'] is not None else None,
             member_count=int(r['RING_SIZE'] or 0),
             total_volume_inr=float(r['VOLUME'] or 0),
             risk_score=float(r['RING_SCORE'] or 0),
@@ -142,7 +205,7 @@ class SnowflakeRingRepository(RingRepository):
             params=[ring_id, ring_id],
         ).collect()
         money = {m['ACCOUNT_ID']: (float(m['MONEY_IN'] or 0), float(m['MONEY_OUT'] or 0)) for m in members}
-        roles = policies.ring_roles(money)
+        roles = policies.ring_roles(money, ring.ring_kind)
         # Members without an open alert take the ring's own risk band.
         ring_risk = {"HIGH": 4, "MEDIUM": 3}.get((ring.confidence or "").upper(), 2)
         nodes = [
@@ -177,6 +240,9 @@ class SnowflakeRingRepository(RingRepository):
                 a, b = sorted((e['ACCOUNT_A'], e['ACCOUNT_B']))
                 prev = edges.get((a, b, kind))
                 edges[(a, b, kind)] = GraphEdgeFact(a, b, kind, count=(prev.count or 0) + 1 if prev else 1)
+
+        if ring.ring_kind == "round_trip":
+            ring.loop_path = _loop_path(list(edges.values()))
 
         txns = self.session.sql(
             f"""

@@ -25,6 +25,11 @@ class RingResponse(BaseModel):
     total_volume_inr: float
     risk_score: float
     status: str
+    #: "mule" = collector -> mules -> exit; "round_trip" = closed loop back to origin.
+    ring_kind: Literal["mule", "round_trip"] = "mule"
+    hops: Optional[int] = None
+    #: round_trip only: the loop in order, e.g. ["ACC1", "ACC2", "ACC3", "ACC1"].
+    loop_path: Optional[List[str]] = None
     ring_name_hi: Optional[str] = None
     confidence: Optional[str] = None
     speed_hours: Optional[float] = None
@@ -48,7 +53,7 @@ class RingMemberResponse(BaseModel):
     label: str
     risk_level: int
     kind: Literal["subject", "member", "external"]
-    role: Optional[Literal["collector", "mule", "exit"]] = None
+    role: Optional[Literal["collector", "mule", "exit", "loop"]] = None
     city: Optional[str] = None
     alert_id: Optional[str] = None
     money_in_inr: Optional[float] = None
@@ -82,6 +87,9 @@ def to_ring_response(r: Ring) -> RingResponse:
         total_volume_inr=r.total_volume_inr,
         risk_score=r.risk_score,
         status=r.status,
+        ring_kind="round_trip" if r.ring_kind == "round_trip" else "mule",
+        hops=r.hops,
+        loop_path=r.loop_path,
         confidence=r.confidence,
         speed_hours=r.speed_hours,
         detected_at=r.detected_at.isoformat() if r.detected_at else None,
@@ -97,7 +105,8 @@ async def list_rings(
     page_size: int = Query(20, ge=1, le=100),
     service: RingService = Depends(get_ring_service),
 ):
-    """List mule rings, most suspicious first"""
+    """List rings, most suspicious first. `ring_kind` distinguishes collection rings
+    from round-trip loops -- both shapes are planted and they read differently."""
     try:
         rings, total, total_pages = service.list_rings(page=page, page_size=page_size)
         return RingListResponse(rings=[to_ring_response(r) for r in rings], total=total, page=page, page_size=page_size, total_pages=total_pages)

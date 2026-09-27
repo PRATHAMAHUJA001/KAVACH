@@ -85,7 +85,7 @@ export interface GraphNode {
   label: Text;
   riskLevel: RiskLevel;
   kind: "subject" | "member" | "external";
-  role?: "collector" | "mule" | "exit";
+  role?: "collector" | "mule" | "exit" | "loop";
   city?: string;
   alertId?: string | null;
   moneyIn?: number;
@@ -300,6 +300,12 @@ export interface Ring {
   volume: number;
   riskLevel: RiskLevel;
   status: string;
+  /** Which shape this is: a collection ring, or a loop that returns to its origin. */
+  kind: "mule" | "round_trip";
+  /** Distinct account-to-account transfer legs inside the ring. */
+  hops: number | null;
+  /** round_trip only: the loop in order, first account repeated at the end. */
+  loopPath: string[] | null;
   confidence: "HIGH" | "MEDIUM" | "LOW" | null;
   speedHours: number | null;
   detectedAt: string | null;

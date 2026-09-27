@@ -1,4 +1,4 @@
-import { Timer, Users } from "lucide-react";
+import { RotateCcw, Timer, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Chip, Money, Skeleton, type Tone } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
@@ -40,6 +40,7 @@ export function RingCards({ rings, selected, onSelect }: { rings: Ring[] | undef
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
+                <p className="truncate text-small font-medium uppercase tracking-wide text-muted">{t(`rings.kind.${r.kind}`)}</p>
                 <p className="truncate font-semibold text-fg">{f.text(r.name)}</p>
                 {r.city && <p className="truncate text-small text-muted">{f.text(r.city)}</p>}
               </div>
@@ -51,6 +52,12 @@ export function RingCards({ rings, selected, onSelect }: { rings: Ring[] | undef
                 <Users className="size-3.5" aria-hidden />
                 {t("rings.members", { count: r.memberCount })}
               </span>
+              {r.kind === "round_trip" && r.hops != null && (
+                <span className="inline-flex items-center gap-1">
+                  <RotateCcw className="size-3.5" aria-hidden />
+                  {t("rings.loopSummary", { count: r.hops })}
+                </span>
+              )}
               {r.speedHours != null && (
                 <span className="inline-flex items-center gap-1">
                   <Timer className="size-3.5" aria-hidden />

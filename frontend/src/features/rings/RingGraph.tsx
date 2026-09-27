@@ -20,7 +20,7 @@ const RISK_CLS: Record<number, string> = {
   4: "border-danger bg-danger-soft",
   5: "border-danger bg-danger-soft",
 };
-const ROLE_ORDER = { collector: 0, mule: 1, exit: 2 } as const;
+const ROLE_ORDER = { collector: 0, mule: 1, loop: 1, exit: 2 } as const;
 /** Node circle diameter (size-11) and the gap between neighbours on the ring. */
 const DOT = 44;
 const STEP = 200;

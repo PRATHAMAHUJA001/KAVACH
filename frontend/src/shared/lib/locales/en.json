@@ -680,7 +680,7 @@
     "stopped": "You stopped this answer."
   },
   "rings": {
-    "listLabel": "Mule rings",
+    "listLabel": "Account rings",
     "empty": "No groups of accounts working together were found.",
     "confidence": {
       "HIGH": "Very likely",
@@ -698,7 +698,8 @@
     "role": {
       "collector": "Collector — receives the money first",
       "mule": "Mule — passes money on",
-      "exit": "Exit — sends the money out"
+      "exit": "Exit — sends the money out",
+      "loop": "Loop hop — money passes through and carries on round"
     },
     "moneyIn": "Received {{amount}}",
     "moneyOut": "Sent {{amount}}",
@@ -730,14 +731,26 @@
     "roleShort": {
       "collector": "Collector",
       "mule": "Mule",
-      "exit": "Exit"
+      "exit": "Exit",
+      "loop": "Loop hop"
     },
     "show": {
       "label": "Links to show",
       "money": "Money",
       "shared": "Shared phone/device/IP",
       "both": "Both"
-    }
+    },
+    "kind": {
+      "mule": "Collection ring",
+      "round_trip": "Round trip"
+    },
+    "kindHint": {
+      "mule": "Money is collected from victims, passed through mules, then taken out",
+      "round_trip": "Money travels a closed loop and comes back to the account it started from"
+    },
+    "loopSummary_one": "returns to the start after {{count}} hop",
+    "loopSummary_other": "returns to the start after {{count}} hops",
+    "loopPathLabel": "Path of the loop"
   },
   "rulebook": {
     "readOnly": "Read-only access: you can review rules but not approve, reject or upload.",

@@ -31,6 +31,11 @@ export default function RingsPage() {
     );
 
   const ring = detail.data?.ring ?? rings.data?.find((r) => r.id === selected);
+  // A round-trip loop has no collector and no exit, so name the accounts in the order
+  // the money travels instead of leaving the reader to guess a hierarchy that isn't there.
+  const nameOf = new Map((detail.data?.graph.nodes ?? []).map((n) => [n.id, f.text(n.label)]));
+  const loopPath =
+    ring?.kind === "round_trip" && ring.loopPath?.length ? ring.loopPath.map((id) => nameOf.get(id) ?? id).join(" → ") : null;
   return (
     <div className="space-y-6">
       <RingCards rings={rings.data} selected={selected} onSelect={select} />
@@ -40,7 +45,8 @@ export default function RingsPage() {
           subtitle={
             ring ? (
               <>
-                {t("rings.summary", { count: ring.memberCount })} <Money amount={ring.volume} focusable={false} className="font-medium text-fg" />
+                {t(`rings.kindHint.${ring.kind}`)} · {t("rings.summary", { count: ring.memberCount })}{" "}
+                <Money amount={ring.volume} focusable={false} className="font-medium text-fg" />
                 {ring.speedHours != null && <> · {speedText(ring.speedHours, t)}</>}
               </>
             ) : undefined
@@ -66,6 +72,11 @@ export default function RingsPage() {
           <RingGraph key={selected} graph={detail.data.graph} show={show} />
         ) : (
           <Skeleton className="h-[520px] rounded-xl" />
+        )}
+        {loopPath && (
+          <p className="mt-3 text-small text-fg">
+            <span className="font-medium">{t("rings.loopPathLabel")}:</span> {loopPath}
+          </p>
         )}
         <p className="mt-3 text-small text-muted">{t("rings.graphHint")}</p>
       </Card>

@@ -123,7 +123,7 @@ export interface GraphNodeDTO {
   label_hi?: string;
   risk_level: RiskLevelDTO;
   kind: "subject" | "member" | "external";
-  role?: "collector" | "mule" | "exit";
+  role?: "collector" | "mule" | "exit" | "loop";
   city?: string;
   alert_id?: string | null;
   money_in_inr?: number;
@@ -363,6 +363,12 @@ export interface RingExt {
   city: string;
   city_hi: string;
   ring_name_hi: string;
+  /** "mule" = collector → mules → exit. "round_trip" = closed loop back to the origin. */
+  ring_kind: "mule" | "round_trip";
+  /** Distinct account-to-account transfer legs inside the ring. */
+  hops: number;
+  /** round_trip only: the loop in order, first account repeated at the end. */
+  loop_path: string[];
 }
 export type RingDTO = S["RingResponse"] & Partial<RingExt>;
 export type RingListDTO = Omit<S["RingListResponse"], "rings"> & { rings: RingDTO[] };
