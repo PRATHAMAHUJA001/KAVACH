@@ -67,6 +67,57 @@ Snowflake control-plane work goes through `deploy/snowctl.py`, a thin Snowpark
 wrapper. If you install the `snow` CLI later, `snow spcs image-registry login`
 replaces the `docker login` line in `redeploy.sh` — nothing else changes.
 
+### Snowflake Marketplace listings — required before `sql/03_ref_views.sql`
+
+Not all reference data is synthetic. `sql/03_ref_views.sql` builds secure views
+straight on top of **free Marketplace shares**, so that script fails on a fresh
+account until the listings below are mounted under **exactly these database
+names** — the views reference them by name.
+
+You only need this to rebuild the database. A redeploy of the container does not
+touch it.
+
+| Listing | Global name | Must mount as | Status here | Used by |
+| --- | --- | --- | --- | --- |
+| Snowflake Public Data (Free) | `GZTSZ290BV255` | `SNOWFLAKE_PUBLIC_DATA_FREE` | **mounted — required** | `REF.FX_RATES` (72,010 rows) ← `PUBLIC_DATA_FREE.FX_RATES_TIMESERIES` |
+| IPinfo Lite | `GZSTZSHKQ55S` | `IPINFO_LITE` | **mounted — required** | `REF.IP_GEO_IPINFO` (911,429 rows) ← `IPINFO_LITE.PUBLIC.LITE` |
+| IP2Location LITE IP-COUNTRY | `GZTSZ3VACRL` | `IP2LOCATION_LITE` | mounted, **optional** | fallback IP→country; nothing references it today |
+| Country Dimension (native app) | `GZTSZ25YL0A` | `COUNTRY_DIMENSION` | **not installed** | `REF.COUNTRY_DIM` — which is why that view does not exist |
+
+Acquire them with SQL:
+
+```sql
+USE ROLE ACCOUNTADMIN;
+CREATE DATABASE IF NOT EXISTS SNOWFLAKE_PUBLIC_DATA_FREE FROM LISTING 'GZTSZ290BV255';
+CREATE DATABASE IF NOT EXISTS IPINFO_LITE               FROM LISTING 'GZSTZSHKQ55S';
+CREATE DATABASE IF NOT EXISTS IP2LOCATION_LITE          FROM LISTING 'GZTSZ3VACRL';   -- optional
+-- Country Dimension is a native app, not a share:
+CREATE APPLICATION COUNTRY_DIMENSION FROM LISTING 'GZTSZ25YL0A';                      -- optional
+
+SHOW DATABASES;  -- confirm kind = IMPORTED DATABASE for the three shares
+```
+
+If `FROM LISTING` is rejected (listing not available in your region, or terms not
+accepted), click **Get** on the listing in the Snowsight Marketplace UI instead
+and set the database name in that dialog. There is no `snow` CLI here to do it.
+
+Three things that will bite you:
+
+- **The mounted name matters, not the listing title.** On this account IP2Location
+  defaulted to `IP2LOCATION_LITE_IPCOUNTRY_DATABASE`, not the `IP2LOCATION_LITE`
+  that `sql/03_ref_views.sql` documents. Rename at mount time or the view breaks.
+- **Region availability differs.** This account is `AWS_AP_SOUTHEAST_7`. A listing
+  present there may not exist in another region.
+- **No free sanctions/PEP/watchlist listing exists in this region**, so
+  `REF.WATCHLIST` (27 rows) and `REF.COUNTRY_RISK` (42 rows) are **synthetic** —
+  OFAC/UN-style patterns with clearly fake names, and FATF grey/black-list plus
+  Transparency International CPI *methodology* rather than their data. Do not
+  present either as real sanctions data. `REF.GEO_INDIA` and `REF.IP_GEO` are
+  synthetic too.
+
+`docs/DATASETS.md` has the fuller inventory but is gitignored, so this table is
+the version that travels with the repo.
+
 ### Credentials
 
 `backend/.env` is required and is **not** in git. Recreate it as:
@@ -153,7 +204,7 @@ new one is pulling, so you would declare success on the previous build. Expect
 | `deploy/spec.yaml` | SPCS service spec — container, env, secret, probe, resources, public endpoint |
 | `backend/app/` | FastAPI. `presentation/api/v1/*` routers, `infrastructure/repositories/*` SQL |
 | `frontend/src/` | React + Vite + Tailwind. `features/<area>/` per screen |
-| `sql/01..12_*.sql` | Ordered schema/data/rules/ML/AI build scripts |
+| `sql/01..12_*.sql` | Ordered schema/data/rules/ML/AI build scripts. `03_ref_views.sql` depends on mounted Marketplace shares |
 | `snowpark/` | Model training and scoring |
 | `skills/*/SKILL.md` | CoCo skills shipped with the project |
 | `ops_console/` | Streamlit ops console (built, **not** deployed) |
@@ -162,8 +213,10 @@ new one is pulling, so you would declare success on the previous build. Expect
 
 ### Rebuilding the whole database from scratch
 
-Only if you have credits and a reason. Run `sql/01_*.sql` → `sql/12_*.sql` in
-order, then the Snowpark training job. Budget several hours; the synthetic data
+Only if you have credits and a reason. **Mount the Marketplace listings first**
+(see [§2](#snowflake-marketplace-listings--required-before-sql03_ref_viewssql)) or
+`sql/03_ref_views.sql` fails on a fresh account. Then run `sql/01_*.sql` →
+`sql/12_*.sql` in order, followed by the Snowpark training job. Budget several hours; the synthetic data
 generation is the slow part. Do **not** do this to fix a small problem — clone
 first (`CREATE DATABASE X CLONE KAVACH_DB`, zero-copy and instant) and mutate the
 clone.
