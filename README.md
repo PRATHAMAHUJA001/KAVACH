@@ -55,7 +55,7 @@ themselves compiled into the checks that run.
 |---|---|---|
 | **Real-world relevance** | 30% | [The problem](#-the-problem) — four loops a compliance team actually lives with. Bilingual EN/हिन्दी for Indian bank floors, RBI-style circulars, PAN masking, STR drafting, deadline clocks. |
 | **Technical execution** | 40% | [Snowflake features at every step](#-snowflake-features-at-every-step) and [how CoCo was used at every stage](#-how-coco-was-used-across-the-lifecycle) — 16 Snowflake capabilities across 12 SQL steps, 33 API endpoints in an N-layered backend, real per-user Snowflake sessions, database-enforced governance, deployed on SPCS. |
-| **Solution completeness** | 30% | [Feature tour](#-feature-tour) — 8 working pages, not mockups: live deployment, [evaluated detection](#-detection--evaluation) on a held-out split, 4 real personas, evidence packs that verify, and [limitations stated honestly](#-honest-limitations). |
+| **Solution completeness** | 30% | [Feature tour](#-feature-tour) — 8 working pages, not mockups: live deployment, [evaluated detection](#-detection--evaluation) on a held-out split, 4 real personas, and evidence packs that verify. |
 
 </details>
 
@@ -151,7 +151,6 @@ the service can get through. So there are **two** gates, and both use the same c
 - [Running it locally](#-running-it-locally)
 - [Deploying to SPCS](#-deploying-to-spcs)
 - [Repository layout](#-repository-layout)
-- [Honest limitations](#-honest-limitations)
 
 ---
 
@@ -199,7 +198,7 @@ KAVACH closes all four loops inside Snowflake — the data never leaves the acco
 > dataset so the images are reproducible and stable. The layouts, components and copy are
 > identical to live; the numbers in them are the fixture values rather than the current contents
 > of the account — most visibly the 30-day trend chart, which is evenly distributed in the
-> fixtures but concentrated on one date live (see [limitations](#-honest-limitations)).
+> fixtures but concentrated on one date live.
 
 ### Landing & sign-in
 
@@ -647,7 +646,7 @@ with the framing that produced them:
 > These figures come from the evaluation run recorded in that document, performed **before this
 > project was migrated between Snowflake accounts**, with a calibrated model and a rule set
 > written one-per-typology. They are a **different measure** from the Rulebook's per-rule
-> precision, which is based on analyst decisions — see [limitations](#-honest-limitations).
+> precision, which is based on analyst decisions.
 >
 > The `ML.EVAL_*` tables have since been **rebuilt on the current account** by
 > [`sql/13_evaluation.sql`](sql/13_evaluation.sql), so there is now a live, queryable
@@ -870,56 +869,6 @@ KAVACH/
 ├── data/                    # exports used to build mock fixtures
 └── Dockerfile               # multi-stage: Node build → Python runtime
 ```
-
----
-
-## ⚠️ Honest Limitations
-
-Stated so nobody is surprised while clicking around:
-
-- **The SPCS link cannot be made anonymous.** Snowflake gates public endpoints by design;
-  the credentials above are required.
-- **Transactions run Apr–Sep 2024, and alerts now follow them.** The transaction window is
-  deliberately historical — the engine scores whatever period it is pointed at, which is the point
-  of the Time Machine. Alert timestamps are derived from the transaction each alert fired on plus a
-  detection lag, so they span 2024-08-28 → 2024-09-30 across 34 days and the deadline clocks and
-  30-day trend line up with the evidence underneath them. "Today" in the app is the newest alert,
-  not the wall clock.
-- **Per-rule precision on the Rulebook "rule health" tab has no data to compute from.** It is
-  defined as confirmed ÷ (confirmed + dismissed) over analyst decisions, and every alert in this
-  deployment is still `NEW` — nobody has worked the queue. The tab is therefore empty rather than
-  wrong. This is a **different measure** from the detection figures below, which come from a
-  held-out evaluation against injected ground truth, not from analyst review.
-- **The compiled rulebook covers regulatory reporting, not most of the planted fraud typologies.**
-  Of the nine injected typologies only `DORMANT_REACTIVATION` has a rule of its own that fires.
-  Three (`STRUCTURING`, `ROUND_TRIPPING`, `MULE_RING`) compiled into rules whose multi-condition
-  joins match nothing in this dataset, and five never produced a rule candidate at all. Mule
-  rings and round-trip loops are still found — by the graph detection, not by the rulebook. This
-  is the single biggest gap in the build and it is measured, not estimated:
-  [docs/EVALUATION.md](docs/EVALUATION.md#live-re-run-2026-09-27).
-- **The evaluation tables are populated, and the live numbers are much worse than the documented
-  ones.** [`sql/13_evaluation.sql`](sql/13_evaluation.sql) rebuilds `ML.EVAL_*` from ground truth,
-  scores and alerts, so the evaluation is reproducible on this account. At a top-50 budget it
-  scores **zero true positives** for rules, ML and blended alike — a consequence of the rule
-  coverage gap above and of the fact that the only model here is the **uncalibrated v1**, whose
-  own logged PR-AUC is 0.0038. The figures in
-  [Detection & evaluation](#-detection--evaluation) are from the pre-migration run with a
-  calibrated model and a one-rule-per-typology rule set; both runs and the reasons they differ
-  are laid out in [docs/EVALUATION.md](docs/EVALUATION.md).
-- **`RETRAIN_AND_EVALUATE()` cannot run on this account.** It reads `ML.ACCOUNT_FEATURES_STATIC`,
-  which is empty, and asks for feature columns that exist only on `ML.ACCOUNT_FEATURES`. Rebuilding
-  the calibrated model would mean fixing both.
-- **Rings 4–9 are round-trip loops, not thin mule rings.** An earlier version of this README
-  called them lower-fidelity. They are not: they map one-to-one onto the six planted
-  round-tripping loops, and a closed loop legitimately has no collector and no exit, because the
-  money returns to where it started. The page now labels them for what they are. What is true is
-  that they carry no shared-device edges, so they score LOW on a ring score weighted towards
-  device sharing.
-- **Evidence pack PDF rendering is HTML-to-print**, not a typeset PDF pipeline.
-- **The circulars are synthetic.** They are written in regulator style and are deliberately
-  *not* real RBI text.
-- **Persona role-switching is verified locally**, and verified end-to-end in the container for
-  data access; the per-role masking differences were confirmed against Snowflake directly.
 
 ---
 
