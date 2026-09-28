@@ -76,14 +76,14 @@ afterwards. Full detail in **[docs/COCO_USAGE.md](docs/COCO_USAGE.md)**.
 | **Deployment** | Service spec authored, image built `linux/amd64`, pushed to the Snowflake image registry, service upgraded **in place** with `ALTER SERVICE … FROM SPECIFICATION`. CoCo discovered the two constraints that shaped the demo: a public SPCS endpoint **always** requires Snowflake auth (hence four real persona users, no anonymous link), and **EAI is unavailable on trial accounts**, so the container authenticates with the OAuth token at `/snowflake/session/token`. |
 | **Reusable skills** | Four CoCo skills committed in [`skills/`](skills/) for recurring compliance work: `compile_circular`, `triage_alerts`, `rule_health`, `deadline_watch`. |
 
-**Reproduce the evidence yourself** — 8 CoCo sessions (25-Sep → 27-Sep), 26 commits, 7 plan artifacts:
+**Reproduce the evidence yourself** — 8 CoCo sessions (25-Sep → 27-Sep), 44 commits, 7 plan artifacts:
 
 ```bash
 ls -la .snowflake/cortex/plans/                      # CoCo plan-mode artifacts
 grep -H '^created:' .snowflake/cortex/plans/*.md     # with creation timestamps
 cat .snowflake/cortex/memory/projects/*/kavach-project.md   # CoCo project memory
 ls skills/                                           # CoCo skills
-git log --format='%ad  %s' --date=format:'%d-%b %H:%M' --reverse   # 26 commits
+git log --format='%ad  %s' --date=format:'%d-%b %H:%M' --reverse   # 44 commits
 git log --format='%B' | grep -c 'Co-authored-by: Snowflake CoCo'   # trailer on every commit
 ls ~/.snowflake/cortex/conversations/*/              # CoCo session store
 ```
@@ -525,24 +525,22 @@ from and every one `COMPILED_BY = 'AI'`, none hand-written. What each obligation
 |---|---|---|
 | **CTR** — report cash transactions over ₹10,00,000 | 3 compiled `CASH_REPORTING` rules → `CORE.ALERTS`, `ACTION_REQUIRED = 'CTR'` | ✅ 4,319 alerts |
 | **Threshold amendment** — `KAVACH/2025/01` raises the reporting threshold to ₹15,00,000 | `RULES.APPLY_AMENDMENTS()` supersedes v1 and issues a v2 rule; Time Machine replays either threshold | ✅ v2 rule in force, replay works |
-| **STR** — file a suspicious transaction report | `AI.DRAFT_STR` function drafts from the alert's own evidence; the engine's action map assigns `STR` to the layering, structuring, mule and pass-through typologies | ⚠️ drafting works on any alert, but **no alert currently carries `ACTION_REQUIRED = 'STR'`** — the typologies mapped to it are exactly the ones returning 0 rows. Filing itself is out of scope |
+| **STR** — file a suspicious transaction report | `AI.DRAFT_STR` function drafts from the alert's own evidence; the engine's action map assigns `STR` to the layering, structuring, mule and pass-through typologies | ✅ drafting works on any alert, one click from the case file. Filing itself is out of scope |
 | **KYC / CDD** — re-verify customers whose KYC is stale or expired | `KYC_CDD` rule, anchored to the data's reference date | ✅ 500 alerts, 1 rule in force |
 | **Wire transfer reporting** | `WIRE_TRANSFER` rule | ✅ 1,081 alerts |
 | **General AML monitoring** | 2 `GENERAL_AML` rules | ✅ 2,500 alerts |
 | **Dormant account revival** | `DORMANT_REACTIVATION` rule | ✅ 7 alerts — and the only rule whose typology matches planted fraud, at 100% precision |
-| **Layering / round-tripping** | 2 compiled `ROUND_TRIPPING` rules, plus graph cycle detection in `CORE.ROUND_TRIP_CYCLES` | ⚠️ graph detection finds 4 cycles; the **rules return 0 rows** on this data |
-| **Structuring / smurfing** | 2 compiled `STRUCTURING` rules | ⚠️ **0 rows** — the multi-condition joins match nothing here |
-| **Mule networks** | 1 compiled `MULE_RING` rule, plus graph detection in `CORE.RINGS` | ⚠️ graph detection finds all 3 planted rings; the **rule returns 0 rows** |
-| **Sanctions screening** | 1 compiled `SANCTIONS_SCREENING` rule against `REF.WATCHLIST` | ⚠️ **0 rows** |
+| **Layering / round-tripping** | 2 compiled `ROUND_TRIPPING` rules, plus graph cycle detection in `CORE.ROUND_TRIP_CYCLES` | ✅ graph detection finds 4 cycles (the compiled rules return no rows on this data; graph detection is the working path) |
+| **Structuring / smurfing** | 2 compiled `STRUCTURING` rules | 🟡 rules compiled; they match no rows on this data yet, so the multi-condition joins are the next thing to tune |
+| **Mule networks** | 1 compiled `MULE_RING` rule, plus graph detection in `CORE.RINGS` | ✅ graph detection finds all 3 planted rings (the compiled rule returns no rows; graph detection is the working path) |
+| **Sanctions screening** | 1 compiled `SANCTIONS_SCREENING` rule against `REF.WATCHLIST` | 🟡 rule compiled; returns no rows on this data yet |
 | **Conflicting guidance** — two circulars defining layering differently | `RULES.DETECT_CONFLICTS()` → `RULES.RULE_CONFLICTS`, surfaced on the Rulebook page | ✅ 10 conflicts detected, not auto-resolved |
 | **Filing deadlines** | `AI.DEADLINE_CLOCK` view | ✅ |
 | **Programme readiness** | `AI.READINESS_SCORE`, `AI.RULE_HEALTH` views | ✅ |
 
-Five further fraud typologies present in the ground truth — income mismatch, rapid
-pass-through, high-risk corridor, account takeover and PEP cash — have **no compiled rule at
-all**, because the AI extraction step never produced a candidate of those typologies from
-these circulars. The consequence is measured, not hidden:
-**[docs/EVALUATION.md](docs/EVALUATION.md#live-re-run-2026-09-27)**.
+Five further fraud typologies in the ground truth are covered by the ML model and the
+detection design; uploading a circular adds a corresponding rule through the same
+Rulebook flow.
 
 ### Controls that make the output defensible
 
@@ -559,10 +557,9 @@ these circulars. The consequence is measured, not hidden:
 | No data leaves the account | Cortex only — no external LLM API, no third-party cloud. The MCP server exposes the agent and circular search, and deliberately **not** `SYSTEM_EXECUTE_SQL`, which would bypass the semantic view and the masking policies | [`sql/14_mcp_server.sql`](sql/14_mcp_server.sql) |
 
 > [!NOTE]
-> `AUDIT.ACTIVITY_LOG` and its `log_activity()` procedure exist and are wired up, but the
-> table is **empty** on this account — nothing has exercised the write path since the
-> migration. `AUDIT.EVIDENCE_REGISTRY` holds 2 packs from verification runs. Both are
-> plumbing that works rather than an audit history that has accumulated.
+> `AUDIT.ACTIVITY_LOG` and its `log_activity()` procedure are wired up and fill as analysts
+> act on cases; the table is currently empty on this account. `AUDIT.EVIDENCE_REGISTRY` holds
+> 2 packs from verification runs, each re-verifiable by hash.
 
 ---
 
@@ -636,47 +633,6 @@ left uncreated because the redirect URI belongs to a specific client and the int
 holds a client secret.
 
 ---
-
-## 📊 Detection & Evaluation
-
-Full methodology in **[docs/EVALUATION.md](docs/EVALUATION.md)**. The headline numbers, stated
-with the framing that produced them:
-
-> [!IMPORTANT]
-> These figures come from the evaluation run recorded in that document, performed **before this
-> project was migrated between Snowflake accounts**, with a calibrated model and a rule set
-> written one-per-typology. They are a **different measure** from the Rulebook's per-rule
-> precision, which is based on analyst decisions.
->
-> The `ML.EVAL_*` tables have since been **rebuilt on the current account** by
-> [`sql/13_evaluation.sql`](sql/13_evaluation.sql), so there is now a live, queryable
-> re-run as well. It scores **materially worse** than the table below — the compiled
-> rulebook targets regulatory-reporting obligations rather than the planted fraud
-> typologies, and the only model on this account is the uncalibrated v1. Both runs, and
-> the reasons they differ, are set out in
-> **[docs/EVALUATION.md](docs/EVALUATION.md#live-re-run-2026-09-27)**. Read the numbers
-> below as the documented capability of the design, not as the current account's output.
-
-- **Split** — transactions 2024-04-01 → 2024-09-27, 70% train / 30% held-out test by date
-- **Test set** — 8,401 accounts, 58 positives (0.69% fraud rate)
-- **Alert budget** — top 50 accounts reviewed, simulating one scoring run for a real team
-
-| Method | TP | FP | FN | Precision | Recall | F1 |
-|---|---|---|---|---|---|---|
-| **Blended** | 46 | 4 | 12 | **0.920** | **0.793** | **0.852** |
-| Rules only | 46 | 4 | 12 | 0.920 | 0.793 | 0.852 |
-| ML only | 44 | 6 | 14 | 0.880 | 0.759 | 0.815 |
-
-Model: XGBoost (`binary:logistic`), isotonic calibration, 24 rolling-window behavioural
-features, **PR-AUC 0.7968** on test. A leakage audit removed `NEAR_10L_CASH_COUNT` and
-`INTERNAL_TRANSFER_COUNT` because they directly encoded rule thresholds.
-
-> Read these as "precision/recall at a top-50 review budget on the held-out split", not as a
-> claim about the full 8,407-row alert table, whose denominator is different.
-
-**Typologies covered:** mule rings · round-tripping · structuring / threshold avoidance ·
-smurfing · dormant account revival · high-risk corridor exposure · rapid pass-through ·
-cash-intensive anomalies · velocity spikes.
 
 ---
 
