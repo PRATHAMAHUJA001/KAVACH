@@ -55,7 +55,7 @@ themselves compiled into the checks that run.
 |---|---|---|
 | **Real-world relevance** | 30% | [The problem](#-the-problem) — four loops a compliance team actually lives with. Bilingual EN/हिन्दी for Indian bank floors, RBI-style circulars, PAN masking, STR drafting, deadline clocks. |
 | **Technical execution** | 40% | [Snowflake features at every step](#-snowflake-features-at-every-step) and [how CoCo was used at every stage](#-how-coco-was-used-across-the-lifecycle) — 16 Snowflake capabilities across 12 SQL steps, 33 API endpoints in an N-layered backend, real per-user Snowflake sessions, database-enforced governance, deployed on SPCS. |
-| **Solution completeness** | 30% | [Feature tour](#-feature-tour) — 8 working pages, not mockups: live deployment, [evaluated detection](#-detection--evaluation) on a held-out split, 4 real personas, and evidence packs that verify. |
+| **Solution completeness** | 30% | [Feature tour](#-feature-tour) — 8 working pages, not mockups: live deployment, explainable alerts, graph detection, 4 real personas, and evidence packs that verify. |
 
 </details>
 
@@ -146,7 +146,6 @@ the service can get through. So there are **two** gates, and both use the same c
 - [Governance](#-governance-personas-are-real)
 - [Compliance: obligations and controls](#-compliance-obligations-and-controls)
 - [MCP: KAVACH as a tool for other agents](#-mcp-kavach-as-a-tool-for-other-agents)
-- [Detection & evaluation](#-detection--evaluation)
 - [Snowflake features at every step](#-snowflake-features-at-every-step)
 - [Running it locally](#-running-it-locally)
 - [Deploying to SPCS](#-deploying-to-spcs)
@@ -821,7 +820,7 @@ KAVACH/
 ├── semantic/                # semantic view definition
 ├── deploy/                  # SPCS service spec + deployment notes
 ├── ops_console/             # Streamlit ops console
-├── docs/                    # architecture, evaluation, design spec, screenshots
+├── docs/                    # architecture, design spec, screenshots
 ├── data/                    # exports used to build mock fixtures
 └── Dockerfile               # multi-stage: Node build → Python runtime
 ```
