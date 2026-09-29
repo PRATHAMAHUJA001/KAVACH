@@ -5,7 +5,7 @@ records exactly what ran where, and — importantly — every claim below is **r
 artifacts committed to this repository**, not from a narrative. Run the commands in
 [Reproduce this yourself](#reproduce-this-yourself) to check any row.
 
-KAVACH was built between **25 September 2026** and **27 September 2026** across **26 commits** and
+KAVACH was built between **25 September 2026** and **27 September 2026** across **45 commits** and
 **8 CoCo sessions**, with **7 CoCo plan-mode artifacts** and **4 CoCo skills** checked into the
 repo as a byproduct of the work.
 
@@ -179,7 +179,7 @@ cat .snowflake/cortex/memory/projects/*/kavach-project.md
 # CoCo skills
 ls skills/
 
-# Full commit history with dates (26 commits, 25-Sep → 27-Sep)
+# Full commit history with dates (45 commits, 25-Sep → 27-Sep)
 git log --format='%ad  %s' --date=format:'%d-%b %H:%M' --reverse
 
 # Every commit carries the CoCo trailer

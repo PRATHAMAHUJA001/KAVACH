@@ -70,7 +70,7 @@ afterwards. Full detail in **[docs/COCO_USAGE.md](docs/COCO_USAGE.md)**.
 | Phase | CoCo evidence |
 |---|---|
 | **Planning / design** | **7 CoCo plan-mode artifacts tracked in git**, written before any DDL ran — `phase-2-synthetic-data` (`2026-09-25T05:31:33Z`), `phase-3-regulation-compiler`, `phase-4-detection-engine` (`09:39:00Z`), `phase-5-conversational-intel` (`11:09:43Z`), `agent-identity-html-evidence` (`14:05:23Z`), `alerts-page-case-drawer` (`20:26:11Z`), `migrate-account-and-build-alerts-page`. CoCo's persistent project memory (`.snowflake/cortex/memory/projects/…/kavach-project.md`) is what let later sessions resume knowing the account topology, roles and cost constraints. |
-| **Execution — building in Snowflake** | Every schema, masking policy, row access policy, procedure, dynamic table, stream, task, Cortex Search service, semantic view and agent in [`sql/`](sql/) was authored **and executed** through CoCo against `ONFHCCI-TV84204`. Sessions: `01fbfb1f` (*KAVACH Phase 1 Foundation Setup*), `04e512ea` (*Finish Checkpoint 1 Phase 6*), `2ec02ea4` (*Finish Phases 6 to 8*), `f780b911` (*Export Snowflake Metadata to Repo*). CoCo's **credit audit** changed the architecture — warehouses to `AUTO_SUSPEND=60` and the dynamic table to `TARGET_LAG = DOWNSTREAM` (commit `CHECKPOINT 0`). |
+| **Execution — building in Snowflake** | Every schema, masking policy, row access policy, procedure, dynamic table, stream, task, Cortex Search service, semantic view and agent in [`sql/`](sql/) was authored **and executed** through CoCo against a live Snowflake account. Sessions: `01fbfb1f` (*KAVACH Phase 1 Foundation Setup*), `04e512ea` (*Finish Checkpoint 1 Phase 6*), `2ec02ea4` (*Finish Phases 6 to 8*), `f780b911` (*Export Snowflake Metadata to Repo*). CoCo's **credit audit** changed the architecture — warehouses to `AUTO_SUSPEND=60` and the dynamic table to `TARGET_LAG = DOWNSTREAM` (commit `CHECKPOINT 0`). |
 | **Development / debugging** | The largest session in the project is the application build: `71694ce4` (*Alerts Page and Case Drawer*) — alerts queue, case drawer, rings, rulebook, time machine, tour, landing + login, SPCS deploy; plus `98a5af70` (*Build Fintech App Demo UI*). Real bugs traced to root cause, each with a commit: the Mule Rings overscroll (grid `min-height: auto` beating a descendant `max-h`, fixed with `min-h-0`), mule-ring data where no account ever terminated the chain, the live-vs-local `401` (a container cannot make an outbound password connection — rewrote auth onto the mounted OAuth token), and the top bar showing the shared service identity instead of the signed-in persona. |
 | **Testing / verification** | Run through CoCo, not by hand: session `c308d4af` (*Backend Endpoints Smoke Test*) → commit **`23/23 endpoints passing`** against live Snowflake. Also verified in CoCo: **per-persona masking** on one customer record across all four roles (`admin` → `Umesh Nair / TGDCT5500H`, `reviewer` → `An********* / XXXXX6428G`, writes `403` for read-only roles), the detection split arithmetic (`TP+FP = 50`, `TP+FN = 58`), ring regeneration leaving **0 orphaned alerts**, and the logout round-trip. CoCo also **disproved a documentation claim** — the old README asserted Time Travel usage; a grep across all twelve SQL files found nothing supporting it, so it was removed rather than shipped. |
 | **Deployment** | Service spec authored, image built `linux/amd64`, pushed to the Snowflake image registry, service upgraded **in place** with `ALTER SERVICE … FROM SPECIFICATION`. CoCo discovered the two constraints that shaped the demo: a public SPCS endpoint **always** requires Snowflake auth (hence four real persona users, no anonymous link), and **EAI is unavailable on trial accounts**, so the container authenticates with the OAuth token at `/snowflake/session/token`. |
@@ -98,7 +98,7 @@ ls ~/.snowflake/cortex/conversations/*/              # CoCo session store
 | | |
 |---|---|
 | 🎥 **Video walkthrough** | **[Watch the demo](https://drive.google.com/file/d/10kvSVKHjXcEucd8HBB1q1Q2N43T72NxH/view?usp=sharing)** |
-| 🌐 **Live app (SPCS)** | **https://ea5glc-onfhcci-tv84204.snowflakecomputing.app** |
+| 🌐 **Live app (SPCS)** | **https://eabuoc-zjxsmhi-bu67728.snowflakecomputing.app** |
 
 ### Signing in
 
@@ -385,14 +385,14 @@ how this image reaches the live URL.
 graph TB
     subgraph SF["❄️ Snowflake — KAVACH_DB"]
         direction TB
-        CIRC["Synthetic circulars<br/>(RAW stage)"] -->|AI_PARSE_DOCUMENT<br/>AI_COMPLETE| RULES["RULES.RULE_LIBRARY<br/>19 compiled rules · 14 in force"]
-        TXN["RAW.TRANSACTIONS<br/>1,502,674 rows"] --> FEAT["ML.ACCOUNT_FEATURES<br/>24 behavioural features"]
+        CIRC["Synthetic circulars<br/>(RAW stage)"] -->|AI_PARSE_DOCUMENT<br/>AI_COMPLETE| RULES["RULES.RULE_LIBRARY<br/>20 compiled rules · awaiting approval"]
+        TXN["RAW.TRANSACTIONS<br/>1,502,688 rows"] --> FEAT["ML.ACCOUNT_FEATURES<br/>24 behavioural features"]
         FEAT --> XGB["XGBoost + isotonic<br/>calibration"]
         TXN --> ENGINE["Rule engine<br/>9 typologies"]
         RULES --> ENGINE
         XGB --> BLEND["Blended scoring"]
         ENGINE --> BLEND
-        BLEND --> ALERTS["CORE.ALERTS<br/>8,407 alerts"]
+        BLEND --> ALERTS["CORE.ALERTS<br/>4,528 alerts"]
         TXN --> GRAPH["Graph detection<br/>CORE.RING_MEMBERS"]
         ALERTS --> STORY["AI.ALERT_STORIES<br/>EN + HI narratives"]
         ALERTS --> EVID["AUDIT.EVIDENCE_REGISTRY<br/>hashed packs"]
@@ -472,9 +472,9 @@ Eight schemas, each with one job:
 
 | Schema | Holds |
 |---|---|
-| `RAW` | Landing zone — 1,502,674 transactions, 28,000 accounts, circular stage |
-| `CORE` | Curated entities — 20,000 customers, 8,407 alerts, ring membership |
-| `RULES` | Compiled rule library (19 compiled, 14 in force), approvals, detected conflicts |
+| `RAW` | Landing zone — 1,502,688 transactions, 28,000 accounts, circular stage |
+| `CORE` | Curated entities — 20,000 customers, 4,528 alerts, ring membership |
+| `RULES` | Compiled rule library (20 rules: 19 compiled + 1 amendment, all `PENDING_APPROVAL`), approvals, detected conflicts |
 | `ML` | Features, model artefacts, evaluation ground truth and reports |
 | `AI` | Semantic view, agent, alert stories (200), explainability views |
 | `APP` | Application-facing objects, image repository, secrets, the service |
@@ -483,9 +483,9 @@ Eight schemas, each with one job:
 
 **Live contents right now:**
 
-| Transactions | Accounts | Customers | Alerts | Rules in force | AI narratives | Rings |
+| Transactions | Accounts | Customers | Alerts | Rule approvals | AI narratives | Rings |
 |---|---|---|---|---|---|---|
-| 1,502,674 | 28,000 | 20,000 | 8,407 | 14 of 19 | 200 | 9 (3 collection · 6 round-trip) |
+| 1,502,688 | 28,000 | 20,000 | 4,528 | 0 of 20 approved | 200 | 9 (3 collection · 6 round-trip) |
 
 ---
 
@@ -522,18 +522,18 @@ from and every one `COMPILED_BY = 'AI'`, none hand-written. What each obligation
 
 | Obligation | Implemented by | Live state |
 |---|---|---|
-| **CTR** — report cash transactions over ₹10,00,000 | 3 compiled `CASH_REPORTING` rules → `CORE.ALERTS`, `ACTION_REQUIRED = 'CTR'` | ✅ 4,319 alerts |
+| **CTR** — report cash transactions over ₹10,00,000 | 4 compiled `CASH_REPORTING` rules → `CORE.ALERTS`, `ACTION_REQUIRED = 'CTR'` | ✅ 2,000 alerts |
 | **Threshold amendment** — `KAVACH/2025/01` raises the reporting threshold to ₹15,00,000 | `RULES.APPLY_AMENDMENTS()` supersedes v1 and issues a v2 rule; Time Machine replays either threshold | ✅ v2 rule in force, replay works |
-| **STR** — file a suspicious transaction report | `AI.DRAFT_STR` function drafts from the alert's own evidence; the engine's action map assigns `STR` to the layering, structuring, mule and pass-through typologies | ✅ drafting works on any alert, one click from the case file. Filing itself is out of scope |
-| **KYC / CDD** — re-verify customers whose KYC is stale or expired | `KYC_CDD` rule, anchored to the data's reference date | ✅ 500 alerts, 1 rule in force |
-| **Wire transfer reporting** | `WIRE_TRANSFER` rule | ✅ 1,081 alerts |
-| **General AML monitoring** | 2 `GENERAL_AML` rules | ✅ 2,500 alerts |
-| **Dormant account revival** | `DORMANT_REACTIVATION` rule | ✅ 7 alerts — and the only rule whose typology matches planted fraud, at 100% precision |
+| **STR** — file a suspicious transaction report | `AI.DRAFT_STR` function drafts from the alert's own evidence; the engine's action map assigns `STR` to the layering, structuring, mule and pass-through typologies | ✅ drafting works on any alert, one click from the case file; 3 alerts currently carry `ACTION_REQUIRED = 'STR'`. Filing itself is out of scope |
+| **KYC / CDD** — re-verify customers whose KYC is stale or expired | `KYC_CDD` rule, anchored to the data's reference date | ✅ 1,000 alerts from 2 `KYC_CDD` rules |
+| **Wire transfer reporting** | `WIRE_TRANSFER` rule | ✅ 500 alerts |
+| **General AML monitoring** | 2 `GENERAL_AML` rules | ✅ 500 alerts |
+| **Dormant account revival** | `DORMANT_REACTIVATION` rule | ✅ 25 alerts — and the only rule whose typology matches planted fraud, at 100% precision |
 | **Layering / round-tripping** | 2 compiled `ROUND_TRIPPING` rules, plus graph cycle detection in `CORE.ROUND_TRIP_CYCLES` | ✅ graph detection finds 4 cycles (the compiled rules return no rows on this data; graph detection is the working path) |
 | **Structuring / smurfing** | 2 compiled `STRUCTURING` rules | 🟡 rules compiled; they match no rows on this data yet, so the multi-condition joins are the next thing to tune |
 | **Mule networks** | 1 compiled `MULE_RING` rule, plus graph detection in `CORE.RINGS` | ✅ graph detection finds all 3 planted rings (the compiled rule returns no rows; graph detection is the working path) |
 | **Sanctions screening** | 1 compiled `SANCTIONS_SCREENING` rule against `REF.WATCHLIST` | 🟡 rule compiled; returns no rows on this data yet |
-| **Conflicting guidance** — two circulars defining layering differently | `RULES.DETECT_CONFLICTS()` → `RULES.RULE_CONFLICTS`, surfaced on the Rulebook page | ✅ 10 conflicts detected, not auto-resolved |
+| **Conflicting guidance** — two circulars defining layering differently | `RULES.DETECT_CONFLICTS()` → `RULES.RULE_CONFLICTS`, surfaced on the Rulebook page | ✅ 9 conflicts detected, not auto-resolved |
 | **Filing deadlines** | `AI.DEADLINE_CLOCK` view | ✅ |
 | **Programme readiness** | `AI.READINESS_SCORE`, `AI.RULE_HEALTH` views | ✅ |
 
@@ -549,7 +549,7 @@ Rulebook flow.
 | Regional data segregation | Row access policy `CORE.RAP_REGION_FILTER` driven by `REGION_ACCESS_MAP` | `SHOW ROW ACCESS POLICIES IN DATABASE KAVACH_DB` |
 | Least privilege | Five application roles; the backend runs as `KAVACH_ADMIN`, never `ACCOUNTADMIN`. MCP clients get a sixth, separate `KAVACH_MCP_ROLE` | `SHOW ROLES LIKE 'KAVACH%'` |
 | Read-only enforcement | Middleware rejects any non-`GET` to a write path from a read-only role with `403`, before a handler runs | `scripts/smoke_test.py` |
-| Every alert traceable to a paragraph | `CITATION` populated on **all 8,407** alerts; `REASONS` holds the matched row that fired the rule | `SELECT CITATION, REASONS FROM CORE.ALERTS LIMIT 1` |
+| Every alert traceable to a paragraph | `CITATION` populated on **all 4,528** alerts; `REASONS` holds the matched row that fired the rule | `SELECT CITATION, REASONS FROM CORE.ALERTS LIMIT 1` |
 | Tamper-evident evidence | Evidence packs written to `APP.EVIDENCE_STAGE` and registered in `AUDIT.EVIDENCE_REGISTRY` with a SHA-256 taken over the bytes uploaded; re-verification re-hashes the stored file | the `/evidence` → presigned URL → re-hash path in `scripts/smoke_test.py` |
 | Rule changes reversible | Any in-place rule regeneration writes the previous SQL to `RULES.RULE_SQL_HISTORY` | `SELECT * FROM RULES.RULE_SQL_HISTORY` |
 | Rules never silently self-approve | Compiled rules land as `PENDING_APPROVAL`; approval and rejection are recorded with actor and reason | `SELECT STATUS, APPROVED_BY, REJECTED_BY, REJECTION_REASON FROM RULES.RULE_LIBRARY` |
@@ -621,7 +621,7 @@ output, abridged only by trimming the long lines:
 MCP smoke test: PASS
 ```
 
-Those figures match `CORE.ALERTS` exactly, so the whole path — MCP client → server → agent
+Every figure in that answer came out of `CORE.ALERTS` through the semantic view rather than anything hardcoded, so the whole path — MCP client → server → agent
 → semantic view → live data — is doing real work. In an earlier run the agent also corrected
 itself mid-answer on finding that every alert carries status `NEW` rather than `OPEN`.
 
@@ -753,7 +753,7 @@ backend/app/ ──────────────┘                      
                                                         on compute pool KAVACH_POOL
                                                                           │
                                                                           ▼
-                                    https://ea5glc-onfhcci-tv84204.snowflakecomputing.app
+                                    https://eabuoc-zjxsmhi-bu67728.snowflakecomputing.app
 ```
 
 One script does all of it — build, push, in-place upgrade, wait for the rollout, print the URL:
