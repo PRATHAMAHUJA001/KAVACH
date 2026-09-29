@@ -668,6 +668,7 @@
       "writing": "Writing the answer…"
     },
     "showData": "Show the data",
+    "showReasoning": "Show the reasoning",
     "showSql": "Show the SQL",
     "rows_one": "{{count}} row",
     "rows_other": "{{count}} rows",

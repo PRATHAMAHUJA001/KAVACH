@@ -52,6 +52,9 @@ class AskResponse(BaseModel):
     """Ask response model (for non-streaming)"""
     question: str
     answer: str
+    # The agent's interim working-out. Surfaced separately so the UI can keep it
+    # behind a disclosure instead of leading with it.
+    reasoning: str = ""
     verified_query: bool
     sql: Optional[str] = None
     citations: list[Citation]
@@ -165,8 +168,10 @@ def _lookup_circular_citation(search_result_text: str) -> tuple[Optional[str], O
 
 def _extract_from_content_items(content_items: list[dict]) -> dict:
     """Walk the final agent response's content array, extracting the answer text,
-    tool call trace, verified-query badge/SQL, and citations."""
+    the model's interim reasoning, tool call trace, verified-query badge/SQL,
+    and citations."""
     answer_parts: list[str] = []
+    reasoning_parts: list[str] = []
     tool_calls: list[dict] = []
     citations: list[dict] = []
     verified = False
@@ -176,11 +181,35 @@ def _extract_from_content_items(content_items: list[dict]) -> dict:
     # types that are internal orchestration plumbing, not meaningful to surface
     NOISE_TOOL_TYPES = {"system_agentic_semantic_context", "server_skill", "data_to_chart"}
 
-    for item in content_items:
+    # The agent interleaves narration with its tool calls: "let me check X",
+    # "no rows came back, trying Y". Those are `text` blocks too, so appending
+    # every one of them ran the running commentary straight into the answer.
+    # Anything before the last tool step is working-out; the answer is what the
+    # model writes once it has stopped calling tools.
+    last_tool_index = -1
+    for i, item in enumerate(content_items):
+        if item.get("type") in ("tool_use", "tool_result"):
+            last_tool_index = i
+
+    for index, item in enumerate(content_items):
         item_type = item.get("type")
 
-        if item_type == "text":
-            answer_parts.append(item.get("text", ""))
+        if item_type == "thinking":
+            # Shape is {"type": "thinking", "thinking": {"text": "..."}} — a
+            # nested object, not a plain string.
+            thought = item.get("thinking")
+            if isinstance(thought, dict):
+                thought = thought.get("text", "")
+            if not isinstance(thought, str):
+                thought = item.get("text", "")
+            if thought and thought.strip():
+                reasoning_parts.append(thought.strip())
+
+        elif item_type == "text":
+            text = item.get("text", "")
+            if text and text.strip():
+                target = reasoning_parts if index < last_tool_index else answer_parts
+                target.append(text.strip())
             for ann in item.get("annotations", []) or []:
                 if ann.get("type") == "cortex_search_citation":
                     text = ann.get("text", "")
@@ -268,7 +297,12 @@ def _extract_from_content_items(content_items: list[dict]) -> dict:
             deduped_citations.append(c)
 
     return {
-        "answer": "".join(answer_parts).strip(),
+        # Blank lines between blocks: the agent emits the prose, the table and the
+        # follow-up commentary as separate text blocks, and joining them with ""
+        # ran sentences together ("...exactly.The top 10 accounts...") and collapsed
+        # its markdown lists into one paragraph.
+        "answer": "\n\n".join(answer_parts).strip(),
+        "reasoning": "\n\n".join(reasoning_parts).strip(),
         "tool_calls": visible_tool_calls,
         "citations": deduped_citations,
         "verified_query": verified,

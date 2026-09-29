@@ -434,6 +434,8 @@ export interface ResultSet {
 export interface AskAnswer {
   question: string;
   answer: string;
+  /** The agent's interim working-out, kept out of the answer body. */
+  reasoning: string;
   verified: boolean;
   sql: string | null;
   citations: AskCitation[];

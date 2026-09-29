@@ -456,6 +456,7 @@ export function toAskAnswer(d: D.AskDoneDTO): M.AskAnswer {
   return {
     question: d.question,
     answer: d.answer,
+    reasoning: d.reasoning ?? "",
     verified: d.verified_query,
     sql: d.sql,
     citations: d.citations.map(toAskCitation),

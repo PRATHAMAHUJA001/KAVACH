@@ -56,7 +56,16 @@ async function run(scope: string, question: string) {
       question,
       (e) => {
         if (e.type === "status") patch(scope, id, { status: e.message });
-        else if (e.type === "tool") patch(scope, id, (t) => ({ tools: t.tools.includes(e.toolType) ? t.tools : [...t.tools, e.toolType] }));
+        // Text streamed before a tool call is the agent narrating its next step
+        // ("no rows came back, let me try..."), not the answer. Clear it when a
+        // tool starts so the running commentary does not sit in the answer body
+        // while it works — the reasoning arrives whole in the final event and is
+        // shown behind a disclosure instead.
+        else if (e.type === "tool")
+          patch(scope, id, (t) => ({
+            tools: t.tools.includes(e.toolType) ? t.tools : [...t.tools, e.toolType],
+            text: "",
+          }));
         else if (e.type === "delta") patch(scope, id, (t) => ({ text: t.text + e.text }));
       },
       ctrl.signal,

@@ -668,6 +668,7 @@
       "writing": "जवाब लिखा जा रहा है…"
     },
     "showData": "डेटा दिखाएँ",
+    "showReasoning": "तर्क दिखाएँ",
     "showSql": "SQL दिखाएँ",
     "rows_one": "{{count}} पंक्ति",
     "rows_other": "{{count}} पंक्तियाँ",

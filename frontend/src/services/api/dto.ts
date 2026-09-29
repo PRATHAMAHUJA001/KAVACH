@@ -500,6 +500,7 @@ export interface ResultSetDTO {
 export interface AskDoneDTO {
   question: string;
   answer: string;
+  reasoning?: string;
   verified_query: boolean;
   sql: string | null;
   citations: AskCitationDTO[];

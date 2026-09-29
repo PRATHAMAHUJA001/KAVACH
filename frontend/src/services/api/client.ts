@@ -364,7 +364,7 @@ export async function askStream(question: string, onEvent: (e: M.AskStreamEvent)
   }
   if (!final) {
     if (!streamed) throw new ApiError("The answer stream ended early.", 500, "server");
-    final = { question, answer: streamed, verified: false, sql: null, citations: [], toolCalls: [], warnings: [], resultSet: null };
+    final = { question, answer: streamed, reasoning: "", verified: false, sql: null, citations: [], toolCalls: [], warnings: [], resultSet: null };
   }
   return final;
 }

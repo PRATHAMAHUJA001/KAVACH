@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Code2, Loader2, Sheet as SheetIcon, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Brain, Check, Code2, Loader2, Sheet as SheetIcon, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button, Card, CitationChip, CitationDrawer, ErrorState, Expander, RichText, Skeleton, TrustBadge, type CitationRef } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
@@ -72,6 +72,11 @@ export function AnswerCard({ turn, onVote, onRetry }: { turn: Turn; onVote: (v: 
                   ))}
                 </div>
                 {a.warnings.filter(Boolean).length > 0 && <p className="text-small text-warn">{a.warnings.filter(Boolean).join(" ")}</p>}
+                {a.reasoning && (
+                  <Expander icon={<Brain />} title={t("ask.showReasoning")}>
+                    <RichText text={a.reasoning} className="text-small text-muted" />
+                  </Expander>
+                )}
                 {a.resultSet && a.resultSet.rows.length > 0 && (
                   <Expander icon={<SheetIcon />} title={t("ask.showData")} meta={t("ask.rows", { count: a.resultSet.rows.length })}>
                     <ResultData rs={a.resultSet} />
