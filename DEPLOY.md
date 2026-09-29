@@ -13,18 +13,21 @@ Written for someone who has **never** touched this project.
 
 | Thing | Value |
 | --- | --- |
-| Live URL | <https://ea5glc-onfhcci-tv84204.snowflakecomputing.app> |
-| Snowflake account | `ONFHCCI-TV84204` (org `ONFHCCI`, region `AWS_AP_SOUTHEAST_7`) |
+| Live URL | <https://eabuoc-zjxsmhi-bu67728.snowflakecomputing.app> |
+| Snowflake account | `ZJXSMHI-BU67728` (org `ZJXSMHI`, locator `NV81968`, region `AWS_AP_SOUTHEAST_7`) |
 | Service | `KAVACH_DB.APP.KAVACH_WEB` |
 | Compute pool | `KAVACH_POOL` — `CPU_X64_XS`, 1 node, `AUTO_SUSPEND_SECS = 600` |
-| Image | `onfhcci-tv84204.registry.snowflakecomputing.com/kavach_db/app/kavach_repo/kavach-web:latest` |
+| Image | `zjxsmhi-bu67728.registry.snowflakecomputing.com/kavach_db/app/kavach_repo/kavach-web:latest` |
 | Image repository | `KAVACH_DB.APP.KAVACH_REPO` |
 | Warehouse | `KAVACH_WH` |
 | Database | `KAVACH_DB` — schemas `RAW, CORE, RULES, ML, AI, APP, AUDIT, REF` |
 | Password secret | `KAVACH_DB.APP.SVC_PASSWORD` (`GENERIC_STRING`, mounted via `secretKeyRef: secret_string`) |
+| PAT secret | `KAVACH_DB.APP.SVC_PAT` — mounted as `SNOWFLAKE_TOKEN`; used by `/api/ask` only when running LOCALLY |
+| Ask KAVACH auth | In SPCS, `/api/ask` calls the Agents REST API on `$SNOWFLAKE_HOST` with the container's mounted OAuth token — see below |
+| Service owner role | `KAVACH_ADMIN` — the container runs as this role and `USE ROLE`s into each persona |
 | Cortex agent | `KAVACH_DB.AI.KAVACH_AGENT` (orchestration `claude-sonnet-5`, 5 tools) |
 | Semantic view | `KAVACH_DB.AI.KAVACH_SV` |
-| Backup | `KAVACH_DB_BACKUP` — zero-copy clone taken before the mule-ring data fix |
+
 
 One container: a FastAPI backend on port 8080 that also serves the built React
 SPA from `frontend_dist/`. There is no separate frontend service.
@@ -123,9 +126,11 @@ the version that travels with the repo.
 `backend/.env` is required and is **not** in git. Recreate it as:
 
 ```dotenv
-SNOWFLAKE_ACCOUNT=ONFHCCI-TV84204
-SNOWFLAKE_USER=PRATHAMAHUJA001
-SNOWFLAKE_PASSWORD=<service user password — ask the project owner>
+SNOWFLAKE_ACCOUNT=ZJXSMHI-BU67728
+SNOWFLAKE_USER=KAVACH_SVC
+SNOWFLAKE_PASSWORD=<KAVACH_SVC password — ask the project owner>
+SNOWFLAKE_TOKEN=<PAT, see KAVACH_DB.APP.SVC_PAT>
+DEMO_PASSWORD=Admin@123
 SNOWFLAKE_DATABASE=KAVACH_DB
 SNOWFLAKE_SCHEMA=CORE
 SNOWFLAKE_WAREHOUSE=KAVACH_WH
@@ -135,9 +140,13 @@ AGENT_SCHEMA=AI
 AGENT_NAME=KAVACH_AGENT
 ```
 
-The service user holds `ACCOUNTADMIN`, `ORGADMIN` and all four KAVACH roles.
-`redeploy.sh` connects as `ACCOUNTADMIN` because altering a service and a compute
-pool requires it.
+`KAVACH_SVC` is a `LEGACY_SERVICE` user holding all four KAVACH roles. It is
+deliberately NOT an account admin: `redeploy.sh` connects as `KAVACH_ADMIN`,
+which owns the service and holds USAGE + MONITOR on the compute pool.
+
+Keep the password free of shell metacharacters. `redeploy.sh` sources
+`backend/.env` through the shell, so a `$` in the value is expanded away and
+`docker login` then fails with a bare `unauthorized`.
 
 If you rotate that password you must update **two** places or the deployed
 container will start and then fail every query:
@@ -148,6 +157,34 @@ ALTER SECRET KAVACH_DB.APP.SVC_PASSWORD SET SECRET_STRING = '<new password>';
 
 …and `backend/.env`. Then `./deploy/redeploy.sh spec` to restart the container
 with the new secret value.
+
+---
+
+## 2a. Ask KAVACH (`/api/ask`) networking — do not "fix" this
+
+`/api/ask` is the one feature that talks to Snowflake over HTTPS rather than
+through Snowpark, and it is the easiest thing to break.
+
+- **Locally** it calls `https://<account>.snowflakecomputing.com/...` with the PAT
+  in `SNOWFLAKE_TOKEN`.
+- **In SPCS** it must call `https://$SNOWFLAKE_HOST/...` with the OAuth token
+  mounted at `/snowflake/session/token`, using header
+  `X-Snowflake-Authorization-Token-Type: OAUTH`.
+
+An SPCS container has **no route to the public account hostname**. The normal fix
+is an external access integration, but **external access is not supported on
+trial accounts** (`CREATE EXTERNAL ACCESS INTEGRATION` fails with error 509009).
+So pointing this at the account URL from inside the container fails and the Ask
+page shows "The assistant couldn't answer this time" while `POST /api/ask`
+still logs `200` — the error travels inside the SSE stream, not the HTTP status,
+so the container log looks healthy. Check the streamed `event: error` payload.
+
+The OAuth-token path is verified working on this deployment. The service owner
+role (`KAVACH_ADMIN`) holds `USAGE ON AGENT`, which is what authorizes the call.
+
+Also note: `capabilities:` is a **top-level** key in a service spec, a sibling of
+`spec:`, not a child of it. Nesting it under `spec:` makes `ALTER SERVICE` fail
+with `unknown option 'capabilities' for 'spec'`.
 
 ---
 
@@ -332,11 +369,15 @@ These are real and known. They are documented rather than hidden.
 - **6 of the 19 rules fail SQL compilation at runtime.** They were generated from
   template limits rather than recompiled from the actual circular text.
 - Transaction data runs **2024-04-01 → 2024-09-27** by design — the demo shows
-  KAVACH reasoning over prior-year data. Current volumes: 1,502,674 transactions,
-  28,000 accounts, 20,000 customers, 8,118 alerts, 19 rules, 200 stories, 9 rings.
+  KAVACH reasoning over prior-year data. Current volumes: 1,502,688 transactions,
+  28,000 accounts, 20,000 customers, 4,528 alerts across 7 typologies, 20 rules
+  (19 compiled + 1 amendment), 9 conflicts, 200 stories, 9 rings / 62 members,
+  28,034 scored accounts, 8,411 SHAP explanations, 49 regulation chunks.
 
-`README.md` and `docs/architecture.md` still quote the original 2,879 alert
-figure in places. Treat the live count as authoritative.
+These are the counts for the ZJXSMHI-BU67728 rebuild (2026-09-29), produced by a
+single clean run of the rule engine. Earlier figures in git history (2,879 /
+8,118 / 8,407) came from repeated RULE_EXECUTOR_TASK runs on the previous
+account and do not describe this deployment.
 
 ---
 

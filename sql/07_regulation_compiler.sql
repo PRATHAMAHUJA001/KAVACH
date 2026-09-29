@@ -227,16 +227,22 @@ $$
 import json
 
 def run(session, circular_filter=None):
-    chunks = session.sql("""
+    # Build the optional circular predicate in Python rather than binding NULL
+    # into `? IS NULL` — a bound NULL there matches no rows, which silently
+    # made this procedure a no-op ("0 chunks, 0 rules extracted") instead of
+    # processing every circular.
+    where_circular = "AND CIRCULAR_NO = ?" if circular_filter else ""
+    params = [circular_filter] if circular_filter else []
+    chunks = session.sql(f"""
         SELECT CHUNK_ID, CIRCULAR_NO, PARA_NO, TEXT
         FROM KAVACH_DB.AI.REG_CHUNKS
         WHERE (TEXT ILIKE '%shall%'
            OR TEXT ILIKE '%must%'
            OR TEXT ILIKE '%required%'
            OR TEXT ILIKE '%mandatory%')
-          AND (? IS NULL OR CIRCULAR_NO = ?)
+          {where_circular}
         ORDER BY CIRCULAR_NO, PARA_NO
-    """, params=[circular_filter, circular_filter]).collect()
+    """, params=params).collect()
 
     rule_count = 0
     errors = []

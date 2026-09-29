@@ -3,8 +3,8 @@ spec:
     - name: kavach-web
       image: /kavach_db/app/kavach_repo/kavach-web:latest
       env:
-        SNOWFLAKE_ACCOUNT: ONFHCCI-TV84204
-        SNOWFLAKE_USER: PRATHAMAHUJA001
+        SNOWFLAKE_ACCOUNT: ZJXSMHI-BU67728
+        SNOWFLAKE_USER: KAVACH_SVC
         SNOWFLAKE_DATABASE: KAVACH_DB
         SNOWFLAKE_SCHEMA: CORE
         SNOWFLAKE_WAREHOUSE: KAVACH_WH
@@ -12,10 +12,21 @@ spec:
         AGENT_DATABASE: KAVACH_DB
         AGENT_SCHEMA: AI
         AGENT_NAME: KAVACH_AGENT
+        # Password for the four persona sign-ins in the app's own login UI
+        # (admin / analyst / auditor / reviewer).
+        DEMO_PASSWORD: Admin@123
       secrets:
+        # Only used if the container falls back to username/password auth;
+        # under SPCS it normally authenticates with its mounted OAuth token.
         - snowflakeSecret: KAVACH_DB.APP.SVC_PASSWORD
           secretKeyRef: secret_string
           envVarName: SNOWFLAKE_PASSWORD
+        # PAT for the Cortex Agents REST API, which /api/ask calls directly.
+        # Mounted from a secret rather than inlined in env so it is not visible
+        # in DESCRIBE SERVICE output.
+        - snowflakeSecret: KAVACH_DB.APP.SVC_PAT
+          secretKeyRef: secret_string
+          envVarName: SNOWFLAKE_TOKEN
       readinessProbe:
         port: 8080
         path: /healthz

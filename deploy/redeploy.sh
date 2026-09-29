@@ -27,7 +27,7 @@ REPO="$PWD"
 # --- configuration -----------------------------------------------------------
 # Overridable so a new operator on a different Snowflake account does not have to
 # edit this file — export these and everything downstream follows.
-REGISTRY="${KAVACH_REGISTRY:-onfhcci-tv84204.registry.snowflakecomputing.com}"
+REGISTRY="${KAVACH_REGISTRY:-zjxsmhi-bu67728.registry.snowflakecomputing.com}"
 IMAGE_PATH="${KAVACH_IMAGE_PATH:-kavach_db/app/kavach_repo/kavach-web}"
 IMAGE="$REGISTRY/$IMAGE_PATH:latest"
 # The interpreter that actually has snowflake-snowpark-python installed. The

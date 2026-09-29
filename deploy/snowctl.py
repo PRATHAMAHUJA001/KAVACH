@@ -53,8 +53,13 @@ def session():
             "account": os.environ["SNOWFLAKE_ACCOUNT"],
             "user": os.environ["SNOWFLAKE_USER"],
             "password": os.environ["SNOWFLAKE_PASSWORD"],
-            # ACCOUNTADMIN is required to ALTER a service and a compute pool.
-            "role": os.environ.get("KAVACH_DEPLOY_ROLE", "ACCOUNTADMIN"),
+            # KAVACH_ADMIN owns the service and holds USAGE + MONITOR on the
+            # compute pool, so it can ALTER/suspend/resume both. It is also the
+            # role the container itself runs as, which is why the service is
+            # created under it rather than ACCOUNTADMIN: the mounted OAuth token
+            # carries the owner role, and only KAVACH_ADMIN can USE ROLE into
+            # the other three persona roles.
+            "role": os.environ.get("KAVACH_DEPLOY_ROLE", "KAVACH_ADMIN"),
             "warehouse": os.environ.get("SNOWFLAKE_WAREHOUSE", "KAVACH_WH"),
             "database": os.environ.get("SNOWFLAKE_DATABASE", "KAVACH_DB"),
         }

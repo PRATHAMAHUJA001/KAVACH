@@ -236,13 +236,21 @@ LEFT JOIN txn_features tf ON a.ACCOUNT_ID = tf.ACCOUNT_ID
 LEFT JOIN bene_features bf ON a.ACCOUNT_ID = bf.ACCOUNT_ID
 LEFT JOIN device_features df ON a.ACCOUNT_ID = df.ACCOUNT_ID;
 
+-- NOTE: only TRAIN_RISK_MODEL (v1) runs in this deployment, and its handler
+-- creates ML.RISK_SCORES as (ACCOUNT_ID, RISK_SCORE, SCORED_AT) — with no
+-- RISK_SCORE_CALIBRATED column. That column only exists once
+-- RETRAIN_AND_EVALUATE (v2) has run, which requires ML.ACCOUNT_FEATURES_STATIC
+-- and ML.EVAL_GROUND_TRUTH to be populated. Selecting it unconditionally makes
+-- every read of this view fail with "invalid identifier", which also breaks the
+-- semantic view that sources from it. Alias the uncalibrated score so the
+-- view's column contract still holds under v1.
 create or replace secure view KAVACH_DB.ML.LATEST_RISK_SCORES(
 	ACCOUNT_ID,
 	RISK_SCORE,
 	RISK_SCORE_CALIBRATED,
 	SCORED_AT
 ) as
-SELECT ACCOUNT_ID, RISK_SCORE, RISK_SCORE_CALIBRATED, SCORED_AT
+SELECT ACCOUNT_ID, RISK_SCORE, RISK_SCORE AS RISK_SCORE_CALIBRATED, SCORED_AT
 FROM KAVACH_DB.ML.RISK_SCORES
 QUALIFY ROW_NUMBER() OVER (PARTITION BY ACCOUNT_ID ORDER BY SCORED_AT DESC) = 1;
 

@@ -12,10 +12,15 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
+import os
 import httpx
 from typing import AsyncIterator, Optional
 from app.infrastructure.config.settings import settings
-from app.infrastructure.snowflake.connection import get_session
+from app.infrastructure.snowflake.connection import (
+    get_session,
+    running_in_spcs,
+    spcs_token,
+)
 
 router = APIRouter()
 
@@ -83,22 +88,54 @@ def _to_result_set(rs: dict) -> Optional[dict]:
     return {"columns": columns, "rows": rows}
 
 
+def _agent_host() -> str:
+    """Host to reach the Cortex Agents REST API on.
+
+    Inside SPCS, use the SNOWFLAKE_HOST that Snowflake injects rather than
+    `<account>.snowflakecomputing.com`. A container has no route to the public
+    account hostname without an external access integration, and EAIs are not
+    available on trial accounts, so the external URL just fails — which the Ask
+    page surfaces as "The assistant couldn't answer this time". SNOWFLAKE_HOST
+    serves the same REST API and keeps the call inside the Snowflake network.
+    """
+    if running_in_spcs():
+        host = os.getenv("SNOWFLAKE_HOST", "").strip()
+        if host:
+            return host
+    return f"{settings.snowflake_account}.snowflakecomputing.com"
+
+
 def _agent_url() -> str:
     return (
-        f"https://{settings.snowflake_account}.snowflakecomputing.com"
+        f"https://{_agent_host()}"
         f"/api/v2/databases/{settings.agent_database}/schemas/{settings.agent_schema}"
         f"/agents/{settings.agent_name}:run"
     )
 
 
 def _auth_headers(accept: str) -> dict:
+    common = {"Content-Type": "application/json", "Accept": accept}
+
+    # Under SPCS, authenticate as the service's own identity with the mounted
+    # OAuth token. Verified working against the Agents REST API on this
+    # deployment, and it pairs with SNOWFLAKE_HOST above so no PAT has to travel
+    # into the container. The service owner role (KAVACH_ADMIN) holds USAGE on
+    # the agent, so the call is authorized.
+    token = spcs_token()
+    if token:
+        return {
+            **common,
+            "Authorization": f"Bearer {token}",
+            "X-Snowflake-Authorization-Token-Type": "OAUTH",
+        }
+
+    # Local runs go out over the public account hostname with a PAT.
     if not settings.snowflake_token:
         raise RuntimeError("SNOWFLAKE_TOKEN (programmatic access token) is not configured")
     return {
+        **common,
         "Authorization": f"Bearer {settings.snowflake_token}",
         "X-Snowflake-Authorization-Token-Type": "PROGRAMMATIC_ACCESS_TOKEN",
-        "Content-Type": "application/json",
-        "Accept": accept,
     }
 
 

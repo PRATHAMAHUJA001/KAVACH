@@ -232,39 +232,39 @@ CREATE OR REPLACE TABLE REF.WATCHLIST (
     COMMENT         STRING DEFAULT 'SYNTHETIC — FOR DEMO ONLY'
 );
 
-INSERT INTO REF.WATCHLIST (WATCHLIST_ID, LIST_SOURCE, ENTITY_TYPE, FULL_NAME, ALIASES, NATIONALITY, DOB, REASON, LISTED_DATE) VALUES
+INSERT INTO REF.WATCHLIST (WATCHLIST_ID, LIST_SOURCE, ENTITY_TYPE, FULL_NAME, ALIASES, NATIONALITY, DOB, REASON, LISTED_DATE)
 -- Synthetic OFAC-style entries (individual)
-('SYN-OFAC-001','SYNTHETIC_OFAC','INDIVIDUAL','Mohammad Rashid Khan',ARRAY_CONSTRUCT('M. R. Khan','Mohd Rashid'),'PK','1975',  'Terrorism financing',   '2020-03-15'),
-('SYN-OFAC-002','SYNTHETIC_OFAC','INDIVIDUAL','Abdul Karim Sheikh', ARRAY_CONSTRUCT('A.K. Sheikh','Abdulkarim'),  'AF','1968',  'Narcotics trafficking', '2019-07-22'),
-('SYN-OFAC-003','SYNTHETIC_OFAC','INDIVIDUAL','Ibrahim Al-Farooqi', ARRAY_CONSTRUCT('Al Farooqi Ibrahim'),        'IQ','1982',  'WMD proliferation',     '2021-01-10'),
-('SYN-OFAC-004','SYNTHETIC_OFAC','INDIVIDUAL','Hassan Mirza Qasemi',ARRAY_CONSTRUCT('H.M. Qasemi','Hasan Qasimi'),'IR','1970', 'Sanctions evasion',     '2018-11-05'),
-('SYN-OFAC-005','SYNTHETIC_OFAC','INDIVIDUAL','Viktor Petrovich Sokolov',ARRAY_CONSTRUCT('V.P. Sokolov'),'RU','1965','Money laundering','2022-04-18'),
-('SYN-OFAC-006','SYNTHETIC_OFAC','INDIVIDUAL','Li Wei Chen',        ARRAY_CONSTRUCT('Chen Li Wei','LW Chen'),    'CN','1980',  'Trade sanctions violation','2023-02-14'),
-('SYN-OFAC-007','SYNTHETIC_OFAC','INDIVIDUAL','Fatima Zahra Benkiran',ARRAY_CONSTRUCT('F. Benkiran'),             'MA','1990',  'Terrorism support',      '2022-08-30'),
-('SYN-OFAC-008','SYNTHETIC_OFAC','INDIVIDUAL','Deepak Sharma',      ARRAY_CONSTRUCT('D. Sharma','Dipak Sharma'), 'IN','1978',  'Gold smuggling network',  '2023-06-12'),
-('SYN-OFAC-009','SYNTHETIC_OFAC','INDIVIDUAL','Rajesh Kumar Gupta', ARRAY_CONSTRUCT('R.K. Gupta','Rajesh Gupta'),'IN','1972',  'Hawala operations',       '2022-12-01'),
-('SYN-OFAC-010','SYNTHETIC_OFAC','INDIVIDUAL','Suresh Nair Menon',  ARRAY_CONSTRUCT('S. Menon','Suresh Menon'),  'IN','1985',  'Drug trafficking',        '2023-09-15'),
+SELECT 'SYN-OFAC-001','SYNTHETIC_OFAC','INDIVIDUAL','Mohammad Rashid Khan',ARRAY_CONSTRUCT('M. R. Khan','Mohd Rashid'),'PK','1975',  'Terrorism financing',   '2020-03-15'
+UNION ALL SELECT 'SYN-OFAC-002','SYNTHETIC_OFAC','INDIVIDUAL','Abdul Karim Sheikh', ARRAY_CONSTRUCT('A.K. Sheikh','Abdulkarim'),  'AF','1968',  'Narcotics trafficking', '2019-07-22'
+UNION ALL SELECT 'SYN-OFAC-003','SYNTHETIC_OFAC','INDIVIDUAL','Ibrahim Al-Farooqi', ARRAY_CONSTRUCT('Al Farooqi Ibrahim'),        'IQ','1982',  'WMD proliferation',     '2021-01-10'
+UNION ALL SELECT 'SYN-OFAC-004','SYNTHETIC_OFAC','INDIVIDUAL','Hassan Mirza Qasemi',ARRAY_CONSTRUCT('H.M. Qasemi','Hasan Qasimi'),'IR','1970', 'Sanctions evasion',     '2018-11-05'
+UNION ALL SELECT 'SYN-OFAC-005','SYNTHETIC_OFAC','INDIVIDUAL','Viktor Petrovich Sokolov',ARRAY_CONSTRUCT('V.P. Sokolov'),'RU','1965','Money laundering','2022-04-18'
+UNION ALL SELECT 'SYN-OFAC-006','SYNTHETIC_OFAC','INDIVIDUAL','Li Wei Chen',        ARRAY_CONSTRUCT('Chen Li Wei','LW Chen'),    'CN','1980',  'Trade sanctions violation','2023-02-14'
+UNION ALL SELECT 'SYN-OFAC-007','SYNTHETIC_OFAC','INDIVIDUAL','Fatima Zahra Benkiran',ARRAY_CONSTRUCT('F. Benkiran'),             'MA','1990',  'Terrorism support',      '2022-08-30'
+UNION ALL SELECT 'SYN-OFAC-008','SYNTHETIC_OFAC','INDIVIDUAL','Deepak Sharma',      ARRAY_CONSTRUCT('D. Sharma','Dipak Sharma'), 'IN','1978',  'Gold smuggling network',  '2023-06-12'
+UNION ALL SELECT 'SYN-OFAC-009','SYNTHETIC_OFAC','INDIVIDUAL','Rajesh Kumar Gupta', ARRAY_CONSTRUCT('R.K. Gupta','Rajesh Gupta'),'IN','1972',  'Hawala operations',       '2022-12-01'
+UNION ALL SELECT 'SYN-OFAC-010','SYNTHETIC_OFAC','INDIVIDUAL','Suresh Nair Menon',  ARRAY_CONSTRUCT('S. Menon','Suresh Menon'),  'IN','1985',  'Drug trafficking',        '2023-09-15'
 -- Organizations
-('SYN-OFAC-011','SYNTHETIC_OFAC','ORGANIZATION','Golden Dragon Trading LLC',ARRAY_CONSTRUCT('GD Trading'),'AE',NULL,'Shell company - sanctions evasion','2021-05-20'),
-('SYN-OFAC-012','SYNTHETIC_OFAC','ORGANIZATION','Crescent Star Exports',   ARRAY_CONSTRUCT('CS Exports'),'PK',NULL,'Front for terrorism financing',   '2020-09-10'),
-('SYN-OFAC-013','SYNTHETIC_OFAC','ORGANIZATION','Phoenix Hawk Industries',  ARRAY_CONSTRUCT('PH Industries'),'IR',NULL,'WMD procurement network',       '2022-03-25'),
+UNION ALL SELECT 'SYN-OFAC-011','SYNTHETIC_OFAC','ORGANIZATION','Golden Dragon Trading LLC',ARRAY_CONSTRUCT('GD Trading'),'AE',NULL,'Shell company - sanctions evasion','2021-05-20'
+UNION ALL SELECT 'SYN-OFAC-012','SYNTHETIC_OFAC','ORGANIZATION','Crescent Star Exports',   ARRAY_CONSTRUCT('CS Exports'),'PK',NULL,'Front for terrorism financing',   '2020-09-10'
+UNION ALL SELECT 'SYN-OFAC-013','SYNTHETIC_OFAC','ORGANIZATION','Phoenix Hawk Industries',  ARRAY_CONSTRUCT('PH Industries'),'IR',NULL,'WMD procurement network',       '2022-03-25'
 -- Synthetic UN-style entries
-('SYN-UN-001','SYNTHETIC_UN','INDIVIDUAL','Ahmed bin Saleh Al-Dosari',ARRAY_CONSTRUCT('Ahmed Al Dosari'),'SA','1977','UN Security Council Resolution 1267','2019-04-15'),
-('SYN-UN-002','SYNTHETIC_UN','INDIVIDUAL','Pyotr Nikolaevich Volkov', ARRAY_CONSTRUCT('P.N. Volkov'),    'RU','1973','UN sanctions - Ukraine',              '2023-01-20'),
-('SYN-UN-003','SYNTHETIC_UN','INDIVIDUAL','Kwame Asante Boateng',    ARRAY_CONSTRUCT('K. Boateng'),     'GH','1988','Illicit arms trafficking',             '2021-07-08'),
-('SYN-UN-004','SYNTHETIC_UN','ORGANIZATION','Bright Future Foundation',ARRAY_CONSTRUCT('BFF'),            'KP',NULL, 'Front for DPRK weapons program',      '2020-11-30'),
+UNION ALL SELECT 'SYN-UN-001','SYNTHETIC_UN','INDIVIDUAL','Ahmed bin Saleh Al-Dosari',ARRAY_CONSTRUCT('Ahmed Al Dosari'),'SA','1977','UN Security Council Resolution 1267','2019-04-15'
+UNION ALL SELECT 'SYN-UN-002','SYNTHETIC_UN','INDIVIDUAL','Pyotr Nikolaevich Volkov', ARRAY_CONSTRUCT('P.N. Volkov'),    'RU','1973','UN sanctions - Ukraine',              '2023-01-20'
+UNION ALL SELECT 'SYN-UN-003','SYNTHETIC_UN','INDIVIDUAL','Kwame Asante Boateng',    ARRAY_CONSTRUCT('K. Boateng'),     'GH','1988','Illicit arms trafficking',             '2021-07-08'
+UNION ALL SELECT 'SYN-UN-004','SYNTHETIC_UN','ORGANIZATION','Bright Future Foundation',ARRAY_CONSTRUCT('BFF'),            'KP',NULL, 'Front for DPRK weapons program',      '2020-11-30'
 -- Synthetic FATF grey/blacklist-style entries
-('SYN-FATF-001','SYNTHETIC_FATF','INDIVIDUAL','Omar Hussein Farah', ARRAY_CONSTRUCT('O.H. Farah'),     'SO','1980','FATF high-risk jurisdiction contact',  '2022-06-01'),
-('SYN-FATF-002','SYNTHETIC_FATF','INDIVIDUAL','Aung Kyaw Myint',    ARRAY_CONSTRUCT('A.K. Myint'),     'MM','1975','FATF blacklist jurisdiction contact',  '2023-03-10'),
+UNION ALL SELECT 'SYN-FATF-001','SYNTHETIC_FATF','INDIVIDUAL','Omar Hussein Farah', ARRAY_CONSTRUCT('O.H. Farah'),     'SO','1980','FATF high-risk jurisdiction contact',  '2022-06-01'
+UNION ALL SELECT 'SYN-FATF-002','SYNTHETIC_FATF','INDIVIDUAL','Aung Kyaw Myint',    ARRAY_CONSTRUCT('A.K. Myint'),     'MM','1975','FATF blacklist jurisdiction contact',  '2023-03-10'
 -- Synthetic Indian PEP entries (for PEP screening tests)
-('SYN-PEP-001','SYNTHETIC_PEP','INDIVIDUAL','Ramesh Chandra Verma',  ARRAY_CONSTRUCT('R.C. Verma','Ramesh Verma'),'IN','1960','State Minister - UP',     '2020-01-01'),
-('SYN-PEP-002','SYNTHETIC_PEP','INDIVIDUAL','Sunita Devi Yadav',     ARRAY_CONSTRUCT('S.D. Yadav','Sunita Yadav'),'IN','1965','MP - Bihar',               '2020-01-01'),
-('SYN-PEP-003','SYNTHETIC_PEP','INDIVIDUAL','Vijay Pratap Singh',    ARRAY_CONSTRUCT('V.P. Singh','Vijay Singh'), 'IN','1958','Former IAS Officer',       '2020-01-01'),
-('SYN-PEP-004','SYNTHETIC_PEP','INDIVIDUAL','Anand Kumar Joshi',     ARRAY_CONSTRUCT('A.K. Joshi','Anand Joshi'), 'IN','1970','Municipal Corporation Head','2020-01-01'),
-('SYN-PEP-005','SYNTHETIC_PEP','INDIVIDUAL','Priya Reddy Naidu',     ARRAY_CONSTRUCT('P. Naidu','Priya Naidu'),   'IN','1975','MLA - Telangana',          '2020-01-01'),
-('SYN-PEP-006','SYNTHETIC_PEP','INDIVIDUAL','Deepak Sharma Tiwari',  ARRAY_CONSTRUCT('D. Tiwari','Deepak Tiwari'),'IN','1968','District Collector - MP',  '2020-01-01'),
-('SYN-PEP-007','SYNTHETIC_PEP','INDIVIDUAL','Kavita Mehta Agarwal',  ARRAY_CONSTRUCT('K. Agarwal','Kavita Mehta'),'IN','1972','Bank Board Member',        '2020-01-01'),
-('SYN-PEP-008','SYNTHETIC_PEP','INDIVIDUAL','Sunil Bahadur Thapa',   ARRAY_CONSTRUCT('S.B. Thapa','Sunil Thapa'), 'NP','1966','Former Minister - Nepal',  '2020-01-01');
+UNION ALL SELECT 'SYN-PEP-001','SYNTHETIC_PEP','INDIVIDUAL','Ramesh Chandra Verma',  ARRAY_CONSTRUCT('R.C. Verma','Ramesh Verma'),'IN','1960','State Minister - UP',     '2020-01-01'
+UNION ALL SELECT 'SYN-PEP-002','SYNTHETIC_PEP','INDIVIDUAL','Sunita Devi Yadav',     ARRAY_CONSTRUCT('S.D. Yadav','Sunita Yadav'),'IN','1965','MP - Bihar',               '2020-01-01'
+UNION ALL SELECT 'SYN-PEP-003','SYNTHETIC_PEP','INDIVIDUAL','Vijay Pratap Singh',    ARRAY_CONSTRUCT('V.P. Singh','Vijay Singh'), 'IN','1958','Former IAS Officer',       '2020-01-01'
+UNION ALL SELECT 'SYN-PEP-004','SYNTHETIC_PEP','INDIVIDUAL','Anand Kumar Joshi',     ARRAY_CONSTRUCT('A.K. Joshi','Anand Joshi'), 'IN','1970','Municipal Corporation Head','2020-01-01'
+UNION ALL SELECT 'SYN-PEP-005','SYNTHETIC_PEP','INDIVIDUAL','Priya Reddy Naidu',     ARRAY_CONSTRUCT('P. Naidu','Priya Naidu'),   'IN','1975','MLA - Telangana',          '2020-01-01'
+UNION ALL SELECT 'SYN-PEP-006','SYNTHETIC_PEP','INDIVIDUAL','Deepak Sharma Tiwari',  ARRAY_CONSTRUCT('D. Tiwari','Deepak Tiwari'),'IN','1968','District Collector - MP',  '2020-01-01'
+UNION ALL SELECT 'SYN-PEP-007','SYNTHETIC_PEP','INDIVIDUAL','Kavita Mehta Agarwal',  ARRAY_CONSTRUCT('K. Agarwal','Kavita Mehta'),'IN','1972','Bank Board Member',        '2020-01-01'
+UNION ALL SELECT 'SYN-PEP-008','SYNTHETIC_PEP','INDIVIDUAL','Sunil Bahadur Thapa',   ARRAY_CONSTRUCT('S.B. Thapa','Sunil Thapa'), 'NP','1966','Former Minister - Nepal',  '2020-01-01';
 
 -- =========================================================================
 -- 6. COUNTRY_RISK — Risk classification per country
@@ -379,7 +379,7 @@ GRANT SELECT ON ALL VIEWS IN SCHEMA REF TO ROLE KAVACH_AUDITOR;
 -- =========================================================================
 -- 8. Verify
 -- =========================================================================
-SELECT 'GEO_INDIA'    AS TBL, COUNT(*) AS ROWS FROM REF.GEO_INDIA
+SELECT 'GEO_INDIA'    AS TBL, COUNT(*) AS ROW_COUNT FROM REF.GEO_INDIA
 UNION ALL SELECT 'IP_GEO',     COUNT(*) FROM REF.IP_GEO
 UNION ALL SELECT 'WATCHLIST',  COUNT(*) FROM REF.WATCHLIST
 UNION ALL SELECT 'COUNTRY_RISK', COUNT(*) FROM REF.COUNTRY_RISK;
